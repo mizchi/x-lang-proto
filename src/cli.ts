@@ -5,7 +5,8 @@
  */
 
 import { Command } from 'commander';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
+import { extname } from 'path';
 import { SExpParser } from './sexp.js';
 import { BinarySerializer, calculateHash, generateContentHash } from './serializer.js';
 import { StructuralDiff } from './diff.js';
@@ -26,9 +27,21 @@ program
   .option('--hash', 'Show content hash')
   .action(async (file, options) => {
     try {
-      const content = readFileSync(file, 'utf-8');
-      const parser = new SExpParser();
-      const sexp = parser.parse(content);
+      const ext = extname(file);
+      let sexp;
+      
+      if (ext === '.bin' || file.endsWith('.s.bin')) {
+        // バイナリファイルから読み込み
+        const binaryData = readFileSync(file);
+        const serializer = new BinarySerializer();
+        sexp = serializer.deserialize(new Uint8Array(binaryData));
+        console.log('Loaded from binary format');
+      } else {
+        // テキストファイルから読み込み
+        const content = readFileSync(file, 'utf-8');
+        const parser = new SExpParser();
+        sexp = parser.parse(content);
+      }
       
       console.log('Parsed AST:');
       console.log(JSON.stringify(sexp, null, 2));
@@ -53,6 +66,35 @@ program
   });
 
 program
+  .command('compile')
+  .description('Compile S-expression file to binary format')
+  .argument('<input>', 'Input S-expression file (.s)')
+  .argument('[output]', 'Output binary file (.s.bin) - defaults to input.s.bin')
+  .action(async (input, output) => {
+    try {
+      const content = readFileSync(input, 'utf-8');
+      const parser = new SExpParser();
+      const sexp = parser.parse(content);
+      
+      const serializer = new BinarySerializer();
+      const binary = serializer.serialize(sexp);
+      
+      const outputFile = output || input.replace(/\.s$/, '.s.bin').replace(/\.sexp$/, '.s.bin') + (input.endsWith('.s') || input.endsWith('.sexp') ? '' : '.s.bin');
+      
+      writeFileSync(outputFile, binary);
+      
+      const hash = generateContentHash(sexp);
+      console.log(`Compiled: ${input} -> ${outputFile}`);
+      console.log(`Size: ${binary.length} bytes`);
+      console.log(`Content Hash: ${hash}`);
+      
+    } catch (error) {
+      console.error('Error:', error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  });
+
+program
   .command('diff')
   .description('Compare two S-expression files')
   .argument('<file1>', 'First S-expression file')
@@ -63,12 +105,31 @@ program
   .option('--structural', 'Show structural diff')
   .action(async (file1, file2, options) => {
     try {
-      const content1 = readFileSync(file1, 'utf-8');
-      const content2 = readFileSync(file2, 'utf-8');
+      // ファイル1の読み込み
+      let sexp1;
+      const ext1 = extname(file1);
+      if (ext1 === '.bin' || file1.endsWith('.s.bin')) {
+        const binaryData1 = readFileSync(file1);
+        const serializer = new BinarySerializer();
+        sexp1 = serializer.deserialize(new Uint8Array(binaryData1));
+      } else {
+        const content1 = readFileSync(file1, 'utf-8');
+        const parser = new SExpParser();
+        sexp1 = parser.parse(content1);
+      }
       
-      const parser = new SExpParser();
-      const sexp1 = parser.parse(content1);
-      const sexp2 = parser.parse(content2);
+      // ファイル2の読み込み
+      let sexp2;
+      const ext2 = extname(file2);
+      if (ext2 === '.bin' || file2.endsWith('.s.bin')) {
+        const binaryData2 = readFileSync(file2);
+        const serializer = new BinarySerializer();
+        sexp2 = serializer.deserialize(new Uint8Array(binaryData2));
+      } else {
+        const content2 = readFileSync(file2, 'utf-8');
+        const parser = new SExpParser();
+        sexp2 = parser.parse(content2);
+      }
       
       const diff = new StructuralDiff();
       const operations = diff.diff(sexp1, sexp2);

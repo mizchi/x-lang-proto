@@ -35,35 +35,53 @@ npm run build
 
 #### S式ファイルのパース
 ```bash
-# S式をパースしてASTを表示
-npm run dev -- parse examples/example1.sexp
+# S式をパースしてASTを表示 (.s 拡張子)
+npm run dev -- parse examples/example1.s
 
 # ハッシュ情報も表示
-npm run dev -- parse examples/example1.sexp --hash
+npm run dev -- parse examples/example1.s --hash
 
 # バイナリ表現も表示
-npm run dev -- parse examples/example1.sexp --binary
+npm run dev -- parse examples/example1.s --binary
+
+# バイナリファイル (.s.bin) からの読み込み
+npm run dev -- parse examples/example1.s.bin
+```
+
+#### S式のコンパイル
+```bash
+# S式ファイルをバイナリ形式にコンパイル
+npm run dev -- compile examples/example1.s
+
+# 出力ファイル名を指定
+npm run dev -- compile examples/example1.s output.s.bin
 ```
 
 #### ファイル間の差分比較
 ```bash
-# 基本的な差分表示
-npm run dev -- diff examples/example1.sexp examples/example2.sexp
+# 基本的な差分表示 (テキスト形式)
+npm run dev -- diff examples/example1.s examples/example2.s
+
+# バイナリファイル間の差分
+npm run dev -- diff examples/example1.s.bin examples/example2.s.bin
+
+# テキストとバイナリの混在比較
+npm run dev -- diff examples/example1.s examples/example2.s.bin
 
 # 構造的な差分表示
-npm run dev -- diff examples/example1.sexp examples/example2.sexp --structural
+npm run dev -- diff examples/example1.s examples/example2.s --structural
 
 # コンパクト表示（変更のみ）
-npm run dev -- diff examples/example1.sexp examples/example2.sexp --compact
+npm run dev -- diff examples/example1.s examples/example2.s --compact
 
 # 色なし表示
-npm run dev -- diff examples/example1.sexp examples/example2.sexp --no-color
+npm run dev -- diff examples/example1.s examples/example2.s --no-color
 ```
 
 #### バイナリ表現の比較
 ```bash
 # バイナリサイズとハッシュの比較
-npm run dev -- binary-diff examples/example1.sexp examples/example2.sexp
+npm run dev -- binary-diff examples/example1.s examples/example2.s
 ```
 
 ### Git統合
@@ -80,7 +98,8 @@ git diff examples/example1.sexp
 #### .gitattributesの設定例
 ```gitattributes
 # S式ファイルに対してカスタムdiffを適用
-*.sexp diff=sexp
+*.s diff=sexp
+*.s.bin diff=sexp
 ```
 
 #### Git設定例
@@ -94,14 +113,20 @@ git config --global diff.sexp.tool "binary-ast-diff"
 
 ```bash
 # 階乗関数の実装の差分を確認
-npm run dev -- diff examples/example1.sexp examples/example2.sexp
+npm run dev -- diff examples/example1.s examples/example2.s
+
+# S式ファイルをバイナリにコンパイル
+npm run dev -- compile examples/example1.s
+
+# バイナリファイル間の差分を確認
+npm run dev -- diff examples/example1.s.bin examples/example2.s.bin
 
 # 複雑なモジュールの構造的変更を確認
-npm run dev -- diff examples/complex1.sexp examples/complex2.sexp --structural
+npm run dev -- diff examples/complex1.s examples/complex2.s --structural
 
 # Content-addressedハッシュでファイルを識別
-npm run dev -- parse examples/example1.sexp --hash
-# Output: Content Hash: 10e7e257
+npm run dev -- parse examples/example1.s --hash
+# Output: Content Hash: ffe69fde
 ```
 
 ### S式の書き方
@@ -151,6 +176,8 @@ my-function
 - 可変長エンコーディングによる効率的な保存
 - バイナリ形式でのS式シリアライゼーション
 - ファイルサイズとハッシュの比較
+- .s.bin拡張子でのバイナリフォーマット
+- テキストとバイナリの混在比較が可能
 
 ## 参考
 

@@ -8,10 +8,11 @@ import { createHash } from 'crypto';
 
 // バイナリフォーマットの定義
 const ATOM_STRING = 0x01;
-const ATOM_NUMBER = 0x02;
-const ATOM_BOOLEAN = 0x03;
-const SYMBOL = 0x04;
-const LIST = 0x05;
+const ATOM_NUMBER_INT = 0x02;
+const ATOM_NUMBER_FLOAT = 0x03;
+const ATOM_BOOLEAN = 0x04;
+const SYMBOL = 0x05;
+const LIST = 0x06;
 
 export class BinarySerializer {
   serialize(sexp: SExp): Uint8Array {
@@ -27,8 +28,13 @@ export class BinarySerializer {
           buffer.push(ATOM_STRING);
           this.serializeString(sexp.value, buffer);
         } else if (typeof sexp.value === 'number') {
-          buffer.push(ATOM_NUMBER);
-          this.serializeNumber(sexp.value, buffer);
+          if (Number.isInteger(sexp.value)) {
+            buffer.push(ATOM_NUMBER_INT);
+            this.serializeVarint(sexp.value, buffer);
+          } else {
+            buffer.push(ATOM_NUMBER_FLOAT);
+            this.serializeFloat(sexp.value, buffer);
+          }
         } else if (typeof sexp.value === 'boolean') {
           buffer.push(ATOM_BOOLEAN);
           buffer.push(sexp.value ? 1 : 0);
@@ -54,17 +60,11 @@ export class BinarySerializer {
     buffer.push(...bytes);
   }
 
-  private serializeNumber(num: number, buffer: number[]): void {
-    // 浮動小数点数の場合は64ビットのIEEE754形式
-    if (num % 1 !== 0) {
-      const view = new DataView(new ArrayBuffer(8));
-      view.setFloat64(0, num, true); // little endian
-      for (let i = 0; i < 8; i++) {
-        buffer.push(view.getUint8(i));
-      }
-    } else {
-      // 整数の場合は可変長エンコーディング
-      this.serializeVarint(num, buffer);
+  private serializeFloat(num: number, buffer: number[]): void {
+    const view = new DataView(new ArrayBuffer(8));
+    view.setFloat64(0, num, true); // little endian
+    for (let i = 0; i < 8; i++) {
+      buffer.push(view.getUint8(i));
     }
   }
 
@@ -91,8 +91,10 @@ export class BinarySerializer {
     switch (type) {
       case ATOM_STRING:
         return { type: 'atom', value: reader.readString() };
-      case ATOM_NUMBER:
-        return { type: 'atom', value: reader.readNumber() };
+      case ATOM_NUMBER_INT:
+        return { type: 'atom', value: reader.readVarint() };
+      case ATOM_NUMBER_FLOAT:
+        return { type: 'atom', value: reader.readFloat() };
       case ATOM_BOOLEAN:
         return { type: 'atom', value: reader.readByte() === 1 };
       case SYMBOL:
@@ -129,9 +131,12 @@ class BinaryReader {
     return new TextDecoder().decode(bytes);
   }
 
-  readNumber(): number {
-    // 浮動小数点数かどうかを判定するため、次の8バイトを読み取る
-    const view = new DataView(this.data.buffer, this.pos, 8);
+  readFloat(): number {
+    if (this.pos + 8 > this.data.length) {
+      throw new Error(`Not enough data for float64: need 8 bytes, have ${this.data.length - this.pos}`);
+    }
+    
+    const view = new DataView(this.data.buffer, this.data.byteOffset + this.pos, 8);
     const num = view.getFloat64(0, true);
     this.pos += 8;
     return num;
