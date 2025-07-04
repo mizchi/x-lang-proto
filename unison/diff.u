@@ -1,0 +1,235 @@
+-- Structural diff implementation in Unison
+-- Demonstrates content-addressed programming with native Unison features
+
+use .sexp (SExp, Atom, factorialSExp)
+
+-- Diff operations
+type DiffOp 
+  = Keep SExp
+  | Insert SExp
+  | Delete SExp
+  | Replace SExp SExp
+
+-- Path for tracking position in AST
+type Path = Path [Nat]
+
+-- Diff result with path information
+type DiffResult = DiffResult Path DiffOp
+
+-- Compare two S-expressions for equality
+sexpEqual : SExp -> SExp -> Boolean
+sexpEqual left right = match (left, right) with
+  (Atom a1, Atom a2) -> atomEqual a1 a2
+  (Symbol s1, Symbol s2) -> s1 == s2
+  (List l1, List l2) -> listsEqual l1 l2
+  _ -> false
+
+atomEqual : Atom -> Atom -> Boolean
+atomEqual a1 a2 = match (a1, a2) with
+  (AtomString s1, AtomString s2) -> s1 == s2
+  (AtomNumber n1, AtomNumber n2) -> n1 == n2
+  (AtomBoolean b1, AtomBoolean b2) -> b1 == b2
+  _ -> false
+
+listsEqual : [SExp] -> [SExp] -> Boolean
+listsEqual l1 l2 = 
+  if List.size l1 != List.size l2 then false
+  else List.all id (List.map2 sexpEqual l1 l2)
+
+-- Myers algorithm for computing diff
+-- Simplified version for demonstration
+computeDiff : SExp -> SExp -> [DiffResult]
+computeDiff left right = 
+  if sexpEqual left right then
+    [DiffResult (Path []) (Keep left)]
+  else
+    computeDiffImpl left right (Path [])
+
+computeDiffImpl : SExp -> SExp -> Path -> [DiffResult]
+computeDiffImpl left right path = match (left, right) with
+  (List l1, List l2) -> computeListDiff l1 l2 path 0
+  _ -> [DiffResult path (Replace left right)]
+
+computeListDiff : [SExp] -> [SExp] -> Path -> Nat -> [DiffResult]
+computeListDiff l1 l2 path index = 
+  match (l1, l2) with
+    ([], []) -> []
+    ([], r :: rest) -> 
+      DiffResult (extendPath path index) (Insert r) :: 
+      computeListDiff [] rest path (index + 1)
+    (l :: rest, []) -> 
+      DiffResult (extendPath path index) (Delete l) :: 
+      computeListDiff rest [] path (index + 1)
+    (l :: lrest, r :: rrest) ->
+      if sexpEqual l r then
+        DiffResult (extendPath path index) (Keep l) :: 
+        computeListDiff lrest rrest path (index + 1)
+      else
+        -- Simplified: just replace for now
+        DiffResult (extendPath path index) (Replace l r) :: 
+        computeListDiff lrest rrest path (index + 1)
+
+extendPath : Path -> Nat -> Path
+extendPath path index = match path with
+  Path indices -> Path (indices ++ [index])
+
+-- Format diff results for display
+formatDiff : [DiffResult] -> Text
+formatDiff diffs = 
+  let formatted = List.map formatDiffResult diffs
+  Text.join "\n" formatted
+
+formatDiffResult : DiffResult -> Text
+formatDiffResult diffResult = match diffResult with
+  DiffResult path op -> formatPath path ++ " " ++ formatOp op
+
+formatPath : Path -> Text
+formatPath path = match path with
+  Path indices -> "@" ++ Text.join "." (List.map Nat.toText indices)
+
+formatOp : DiffOp -> Text
+formatOp op = match op with
+  Keep expr -> "  " ++ formatSExp expr
+  Insert expr -> "+ " ++ formatSExp expr
+  Delete expr -> "- " ++ formatSExp expr
+  Replace old new -> "- " ++ formatSExp old ++ " -> + " ++ formatSExp new
+
+formatSExp : SExp -> Text
+formatSExp expr = match expr with
+  Atom atom -> formatAtom atom
+  Symbol symbol -> symbol
+  List exprs -> "(" ++ Text.join " " (List.map formatSExp exprs) ++ ")"
+
+formatAtom : Atom -> Text
+formatAtom atom = match atom with
+  AtomString text -> "\"" ++ text ++ "\""
+  AtomNumber num -> Float.toText num
+  AtomBoolean bool -> if bool then "#t" else "#f"
+
+-- Example: Compare two versions of factorial
+factorialSExp2 : SExp
+factorialSExp2 = 
+  List [
+    Symbol "defun",
+    Symbol "factorial", 
+    List [Symbol "n"],
+    List [
+      Symbol "if",
+      List [Symbol "<=", Symbol "n", Atom (AtomNumber 1.0)],  -- Changed from "= n 0"
+      Atom (AtomNumber 1.0),
+      List [
+        Symbol "*",
+        Symbol "n", 
+        List [
+          Symbol "factorial",
+          List [Symbol "-", Symbol "n", Atom (AtomNumber 1.0)]
+        ]
+      ]
+    ]
+  ]
+
+-- Demonstrate structural diff
+demoDiff : Text
+demoDiff = 
+  let diff = computeDiff factorialSExp factorialSExp2
+  "Structural diff between factorial versions:\n" ++ formatDiff diff
+
+-- Content-addressed comparison
+-- Unison's native content-addressing makes this elegant
+contentAddressedDiff : SExp -> SExp -> Text
+contentAddressedDiff expr1 expr2 = 
+  let hash1 = contentHash expr1
+  let hash2 = contentHash expr2
+  if hash1 == hash2 then
+    "Content hashes match: " ++ hash1 ++ " (no changes)"
+  else
+    "Content hashes differ:\n" ++ 
+    "  Version 1: " ++ hash1 ++ "\n" ++
+    "  Version 2: " ++ hash2 ++ "\n" ++
+    "Structural diff:\n" ++ formatDiff (computeDiff expr1 expr2)
+
+-- Binary diff comparison
+binaryDiff : SExp -> SExp -> Text
+binaryDiff expr1 expr2 = 
+  let bytes1 = serializeSExp expr1
+  let bytes2 = serializeSExp expr2
+  let size1 = Bytes.size bytes1
+  let size2 = Bytes.size bytes2
+  let hash1 = contentHash expr1
+  let hash2 = contentHash expr2
+  
+  "Binary comparison:\n" ++
+  "  Expression 1: " ++ Nat.toText size1 ++ " bytes, hash: " ++ hash1 ++ "\n" ++
+  "  Expression 2: " ++ Nat.toText size2 ++ " bytes, hash: " ++ hash2 ++ "\n" ++
+  "  Size difference: " ++ Int.toText (size2 - size1) ++ " bytes\n" ++
+  "  Content match: " ++ Boolean.toText (hash1 == hash2)
+
+-- Advanced diff with path tracking
+type DiffContext = DiffContext 
+  { showPaths : Boolean
+  , compact : Boolean
+  , colored : Boolean
+  }
+
+advancedDiff : DiffContext -> SExp -> SExp -> Text
+advancedDiff context expr1 expr2 = 
+  let diff = computeDiff expr1 expr2
+  let formatted = if context.compact then
+    formatCompactDiff diff
+  else
+    formatDiff diff
+  
+  if context.showPaths then
+    "Advanced diff with paths:\n" ++ formatted
+  else
+    "Advanced diff:\n" ++ formatted
+
+formatCompactDiff : [DiffResult] -> Text
+formatCompactDiff diffs = 
+  let changesOnly = List.filter isChange diffs
+  Text.join "\n" (List.map formatDiffResult changesOnly)
+
+isChange : DiffResult -> Boolean
+isChange diffResult = match diffResult with
+  DiffResult _ (Keep _) -> false
+  _ -> true
+
+-- Performance comparison helper
+type PerformanceStats = PerformanceStats
+  { parseTime : Nat
+  , diffTime : Nat
+  , serializeTime : Nat
+  , hashTime : Nat
+  }
+
+-- Mock performance measurement (Unison doesn't have built-in timing)
+measurePerformance : SExp -> SExp -> PerformanceStats
+measurePerformance expr1 expr2 = 
+  -- In a real implementation, this would use actual timing
+  PerformanceStats 100 50 25 10
+
+-- Demo comparing all approaches
+comprehensiveDemo : Text
+comprehensiveDemo = 
+  let expr1 = factorialSExp
+  let expr2 = factorialSExp2
+  
+  "=== Comprehensive S-Expression Diff Demo ===\n\n" ++
+  "1. Content-addressed comparison:\n" ++
+  contentAddressedDiff expr1 expr2 ++ "\n\n" ++
+  
+  "2. Binary comparison:\n" ++
+  binaryDiff expr1 expr2 ++ "\n\n" ++
+  
+  "3. Structural diff:\n" ++
+  demoDiff ++ "\n\n" ++
+  
+  "4. Advanced diff (compact):\n" ++
+  advancedDiff (DiffContext true true false) expr1 expr2 ++ "\n\n" ++
+  
+  "=== Unison Content-Addressed Benefits ===\n" ++
+  "- Automatic content-addressed storage\n" ++
+  "- Built-in cryptographic hashing\n" ++
+  "- Immutable data structures\n" ++
+  "- Type safety guarantees\n" ++
+  "- Distributed-by-default architecture"

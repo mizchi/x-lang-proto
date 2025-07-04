@@ -1,0 +1,27 @@
+[package]
+name = "effect-lang-editor"
+version = "0.1.0"
+edition = "2021"
+authors = ["mizchi"]
+description = "Language service and AST editor for EffectLang with AI-friendly direct manipulation"
+license = "MIT"
+
+[dependencies]
+# Local dependencies
+effect-lang-parser = { path = "../effect-lang-parser" }
+effect-lang-checker = { path = "../effect-lang-checker" }
+
+# Workspace dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# Additional dependencies
+dashmap = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio-test = "0.4"

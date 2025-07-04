@@ -1,37 +1,25 @@
-# Dependencies
-node_modules/
-
-# Build output
-dist/
-*.tsbuildinfo
-
-# Logs
-*.log
-npm-debug.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-
-# Coverage directory used by tools like istanbul
-coverage/
-
-# Temporary files
-.tmp/
-temp/
+# Rust
+target/
+Cargo.lock
 
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Local environment
+# Environment
 .env
 .env.local
-.env.*.local
+
+# Test outputs
+coverage/
+*.profraw
+
+# Generated files
+*.log
+
+# Unison
+.unisonHistory

@@ -1,0 +1,281 @@
+-- S-expression parser and AST implementation in Unison
+-- This demonstrates content-addressed programming with native Unison features
+
+-- S-expression AST definition
+type SExp 
+  = Atom Atom 
+  | Symbol Text 
+  | List [SExp]
+
+-- Atom types
+type Atom 
+  = AtomString Text
+  | AtomNumber Float
+  | AtomBoolean Boolean
+
+-- Parser state
+type ParseState = ParseState Text Nat
+
+-- Parser result
+type ParseResult a = Ok a | Error Text
+
+-- Basic parsing utilities
+peek : ParseState -> Optional Char
+peek state = match state with
+  ParseState text pos -> 
+    if pos < Text.size text then
+      Some (Text.at pos text)
+    else
+      None
+
+advance : ParseState -> ParseState
+advance state = match state with
+  ParseState text pos -> ParseState text (pos + 1)
+
+takeWhile : (Char -> Boolean) -> ParseState -> (Text, ParseState)
+takeWhile pred state = match state with
+  ParseState text pos ->
+    go : Nat -> Text
+    go i = 
+      if i < Text.size text then
+        let char = Text.at i text
+        if pred char then
+          Text.cons char (go (i + 1))
+        else
+          ""
+      else
+        ""
+    
+    let taken = go pos
+    let newPos = pos + Text.size taken
+    (taken, ParseState text newPos)
+
+-- Skip whitespace
+isWhitespace : Char -> Boolean
+isWhitespace c = 
+  c == Char.space || c == Char.tab || c == Char.newline || c == Char.carriageReturn
+
+skipWhitespace : ParseState -> ParseState
+skipWhitespace state = 
+  let (_, newState) = takeWhile isWhitespace state
+  newState
+
+-- Parse atom string
+parseAtomString : ParseState -> ParseResult (Atom, ParseState)
+parseAtomString state = 
+  let state' = skipWhitespace state
+  match peek state' with
+    Some '"' ->
+      let state'' = advance state'
+      parseStringLiteral state''
+    _ -> Error "Expected string literal"
+
+parseStringLiteral : ParseState -> ParseResult (Atom, ParseState)
+parseStringLiteral state = 
+  let (content, newState) = takeWhile (c -> c != '"') state
+  match peek newState with
+    Some '"' ->
+      let finalState = advance newState
+      Ok (AtomString content, finalState)
+    _ -> Error "Unterminated string literal"
+
+-- Parse atom number
+parseAtomNumber : ParseState -> ParseResult (Atom, ParseState)
+parseAtomNumber state = 
+  let state' = skipWhitespace state
+  let isDigit = c -> c >= '0' && c <= '9'
+  let isNumberChar = c -> isDigit c || c == '.' || c == '-'
+  let (numStr, newState) = takeWhile isNumberChar state'
+  
+  if Text.size numStr > 0 then
+    -- Simple number parsing (would need proper implementation)
+    let num = 42.0 -- placeholder
+    Ok (AtomNumber num, newState)
+  else
+    Error "Expected number"
+
+-- Parse atom boolean
+parseAtomBoolean : ParseState -> ParseResult (Atom, ParseState)
+parseAtomBoolean state = 
+  let state' = skipWhitespace state
+  match peek state' with
+    Some '#' ->
+      let state'' = advance state'
+      match peek state'' with
+        Some 't' -> Ok (AtomBoolean true, advance state'')
+        Some 'f' -> Ok (AtomBoolean false, advance state'')
+        _ -> Error "Invalid boolean literal"
+    _ -> Error "Expected boolean literal"
+
+-- Parse symbol
+parseSymbol : ParseState -> ParseResult (Text, ParseState)
+parseSymbol state = 
+  let state' = skipWhitespace state
+  let isSymbolChar = c -> 
+    (c >= 'a' && c <= 'z') || 
+    (c >= 'A' && c <= 'Z') || 
+    (c >= '0' && c <= '9') ||
+    c == '-' || c == '+' || c == '*' || c == '/' || 
+    c == '=' || c == '<' || c == '>' || c == '?'
+  
+  let (symbol, newState) = takeWhile isSymbolChar state'
+  
+  if Text.size symbol > 0 then
+    Ok (symbol, newState)
+  else
+    Error "Expected symbol"
+
+-- Parse list
+parseList : ParseState -> ParseResult ([SExp], ParseState)
+parseList state = 
+  let state' = skipWhitespace state
+  match peek state' with
+    Some '(' ->
+      let state'' = advance state'
+      parseListElements state'' []
+    _ -> Error "Expected opening parenthesis"
+
+parseListElements : ParseState -> [SExp] -> ParseResult ([SExp], ParseState)
+parseListElements state acc = 
+  let state' = skipWhitespace state
+  match peek state' with
+    Some ')' ->
+      Ok (List.reverse acc, advance state')
+    _ -> 
+      match parseSExp state' with
+        Ok (expr, newState) -> 
+          parseListElements newState (expr :: acc)
+        Error msg -> Error msg
+
+-- Main S-expression parser
+parseSExp : ParseState -> ParseResult (SExp, ParseState)
+parseSExp state = 
+  let state' = skipWhitespace state
+  match peek state' with
+    Some '(' -> 
+      match parseList state' with
+        Ok (exprs, newState) -> Ok (List exprs, newState)
+        Error msg -> Error msg
+    
+    Some '"' ->
+      match parseAtomString state' with
+        Ok (atom, newState) -> Ok (Atom atom, newState)
+        Error msg -> Error msg
+    
+    Some '#' ->
+      match parseAtomBoolean state' with
+        Ok (atom, newState) -> Ok (Atom atom, newState)
+        Error msg -> Error msg
+    
+    Some c ->
+      if (c >= '0' && c <= '9') || c == '-' then
+        match parseAtomNumber state' with
+          Ok (atom, newState) -> Ok (Atom atom, newState)
+          Error msg -> Error msg
+      else
+        match parseSymbol state' with
+          Ok (symbol, newState) -> Ok (Symbol symbol, newState)
+          Error msg -> Error msg
+    
+    None -> Error "Unexpected end of input"
+
+-- Parse S-expression from text
+parse : Text -> ParseResult SExp
+parse text = 
+  let state = ParseState text 0
+  match parseSExp state with
+    Ok (expr, _) -> Ok expr
+    Error msg -> Error msg
+
+-- Example usage and test
+testParser : Text
+testParser = 
+  let testCases = [
+    "(+ 1 2)",
+    "(defun factorial (n) (if (= n 0) 1 (* n (factorial (- n 1)))))",
+    "(module math (export factorial))"
+  ]
+  
+  let results = List.map parse testCases
+  "Parser tests completed"
+
+-- Content-addressed storage using Unison's native hashing
+-- Unison automatically provides content-addressed storage
+-- through its codebase management
+
+-- Binary serialization helpers
+serializeSExp : SExp -> Bytes
+serializeSExp expr = match expr with
+  Atom atom -> serializeAtom atom
+  Symbol text -> Bytes.cons 0x05 (serializeText text)
+  List exprs -> Bytes.cons 0x06 (serializeList exprs)
+
+serializeAtom : Atom -> Bytes
+serializeAtom atom = match atom with
+  AtomString text -> Bytes.cons 0x01 (serializeText text)
+  AtomNumber num -> Bytes.cons 0x02 (serializeFloat num)
+  AtomBoolean bool -> 
+    if bool then Bytes.fromList [0x04, 0x01] else Bytes.fromList [0x04, 0x00]
+
+serializeText : Text -> Bytes
+serializeText text = 
+  let bytes = Text.toUtf8 text
+  let len = Bytes.size bytes
+  Bytes.append (encodeVarint len) bytes
+
+serializeFloat : Float -> Bytes
+serializeFloat num = 
+  -- Would need proper IEEE 754 encoding
+  Bytes.fromList [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+serializeList : [SExp] -> Bytes
+serializeList exprs = 
+  let len = List.size exprs
+  let lenBytes = encodeVarint len
+  let contentBytes = List.foldl (acc -> expr -> Bytes.append acc (serializeSExp expr)) Bytes.empty exprs
+  Bytes.append lenBytes contentBytes
+
+encodeVarint : Nat -> Bytes
+encodeVarint n = 
+  if n < 128 then
+    Bytes.fromList [n]
+  else
+    let byte = (n % 128) + 128
+    let rest = n / 128
+    Bytes.cons byte (encodeVarint rest)
+
+-- Content hash using Unison's crypto functions
+contentHash : SExp -> Text
+contentHash expr = 
+  let bytes = serializeSExp expr
+  let hash = crypto.hashBytes crypto.Sha256 bytes
+  crypto.toHex hash
+
+-- Example factorial function as S-expression
+factorialSExp : SExp
+factorialSExp = 
+  List [
+    Symbol "defun",
+    Symbol "factorial", 
+    List [Symbol "n"],
+    List [
+      Symbol "if",
+      List [Symbol "=", Symbol "n", Atom (AtomNumber 0.0)],
+      Atom (AtomNumber 1.0),
+      List [
+        Symbol "*",
+        Symbol "n", 
+        List [
+          Symbol "factorial",
+          List [Symbol "-", Symbol "n", Atom (AtomNumber 1.0)]
+        ]
+      ]
+    ]
+  ]
+
+-- Demonstrate content-addressed storage
+demo : Text
+demo = 
+  let hash1 = contentHash factorialSExp
+  let hash2 = contentHash factorialSExp
+  "Content hashes: " ++ hash1 ++ " == " ++ hash2 ++ " ? " ++ Boolean.toText (hash1 == hash2)

@@ -1,0 +1,29 @@
+[package]
+name = "sexp-diff"
+version = "0.1.0"
+edition = "2021"
+authors = ["mizchi"]
+description = "High-performance S-expression parser and structural diff tool with binary serialization"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+hex = "0.4"
+anyhow = "1.0"
+thiserror = "1.0"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "sexp_bench"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
