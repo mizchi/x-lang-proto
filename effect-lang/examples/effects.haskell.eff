@@ -1,0 +1,67 @@
+module EffectsExample where
+
+-- Haskell-style effects and handlers
+
+-- Public effect for state management
+class State s m where
+  get :: m s
+  put :: s -> m ()
+
+-- Public effect for console I/O  
+class Console m where
+  print :: String -> m ()
+  read :: m String
+
+-- Crate-visible effect for error handling
+class Error e m where
+  throw :: e -> m ()
+
+-- Private helper effect
+class Logger m where
+  log :: String -> m ()
+
+-- Handler for State effect
+stateHandler :: s -> StateT s IO a -> IO a
+stateHandler initialState computation = 
+  evalStateT computation initialState
+
+-- Handler for Console effect using pipeline
+consoleHandler :: IO a -> IO a
+consoleHandler computation = do
+  -- Implementation would handle Console operations
+  computation
+
+-- Complex computation using multiple effects
+computeWithEffects :: (State Int m, Console m) => Int -> m Int
+computeWithEffects input = do
+  current <- get
+  print ("Current state: " ++ show current)
+  put (current + input)
+  userInput <- read
+  let result = parseInput userInput
+  put (current + result)
+  return result
+
+-- Pipeline with effect handling
+main :: Int -> IO Int
+main input = 
+  input
+    |> computeWithEffects
+    |> stateHandler 0
+    |> consoleHandler
+    |> fmap (\result -> case result of
+         Just value -> value
+         Nothing -> 0)
+
+-- Private formatting helpers
+formatMessage :: String -> String
+formatMessage msg = "[LOG] " ++ msg
+
+parseInput :: String -> Int
+parseInput raw = 
+  case reads (trim raw) of
+    [(n, "")] -> n
+    _ -> error "Invalid integer"
+
+trim :: String -> String
+trim = unwords . words

@@ -1,0 +1,74 @@
+module EffectsExample
+
+(* OCaml-style effects and handlers *)
+
+(* Public effect for state management *)
+pub effect State[s] = {
+  get : s
+  put : s -> Unit
+}
+
+(* Public effect for console I/O *)
+pub effect Console = {
+  print : String -> Unit
+  read : String
+}
+
+(* Crate-visible effect for error handling *)
+pub(crate) effect Error[e] = {
+  throw : e -> Unit
+}
+
+(* Private helper effect *)
+effect Logger = {
+  log : String -> Unit
+}
+
+(* Handler for State effect *)
+pub let state_handler = fun initial_state ->
+  handler {
+    State.get k:cont -> cont initial_state
+    State.put new_state k:cont -> cont () (* simplified *)
+    return value -> value
+  }
+
+(* Handler for Console effect using pipeline *)
+pub let console_handler = handler {
+  Console.print msg k:cont -> 
+    msg |> format_message |> system_print |> fun _ -> cont ()
+  Console.read k:cont ->
+    system_read () |> parse_input |> cont
+  return value -> value
+}
+
+(* Complex computation using multiple effects *)
+pub let compute_with_effects = fun input ->
+  do {
+    let current <- State.get;
+    Console.print ("Current state: " ^ string_of_int current);
+    State.put (current + input);
+    let user_input <- Console.read;
+    let result = parse_int user_input;
+    State.put (current + result);
+    return result
+  }
+
+(* Pipeline with effect handling *)
+pub let main = fun input ->
+  input
+  |> compute_with_effects
+  |> handle state_handler 0
+  |> handle console_handler
+  |> fun result -> 
+      match result with
+      | Ok value -> value
+      | Error msg -> 0
+
+(* Private formatting helpers *)
+let format_message = fun msg -> "[LOG] " ^ msg
+let parse_input = fun raw -> String.trim raw
+let parse_int = fun s -> 
+  try 
+    int_of_string s 
+  with _ -> 
+    Error.throw "Invalid integer"

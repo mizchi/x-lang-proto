@@ -1,0 +1,128 @@
+module AdvancedExample
+
+(* Advanced type system and module features *)
+
+(* Higher-kinded types and complex visibility *)
+pub(in Core.Types) type Functor[f] = {
+  map : forall a b. (a -> b) -> f[a] -> f[b]
+}
+
+pub(crate) type Monad[m] = {
+  return : forall a. a -> m[a];
+  bind : forall a b. m[a] -> (a -> m[b]) -> m[b]
+}
+
+(* Existential types with visibility *)
+pub type SomeMonad = exists m. Monad[m] * m[Int]
+
+(* Row polymorphism *)
+pub(super) type Record[r] = { name: String | r }
+type ExtendedRecord = Record[{ age: Int, email: String }]
+
+(* Effect polymorphism *)
+pub effect Async[a] = {
+  await : a
+}
+
+pub effect State[s, a] = {
+  get : s;
+  put : s -> a
+}
+
+(* Complex pipeline with type annotations *)
+pub let complex_pipeline : forall e. Int -> Int <State[Int], Console | e> =
+  fun input ->
+    input
+    |> fun x -> x * 2
+    |> fun x -> do {
+        let current <- State.get;
+        Console.print ("Processing: " ^ string_of_int x);
+        State.put (current + x);
+        return x + current
+       }
+    |> fun computation -> 
+        handle computation with {
+          State.get k:cont -> cont 0;
+          State.put new_state k:cont -> cont ();
+          Console.print msg k:cont -> 
+            msg |> format_log |> system_output |> fun _ -> cont ();
+          return value -> value
+        }
+
+(* Module type with advanced features *)
+pub module type COLLECTION = sig
+  type t[a]
+  
+  val empty : forall a. t[a]
+  val add : forall a. a -> t[a] -> t[a]
+  val map : forall a b. (a -> b) -> t[a] -> t[b]
+  val fold : forall a b. (a -> b -> b) -> b -> t[a] -> b
+  
+  effect Iterator[a] = {
+    next : Option[a]
+  }
+  
+  val iterate : forall a. t[a] -> Unit <Iterator[a]>
+end
+
+(* Module implementation with visibility *)
+pub(package) module ListCollection : COLLECTION = struct
+  type t[a] = List[a]
+  
+  let empty = []
+  
+  let add = fun x xs -> x :: xs
+  
+  let map = fun f xs ->
+    xs |> List.fold_right (fun x acc -> f x :: acc) []
+  
+  let fold = List.fold_left
+  
+  let iterate = fun xs ->
+    let rec iter = function
+      | [] -> Iterator.next None
+      | x :: xs -> do {
+          Iterator.next (Some x);
+          iter xs
+        }
+    in iter xs
+end
+
+(* Complex type with phantom parameters *)
+pub(crate) type Database[r, w] = {
+  read : forall a. String -> a <r>;
+  write : forall a. String -> a -> Unit <w>
+}
+
+(* Capability-based programming *)
+pub type ReadOnly
+pub type WriteOnly  
+pub type ReadWrite
+
+pub let read_only_db : Database[IO, Never] = {
+  read = fun key -> file_read key;
+  write = fun key value -> Never.absurd
+}
+
+(* Advanced pattern matching with guards *)
+pub let analyze_data = fun data ->
+  data
+  |> List.map (fun item ->
+      match item with
+      | { score } when score > 90 -> "excellent"  
+      | { score; category = "premium" } when score > 70 -> "good"
+      | { metadata = Some meta; score } when score > 50 ->
+          meta |> extract_info |> format_result
+      | { tags; score } when List.length tags > 3 ->
+          tags |> List.take 3 |> String.concat ", "
+      | _ -> "unknown"
+     )
+  |> List.filter (fun result -> result != "unknown")
+  |> List.fold_left String.concat ""
+
+(* Private implementation details *)
+let format_log = fun msg -> "[" ^ timestamp () ^ "] " ^ msg
+let system_output = fun msg -> (* native call *)
+let extract_info = fun meta -> meta.description
+let format_result = fun info -> "Info: " ^ info
+let timestamp = fun () -> "2024-01-01"

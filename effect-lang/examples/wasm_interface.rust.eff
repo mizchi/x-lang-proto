@@ -1,0 +1,172 @@
+mod WasmInterfaceExample {
+    // WebAssembly Component Model interface definitions
+
+    // WASI filesystem interface (represented as traits in Rust)
+    pub trait WasiFilesystem {
+        fn open(&self, path: i32) -> i32;
+        fn read(&self, fd: i32, size: i32) -> i32;
+        fn write(&self, fd: i32, data: i32) -> i32;
+        fn close(&self, fd: i32);
+    }
+
+    pub type Descriptor = i32;
+    pub type Size = i64;
+
+    pub trait FileResource {
+        fn create(path: i32) -> Result<i32, i32>;
+        fn get_size(fd: i32) -> i64;
+        fn read_at(&self, fd: i32, offset: i64) -> i32;
+        fn write_at(&self, fd: i32, offset: i64) -> i32;
+    }
+
+    // Custom computation interface
+    pub trait ComputeMath {
+        fn add(&self, x: f64, y: f64) -> f64;
+        fn multiply(&self, x: f64, y: f64) -> f64;
+        fn sqrt(&self, x: f64) -> f64;
+    }
+
+    pub trait MatrixResource {
+        fn new(rows: i32, cols: i32) -> Self;
+        fn get(&self, row: i32, col: i32) -> f64;
+        fn set(&mut self, row: i32, col: i32, value: f64);
+        fn multiply(&self, other: &Self) -> Self;
+    }
+
+    // Import WASI interfaces (external functions)
+    extern "C" {
+        fn poll_one();
+        fn poll_list();
+        fn now() -> i64;
+        fn duration() -> i64;
+        
+        // Core WebAssembly modules
+        fn malloc(size: i32) -> i32;
+        fn free(ptr: i32);
+        fn abort(code: i32) -> !;
+        
+        // Console functions
+        fn console_log(ptr: i32);
+    }
+
+    // Component-style visibility
+    pub struct FileOperations {
+        // Implementation details
+    }
+
+    impl FileOperations {
+        pub fn new() -> Self {
+            Self {}
+        }
+        
+        pub fn open(&self, path: &str) -> i32 {
+            // Implementation
+            0
+        }
+        
+        pub fn read(&self, fd: i32, size: i32) -> Vec<u8> {
+            // Implementation
+            vec![]
+        }
+        
+        pub fn write(&self, fd: i32, data: &[u8]) -> i32 {
+            // Implementation
+            0
+        }
+        
+        pub fn close(&self, fd: i32) {
+            // Implementation
+        }
+    }
+
+    // Pipeline operations with WASI
+    pub fn process_file(filename: &str) -> Result<Vec<u8>, String> {
+        let file_ops = FileOperations::new();
+        
+        filename
+            |> |name| file_ops.open(name)
+            |> |fd| (fd, file_ops.read(fd, 1024))
+            |> |(fd, content)| {
+                let processed = content
+                    |> |data| String::from_utf8_lossy(&data).to_uppercase()
+                    |> |s| s.trim().as_bytes().to_vec();
+                
+                file_ops.write(fd, &processed);
+                file_ops.close(fd);
+                processed
+            }
+            |> Ok
+    }
+
+    // Memory management helpers
+    pub(crate) fn allocate_buffer(size: i32) -> i32 {
+        unsafe {
+            let ptr = malloc(size);
+            if ptr == 0 {
+                abort(1);
+            }
+            ptr
+        }
+    }
+
+    pub(crate) fn deallocate_buffer(ptr: i32) {
+        if ptr != 0 {
+            unsafe {
+                free(ptr);
+            }
+        }
+    }
+
+    // Component interface implementation
+    pub struct MathImpl;
+
+    impl ComputeMath for MathImpl {
+        fn add(&self, x: f64, y: f64) -> f64 {
+            x + y
+        }
+        
+        fn multiply(&self, x: f64, y: f64) -> f64 {
+            x * y
+        }
+        
+        fn sqrt(&self, x: f64) -> f64 {
+            x.sqrt()
+        }
+    }
+
+    pub struct Matrix {
+        data: i32,  // Pointer to allocated memory
+        rows: i32,
+        cols: i32,
+    }
+
+    impl MatrixResource for Matrix {
+        fn new(rows: i32, cols: i32) -> Self {
+            Self {
+                data: allocate_buffer(rows * cols * 8),
+                rows,
+                cols,
+            }
+        }
+        
+        fn get(&self, row: i32, col: i32) -> f64 {
+            // Implementation would read from memory
+            0.0
+        }
+        
+        fn set(&mut self, row: i32, col: i32, value: f64) {
+            // Implementation would write to memory
+        }
+        
+        fn multiply(&self, _other: &Self) -> Self {
+            // Implementation would perform matrix multiplication
+            Self::new(self.rows, self.cols)
+        }
+    }
+
+    impl Drop for Matrix {
+        fn drop(&mut self) {
+            deallocate_buffer(self.data);
+        }
+    }
+}

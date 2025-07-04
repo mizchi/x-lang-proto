@@ -74,10 +74,26 @@ pub struct ExportItem {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ExportKind {
+    /// Type export
     Type,
+    /// Value/function export
     Value,
+    /// Effect export
     Effect,
+    /// Module export
     Module,
+    /// Interface export (WebAssembly Component Model)
+    Interface,
+    /// Core module export
+    Core,
+    /// Function export with specific signature
+    Func,
+    /// Memory export
+    Memory,
+    /// Table export  
+    Table,
+    /// Global export
+    Global,
 }
 
 /// Import declaration
@@ -91,16 +107,40 @@ pub struct Import {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ImportKind {
-    /// `import Module`
+    /// `import Module` - Standard qualified import
     Qualified,
-    /// `import Module { item1, item2 }`
+    /// `import Module { item1, item2 }` - Selective import
     Selective(Vec<ImportItem>),
-    /// `import Module.*`
+    /// `import Module.*` - Wildcard import
     Wildcard,
-    /// `lazy import Module`
+    /// `lazy import Module` - Lazy import
     Lazy,
-    /// `import Module when condition`
+    /// `import Module when condition` - Conditional import
     Conditional(Box<Expr>),
+    /// WebAssembly Component Model style imports
+    /// `import interface "wasi:io/poll@0.2.0" { poll-one, poll-list }`
+    Interface {
+        /// Interface identifier (e.g., "wasi:io/poll@0.2.0")
+        interface: String,
+        /// Import items from interface
+        items: Vec<ImportItem>,
+    },
+    /// `import core "core"` - Core module import
+    Core {
+        /// Core module name
+        module: String,
+        /// Items to import
+        items: Vec<ImportItem>,
+    },
+    /// `import func "env" "malloc" (param i32) (result i32)`
+    Func {
+        /// Source module
+        module: String,
+        /// Function name
+        name: String,
+        /// Function signature
+        signature: FunctionSignature,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -124,6 +164,8 @@ pub enum Item {
     HandlerDef(HandlerDef),
     /// Module type definition
     ModuleTypeDef(ModuleTypeDef),
+    /// Component interface definition
+    InterfaceDef(ComponentInterface),
 }
 
 impl Item {
@@ -134,6 +176,7 @@ impl Item {
             Item::EffectDef(def) => def.span,
             Item::HandlerDef(def) => def.span,
             Item::ModuleTypeDef(def) => def.span,
+            Item::InterfaceDef(def) => def.span,
         }
     }
 }
@@ -635,12 +678,32 @@ pub struct MatchCase {
 }
 
 
-/// Visibility modifiers
+/// Visibility modifiers inspired by Rust's pub system and WebAssembly Component Model
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Visibility {
-    Public,
+    /// Private to current scope (default)
     Private,
-    Internal, // Visible within module
+    /// `pub` - Public within current crate/package
+    Public,
+    /// `pub(crate)` - Public within current crate
+    Crate,
+    /// `pub(package)` - Public within current package 
+    Package,
+    /// `pub(super)` - Public to parent module
+    Super,
+    /// `pub(in path)` - Public to specific module path
+    InPath(ModulePath),
+    /// `pub(self)` - Public to current module (same as private)
+    SelfModule,
+    /// WebAssembly Component Model style interface visibility
+    Component {
+        /// Export to component interface
+        export: bool,
+        /// Import from component interface  
+        import: bool,
+        /// Interface name
+        interface: Option<Symbol>,
+    },
 }
 
 /// Purity annotations
@@ -649,6 +712,89 @@ pub enum Purity {
     Pure,
     Impure,
     Inferred,
+}
+
+/// Function signature for WebAssembly-style imports/exports
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionSignature {
+    /// Parameter types
+    pub params: Vec<WasmType>,
+    /// Result types (WebAssembly supports multiple return values)
+    pub results: Vec<WasmType>,
+    /// Span information
+    pub span: Span,
+}
+
+/// WebAssembly value types
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum WasmType {
+    /// 32-bit integer
+    I32,
+    /// 64-bit integer
+    I64,
+    /// 32-bit float
+    F32,
+    /// 64-bit float
+    F64,
+    /// v128 vector type
+    V128,
+    /// Function reference
+    FuncRef,
+    /// External reference
+    ExternRef,
+    /// Custom type name
+    Named(Symbol),
+}
+
+/// Component interface declaration
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ComponentInterface {
+    /// Interface identifier
+    pub name: String,
+    /// Version
+    pub version: Option<String>,
+    /// Interface items
+    pub items: Vec<InterfaceItem>,
+    /// Span information
+    pub span: Span,
+}
+
+/// Items that can be declared in a component interface
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum InterfaceItem {
+    /// Function declaration
+    Func {
+        name: Symbol,
+        signature: FunctionSignature,
+        span: Span,
+    },
+    /// Type declaration
+    Type {
+        name: Symbol,
+        definition: Option<Type>,
+        span: Span,
+    },
+    /// Resource declaration (WebAssembly Component Model)
+    Resource {
+        name: Symbol,
+        methods: Vec<ResourceMethod>,
+        span: Span,
+    },
+}
+
+/// Method on a resource
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResourceMethod {
+    /// Method name
+    pub name: Symbol,
+    /// Method signature
+    pub signature: FunctionSignature,
+    /// Whether this is a constructor
+    pub is_constructor: bool,
+    /// Whether this is a static method
+    pub is_static: bool,
+    /// Span information
+    pub span: Span,
 }
 
 #[cfg(test)]

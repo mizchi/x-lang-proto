@@ -6,9 +6,12 @@
 
 pub mod core;
 pub mod analysis;
+pub mod codegen;
+pub mod syntax;
 
 // Re-exports for convenience
 pub use core::{ast, span, symbol};
+pub use syntax::{MultiSyntax, SyntaxStyle, SyntaxConfig};
 
 /// Result type used throughout the codebase
 pub type Result<T> = std::result::Result<T, Error>;
@@ -33,6 +36,9 @@ pub enum Error {
     
     #[error("LSP error: {0}")]
     Lsp(#[from] lsp_server::ProtocolError),
+    
+    #[error("Format error: {0}")]
+    Fmt(#[from] std::fmt::Error),
 }
 
 /// Language version information

@@ -1,0 +1,116 @@
+module WasmInterfaceExample where
+
+-- WebAssembly Component Model interface definitions
+
+-- WASI filesystem interface (represented as comments in Haskell style)
+-- interface "wasi:filesystem@0.2.0"
+--   open :: i32 -> i32
+--   read :: i32 -> i32 -> i32  
+--   write :: i32 -> i32 -> i32
+--   close :: i32 -> ()
+--   
+--   type Descriptor = i32
+--   type Size = i64
+--   
+--   data File = File
+--     { create :: i32 -> i32
+--     , getSize :: i32 -> i64
+--     , readAt :: i32 -> i64 -> i32
+--     , writeAt :: i32 -> i64 -> i32
+--     }
+
+-- Custom computation interface
+-- interface "compute:math@1.0.0"
+--   add :: f64 -> f64 -> f64
+--   multiply :: f64 -> f64 -> f64
+--   sqrt :: f64 -> f64
+--   
+--   data Matrix = Matrix
+--     { new :: i32 -> i32 -> Matrix
+--     , get :: i32 -> i32 -> f64
+--     , set :: i32 -> i32 -> f64 -> ()
+--     , multiply :: Matrix -> Matrix
+--     }
+
+-- Import WASI interfaces (represented as foreign imports)
+foreign import ccall "poll_one" pollOne :: IO ()
+foreign import ccall "poll_list" pollList :: IO ()
+foreign import ccall "now" now :: IO i64
+foreign import ccall "duration" duration :: IO i64
+
+-- Import core WebAssembly modules
+foreign import ccall "malloc" malloc :: i32 -> IO i32
+foreign import ccall "free" free :: i32 -> IO ()
+foreign import ccall "abort" abort :: i32 -> IO ()
+
+-- Component-style visibility (simplified in Haskell)
+data FileOperations = FileOperations
+  { open :: String -> IO i32
+  , read :: i32 -> i32 -> IO i32
+  , write :: i32 -> ByteString -> IO i32
+  , close :: i32 -> IO ()
+  }
+
+fileOperations :: FileOperations
+fileOperations = FileOperations
+  { open = fileOpen
+  , read = fileRead  
+  , write = fileWrite
+  , close = fileClose
+  }
+
+-- Pipeline operations with WASI
+processFile :: String -> IO ByteString
+processFile filename = do
+  fd <- filename |> open fileOperations
+  content <- read fileOperations fd 1024
+  let processed = content |> map toUpper |> trim
+  _ <- write fileOperations fd processed
+  _ <- close fileOperations fd
+  return processed
+
+-- Memory management helpers
+allocateBuffer :: i32 -> IO i32
+allocateBuffer size = do
+  ptr <- malloc size
+  if ptr == 0
+    then abort 1 >> return 0
+    else return ptr
+
+deallocateBuffer :: i32 -> IO ()
+deallocateBuffer ptr = 
+  when (ptr /= 0) $ free ptr
+
+-- Component interface implementation
+data MathImpl = MathImpl
+  { add :: Double -> Double -> Double
+  , multiply :: Double -> Double -> Double
+  , sqrt :: Double -> Double
+  , matrixNew :: i32 -> i32 -> IO i32
+  , matrixGet :: i32 -> i32 -> i32 -> IO Double
+  , matrixSet :: i32 -> i32 -> i32 -> Double -> IO ()
+  }
+
+mathImpl :: MathImpl
+mathImpl = MathImpl
+  { add = (+)
+  , multiply = (*)
+  , sqrt = sqrt
+  , matrixNew = \rows cols -> allocateBuffer (rows * cols * 8)
+  , matrixGet = \matrix row col -> return 0.0  -- implementation
+  , matrixSet = \matrix row col value -> return ()  -- implementation
+  }
+
+-- Helper functions
+fileOpen :: String -> IO i32
+fileRead :: i32 -> i32 -> IO i32
+fileWrite :: i32 -> ByteString -> IO i32
+fileClose :: i32 -> IO ()
+trim :: ByteString -> ByteString
+
+-- Placeholder implementations
+fileOpen _ = return 0
+fileRead _ _ = return 0
+fileWrite _ _ = return 0
+fileClose _ = return ()
+trim = id

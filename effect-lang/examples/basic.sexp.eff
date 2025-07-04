@@ -1,0 +1,52 @@
+;; S-expression syntax with visibility modifiers and pipeline operations
+
+(module BasicExample
+
+  ;; Public value with pipeline syntax
+  (pub let process-data 
+    (lambda (x) 
+      (|> x normalize validate transform)))
+
+  ;; Package-visible type definition
+  (pub (package) type UserId Int)
+
+  ;; Crate-visible data type
+  (pub (crate) data Result (a e)
+    (| (Ok a)
+       (Error e)))
+
+  ;; Private helper function
+  (let normalize 
+    (lambda (x) (* x 2)))
+
+  ;; Super-visible function
+  (pub (super) let validate 
+    (lambda (x)
+      (if (> x 0)
+          (Ok x)
+          (Error "Invalid value"))))
+
+  ;; In-path visible transformation
+  (pub (in Core.Utils) let transform
+    (lambda (result)
+      (match result
+        ((Ok value) (+ value 10))
+        ((Error msg) 0))))
+
+  ;; Module-private type alias
+  (type ProcessingState
+    (record
+      (current Int)
+      (processed Bool)))
+
+  ;; Main computation with pipeline
+  (pub let main
+    (lambda (input)
+      (|> input
+          process-data
+          (lambda (result)
+            (match result
+              ((when (> value 100)) "large")
+              ((when (> value 50)) "medium")
+              (_ "small"))))))
+)

@@ -39,6 +39,20 @@ pub enum TokenKind {
     Module,
     Import,
     Export,
+    Pub,
+    Crate,
+    Package,
+    Super,
+    Self_,
+    
+    // WebAssembly Component Model keywords
+    Interface,
+    Component,
+    Core,
+    Func,
+    Param,
+    Result,
+    Resource,
     
     // Effect keywords
     Resume,
@@ -71,6 +85,7 @@ pub enum TokenKind {
     LeftArrow,     // <-
     FatArrow,      // =>
     Pipe,          // |
+    PipeForward,   // |>
     Cons,          // ::
     
     // Delimiters
@@ -118,7 +133,11 @@ impl TokenKind {
             TokenKind::Then | TokenKind::Else | TokenKind::Match | TokenKind::With |
             TokenKind::Data | TokenKind::Type | TokenKind::Effect | TokenKind::Handler |
             TokenKind::Handle | TokenKind::Do | TokenKind::Pure | TokenKind::Forall |
-            TokenKind::Resume | TokenKind::Return
+            TokenKind::Module | TokenKind::Import | TokenKind::Export | TokenKind::Pub |
+            TokenKind::Crate | TokenKind::Package | TokenKind::Super | TokenKind::Self_ |
+            TokenKind::Interface | TokenKind::Component | TokenKind::Core | TokenKind::Func |
+            TokenKind::Param | TokenKind::Result | TokenKind::Resource |
+            TokenKind::Resume | TokenKind::Return | TokenKind::Perform
         )
     }
     
@@ -130,7 +149,7 @@ impl TokenKind {
             TokenKind::NotEqual | TokenKind::Less | TokenKind::LessEqual |
             TokenKind::Greater | TokenKind::GreaterEqual | TokenKind::And |
             TokenKind::Or | TokenKind::Not | TokenKind::Arrow | TokenKind::FatArrow |
-            TokenKind::Pipe | TokenKind::Cons
+            TokenKind::Pipe | TokenKind::PipeForward | TokenKind::Cons
         )
     }
     
@@ -145,6 +164,7 @@ impl TokenKind {
     /// Get the precedence of this operator token (higher number = higher precedence)
     pub fn precedence(&self) -> Option<u8> {
         match self {
+            TokenKind::PipeForward => Some(0), // Lowest precedence, right-associative
             TokenKind::Or => Some(1),
             TokenKind::And => Some(2),
             TokenKind::EqualEqual | TokenKind::NotEqual => Some(3),
@@ -161,6 +181,7 @@ impl TokenKind {
     pub fn is_left_associative(&self) -> bool {
         match self {
             TokenKind::Arrow => false, // Right-associative
+            TokenKind::PipeForward => true, // Left-associative
             _ if self.is_operator() => true,
             _ => false,
         }
@@ -197,6 +218,18 @@ impl fmt::Display for TokenKind {
             TokenKind::Module => write!(f, "module"),
             TokenKind::Import => write!(f, "import"),
             TokenKind::Export => write!(f, "export"),
+            TokenKind::Pub => write!(f, "pub"),
+            TokenKind::Crate => write!(f, "crate"),
+            TokenKind::Package => write!(f, "package"),
+            TokenKind::Super => write!(f, "super"),
+            TokenKind::Self_ => write!(f, "self"),
+            TokenKind::Interface => write!(f, "interface"),
+            TokenKind::Component => write!(f, "component"),
+            TokenKind::Core => write!(f, "core"),
+            TokenKind::Func => write!(f, "func"),
+            TokenKind::Param => write!(f, "param"),
+            TokenKind::Result => write!(f, "result"),
+            TokenKind::Resource => write!(f, "resource"),
             TokenKind::Resume => write!(f, "resume"),
             TokenKind::Return => write!(f, "return"),
             TokenKind::Perform => write!(f, "perform"),
@@ -225,6 +258,7 @@ impl fmt::Display for TokenKind {
             TokenKind::LeftArrow => write!(f, "<-"),
             TokenKind::FatArrow => write!(f, "=>"),
             TokenKind::Pipe => write!(f, "|"),
+            TokenKind::PipeForward => write!(f, "|>"),
             TokenKind::Cons => write!(f, "::"),
             
             // Delimiters
@@ -311,6 +345,18 @@ pub fn keyword_to_token(s: &str) -> Option<TokenKind> {
         "module" => Some(TokenKind::Module),
         "import" => Some(TokenKind::Import),
         "export" => Some(TokenKind::Export),
+        "pub" => Some(TokenKind::Pub),
+        "crate" => Some(TokenKind::Crate),
+        "package" => Some(TokenKind::Package),
+        "super" => Some(TokenKind::Super),
+        "self" => Some(TokenKind::Self_),
+        "interface" => Some(TokenKind::Interface),
+        "component" => Some(TokenKind::Component),
+        "core" => Some(TokenKind::Core),
+        "func" => Some(TokenKind::Func),
+        "param" => Some(TokenKind::Param),
+        "result" => Some(TokenKind::Result),
+        "resource" => Some(TokenKind::Resource),
         "resume" => Some(TokenKind::Resume),
         "return" => Some(TokenKind::Return),
         "perform" => Some(TokenKind::Perform),

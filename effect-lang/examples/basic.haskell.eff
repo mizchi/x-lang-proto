@@ -1,0 +1,45 @@
+module BasicExample where
+
+-- Haskell-style syntax with visibility modifiers and pipeline operations
+
+-- Public value with pipeline syntax
+processData :: a -> a
+processData x = x |> normalize |> validate |> transform
+
+-- Package-visible type definition
+type UserId = Int
+
+-- Crate-visible data type
+data Result a e = Ok a | Error e
+
+-- Private helper function
+normalize :: Int -> Int
+normalize x = x * 2
+
+-- Super-visible function
+validate :: Int -> Result Int String
+validate x 
+  | x > 0     = Ok x
+  | otherwise = Error "Invalid value"
+
+-- In-path visible transformation
+transform :: Result Int String -> Int
+transform result = case result of
+  Ok value -> value + 10
+  Error msg -> 0
+
+-- Module-private type alias
+data ProcessingState = ProcessingState
+  { current :: Int
+  , processed :: Bool
+  }
+
+-- Main computation with pipeline
+main :: Int -> String
+main input = 
+  input 
+    |> processData
+    |> \result -> case result of
+         value | value > 100 -> "large"
+               | value > 50  -> "medium"
+               | otherwise   -> "small"

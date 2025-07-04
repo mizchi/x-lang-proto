@@ -121,6 +121,9 @@ impl Lexer {
                 if self.current_char() == Some('|') {
                     self.advance();
                     Ok(Token::new(TokenKind::OrOr, self.make_span(start_pos, self.position)))
+                } else if self.current_char() == Some('>') {
+                    self.advance();
+                    Ok(Token::new(TokenKind::PipeForward, self.make_span(start_pos, self.position)))
                 } else {
                     Ok(Token::new(TokenKind::Pipe, self.make_span(start_pos, self.position)))
                 }
@@ -375,6 +378,30 @@ mod tests {
         assert_eq!(tokens, vec![
             TokenKind::Let,
             TokenKind::Module,
+            TokenKind::Eof,
+        ]);
+    }
+    
+    #[test]
+    fn test_pipeline_operator() {
+        let tokens = lex_string("x |> f |> g");
+        assert_eq!(tokens, vec![
+            TokenKind::Ident("x".to_string()),
+            TokenKind::PipeForward,
+            TokenKind::Ident("f".to_string()),
+            TokenKind::PipeForward,
+            TokenKind::Ident("g".to_string()),
+            TokenKind::Eof,
+        ]);
+    }
+    
+    #[test]
+    fn test_pipe_operators() {
+        let tokens = lex_string("| || |>");
+        assert_eq!(tokens, vec![
+            TokenKind::Pipe,
+            TokenKind::OrOr,
+            TokenKind::PipeForward,
             TokenKind::Eof,
         ]);
     }

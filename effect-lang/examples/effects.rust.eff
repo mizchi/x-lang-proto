@@ -1,0 +1,122 @@
+mod EffectsExample {
+    // Rust-style effects and handlers
+
+    // Public effect for state management
+    pub trait State<S> {
+        fn get(&self) -> S;
+        fn put(&mut self, state: S);
+    }
+
+    // Public effect for console I/O
+    pub trait Console {
+        fn print(&self, msg: &str);
+        fn read(&self) -> String;
+    }
+
+    // Crate-visible effect for error handling
+    pub(crate) trait Error<E> {
+        fn throw(&self, error: E) -> !;
+    }
+
+    // Private helper effect
+    trait Logger {
+        fn log(&self, msg: &str);
+    }
+
+    // Handler for State effect
+    pub struct StateHandler<S> {
+        state: S,
+    }
+
+    impl<S> StateHandler<S> {
+        pub fn new(initial_state: S) -> Self {
+            Self { state: initial_state }
+        }
+        
+        pub fn handle<F, R>(&mut self, computation: F) -> R 
+        where F: FnOnce(&mut Self) -> R {
+            computation(self)
+        }
+    }
+
+    impl<S: Clone> State<S> for StateHandler<S> {
+        fn get(&self) -> S {
+            self.state.clone()
+        }
+        
+        fn put(&mut self, state: S) {
+            self.state = state;
+        }
+    }
+
+    // Handler for Console effect using pipeline
+    pub struct ConsoleHandler;
+
+    impl Console for ConsoleHandler {
+        fn print(&self, msg: &str) {
+            msg |> format_message |> system_print;
+        }
+        
+        fn read(&self) -> String {
+            system_read() |> parse_input
+        }
+    }
+
+    // Complex computation using multiple effects
+    pub fn compute_with_effects<S, C>(
+        input: i32, 
+        state: &mut S, 
+        console: &C
+    ) -> i32 
+    where 
+        S: State<i32>,
+        C: Console,
+    {
+        let current = state.get();
+        console.print(&format!("Current state: {}", current));
+        state.put(current + input);
+        
+        let user_input = console.read();
+        let result = parse_int(&user_input);
+        state.put(current + result);
+        
+        result
+    }
+
+    // Pipeline with effect handling
+    pub fn main(input: i32) -> i32 {
+        let mut state_handler = StateHandler::new(0);
+        let console_handler = ConsoleHandler;
+        
+        input
+            |> |i| compute_with_effects(i, &mut state_handler, &console_handler)
+            |> |result| match result {
+                Ok(value) => value,
+                Err(_) => 0,
+            }
+    }
+
+    // Private formatting helpers
+    fn format_message(msg: &str) -> String {
+        format!("[LOG] {}", msg)
+    }
+
+    fn parse_input(raw: String) -> String {
+        raw.trim().to_string()
+    }
+
+    fn parse_int(s: &str) -> i32 {
+        s.parse().unwrap_or_else(|_| {
+            panic!("Invalid integer")
+        })
+    }
+
+    fn system_print(msg: String) {
+        // Implementation
+    }
+
+    fn system_read() -> String {
+        // Implementation
+        String::new()
+    }
+}

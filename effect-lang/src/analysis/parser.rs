@@ -43,6 +43,11 @@ impl Parser {
         })
     }
     
+    /// Parse a single expression (public for testing)
+    pub fn parse_expression_public(&mut self) -> Result<Expr> {
+        self.parse_expression()
+    }
+    
     /// Parse a module
     fn parse_module(&mut self) -> Result<Module> {
         let start_span = self.current_span();
@@ -240,21 +245,62 @@ impl Parser {
     
     /// Parse top-level item
     fn parse_item(&mut self) -> Result<Item> {
-        if self.check(&TokenKind::Data) {
-            Ok(Item::TypeDef(self.parse_data_type()?))
+        // Parse visibility modifier first
+        let visibility = self.parse_visibility()?;
+        
+        if self.check(&TokenKind::Interface) {
+            Ok(Item::InterfaceDef(self.parse_interface_def(visibility)?))
+        } else if self.check(&TokenKind::Data) {
+            Ok(Item::TypeDef(self.parse_data_type_with_visibility(visibility)?))
         } else if self.check(&TokenKind::Type) {
-            Ok(Item::TypeDef(self.parse_type_alias()?))
+            Ok(Item::TypeDef(self.parse_type_alias_with_visibility(visibility)?))
         } else if self.check(&TokenKind::Effect) {
-            Ok(Item::EffectDef(self.parse_effect_def()?))
+            Ok(Item::EffectDef(self.parse_effect_def_with_visibility(visibility)?))
         } else if self.check(&TokenKind::Handler) {
-            Ok(Item::HandlerDef(self.parse_handler_def()?))
+            Ok(Item::HandlerDef(self.parse_handler_def_with_visibility(visibility)?))
         } else {
-            Ok(Item::ValueDef(self.parse_value_def()?))
+            Ok(Item::ValueDef(self.parse_value_def_with_visibility(visibility)?))
         }
     }
     
-    /// Parse data type definition
-    fn parse_data_type(&mut self) -> Result<TypeDef> {
+    /// Parse visibility modifier
+    fn parse_visibility(&mut self) -> Result<Visibility> {
+        if !self.check(&TokenKind::Pub) {
+            return Ok(Visibility::Private); // Default is private
+        }
+        
+        self.advance(); // consume 'pub'
+        
+        // Check for pub(...)
+        if self.match_token(&TokenKind::LeftParen) {
+            let visibility = if self.match_token(&TokenKind::Crate) {
+                Visibility::Crate
+            } else if self.match_token(&TokenKind::Package) {
+                Visibility::Package
+            } else if self.match_token(&TokenKind::Super) {
+                Visibility::Super
+            } else if self.match_token(&TokenKind::Self_) {
+                Visibility::SelfModule
+            } else if self.check(&TokenKind::Ident(String::new())) {
+                // pub(in path)
+                self.expect(TokenKind::Ident("in".to_string()))?;
+                let path = self.parse_module_path()?;
+                Visibility::InPath(path)
+            } else {
+                return Err(Error::Parse {
+                    message: "Expected crate, package, super, self, or 'in path' after pub(".to_string(),
+                });
+            };
+            
+            self.expect(TokenKind::RightParen)?;
+            Ok(visibility)
+        } else {
+            Ok(Visibility::Public) // Just 'pub'
+        }
+    }
+    
+    /// Parse data type definition with visibility
+    fn parse_data_type_with_visibility(&mut self, visibility: Visibility) -> Result<TypeDef> {
         let start_span = self.current_span();
         self.expect(TokenKind::Data)?;
         
@@ -276,13 +322,18 @@ impl Parser {
             name,
             type_params,
             kind: TypeDefKind::Data(constructors),
-            visibility: Visibility::Public,
+            visibility,
             span: start_span.merge(end_span),
         })
     }
     
-    /// Parse type alias
-    fn parse_type_alias(&mut self) -> Result<TypeDef> {
+    /// Parse data type definition (backward compatibility)
+    fn parse_data_type(&mut self) -> Result<TypeDef> {
+        self.parse_data_type_with_visibility(Visibility::Private)
+    }
+    
+    /// Parse type alias with visibility
+    fn parse_type_alias_with_visibility(&mut self, visibility: Visibility) -> Result<TypeDef> {
         let start_span = self.current_span();
         self.expect(TokenKind::Type)?;
         
@@ -298,9 +349,14 @@ impl Parser {
             name,
             type_params,
             kind: TypeDefKind::Alias(aliased_type),
-            visibility: Visibility::Public,
+            visibility,
             span: start_span.merge(end_span),
         })
+    }
+    
+    /// Parse type alias (backward compatibility)
+    fn parse_type_alias(&mut self) -> Result<TypeDef> {
+        self.parse_type_alias_with_visibility(Visibility::Private)
     }
     
     /// Parse constructor
@@ -323,8 +379,8 @@ impl Parser {
         })
     }
     
-    /// Parse effect definition
-    fn parse_effect_def(&mut self) -> Result<EffectDef> {
+    /// Parse effect definition with visibility
+    fn parse_effect_def_with_visibility(&mut self, visibility: Visibility) -> Result<EffectDef> {
         let start_span = self.current_span();
         self.expect(TokenKind::Effect)?;
         
@@ -345,9 +401,14 @@ impl Parser {
             name,
             type_params,
             operations,
-            visibility: Visibility::Public,
+            visibility,
             span: start_span.merge(end_span),
         })
+    }
+    
+    /// Parse effect definition (backward compatibility)
+    fn parse_effect_def(&mut self) -> Result<EffectDef> {
+        self.parse_effect_def_with_visibility(Visibility::Private)
     }
     
     /// Parse effect operation
@@ -399,15 +460,15 @@ impl Parser {
         }
     }
     
-    /// Parse handler definition (simplified)
-    fn parse_handler_def(&mut self) -> Result<HandlerDef> {
+    /// Parse handler definition with visibility
+    fn parse_handler_def_with_visibility(&mut self, visibility: Visibility) -> Result<HandlerDef> {
         let start_span = self.current_span();
         self.expect(TokenKind::Handler)?;
         
         let name = self.parse_identifier()?;
         
         // Simplified handler parsing - just skip to end for now
-        while !self.is_at_end() && !self.check(&TokenKind::Let) && !self.check(&TokenKind::Data) {
+        while !self.is_at_end() && !self.check(&TokenKind::Let) && !self.check(&TokenKind::Data) && !self.check(&TokenKind::Pub) {
             self.advance();
         }
         
@@ -419,13 +480,18 @@ impl Parser {
             handled_effects: Vec::new(),
             handlers: Vec::new(),
             return_clause: None,
-            visibility: Visibility::Public,
+            visibility,
             span: start_span.merge(end_span),
         })
     }
     
-    /// Parse value definition
-    fn parse_value_def(&mut self) -> Result<ValueDef> {
+    /// Parse handler definition (backward compatibility)
+    fn parse_handler_def(&mut self) -> Result<HandlerDef> {
+        self.parse_handler_def_with_visibility(Visibility::Private)
+    }
+    
+    /// Parse value definition with visibility
+    fn parse_value_def_with_visibility(&mut self, visibility: Visibility) -> Result<ValueDef> {
         let start_span = self.current_span();
         self.expect(TokenKind::Let)?;
         
@@ -448,8 +514,195 @@ impl Parser {
             type_annotation,
             parameters: Vec::new(), // Simplified for now
             body,
-            visibility: Visibility::Public,
+            visibility,
             purity: Purity::Inferred,
+            span: start_span.merge(end_span),
+        })
+    }
+    
+    /// Parse value definition (backward compatibility)
+    fn parse_value_def(&mut self) -> Result<ValueDef> {
+        self.parse_value_def_with_visibility(Visibility::Private)
+    }
+    
+    /// Parse component interface definition
+    fn parse_interface_def(&mut self, visibility: Visibility) -> Result<ComponentInterface> {
+        let start_span = self.current_span();
+        self.expect(TokenKind::Interface)?;
+        
+        // Parse interface name (e.g., "wasi:io/poll@0.2.0")
+        let name = match &self.current_token().kind {
+            TokenKind::String(s) => {
+                let name = s.clone();
+                self.advance();
+                name
+            }
+            _ => return Err(Error::Parse {
+                message: "Expected interface name string".to_string(),
+            }),
+        };
+        
+        // Parse optional version
+        let version = None; // TODO: implement version parsing
+        
+        // Parse interface items
+        self.expect(TokenKind::LeftBrace)?;
+        let mut items = Vec::new();
+        
+        while !self.check(&TokenKind::RightBrace) && !self.is_at_end() {
+            items.push(self.parse_interface_item()?);
+        }
+        
+        self.expect(TokenKind::RightBrace)?;
+        let end_span = self.current_span();
+        
+        Ok(ComponentInterface {
+            name,
+            version,
+            items,
+            span: start_span.merge(end_span),
+        })
+    }
+    
+    /// Parse interface item
+    fn parse_interface_item(&mut self) -> Result<InterfaceItem> {
+        let start_span = self.current_span();
+        
+        if self.check(&TokenKind::Func) {
+            // Parse function declaration
+            self.advance(); // consume 'func'
+            let name = self.parse_identifier()?;
+            let signature = self.parse_function_signature()?;
+            let end_span = self.current_span();
+            
+            Ok(InterfaceItem::Func {
+                name,
+                signature,
+                span: start_span.merge(end_span),
+            })
+        } else if self.check(&TokenKind::Type) {
+            // Parse type declaration
+            self.advance(); // consume 'type'
+            let name = self.parse_identifier()?;
+            
+            // Optional type definition
+            let definition = if self.match_token(&TokenKind::Equal) {
+                Some(self.parse_type()?)
+            } else {
+                None
+            };
+            
+            let end_span = self.current_span();
+            Ok(InterfaceItem::Type {
+                name,
+                definition,
+                span: start_span.merge(end_span),
+            })
+        } else if self.check(&TokenKind::Resource) {
+            // Parse resource declaration
+            self.advance(); // consume 'resource'
+            let name = self.parse_identifier()?;
+            
+            self.expect(TokenKind::LeftBrace)?;
+            let mut methods = Vec::new();
+            
+            while !self.check(&TokenKind::RightBrace) && !self.is_at_end() {
+                methods.push(self.parse_resource_method()?);
+            }
+            
+            self.expect(TokenKind::RightBrace)?;
+            let end_span = self.current_span();
+            
+            Ok(InterfaceItem::Resource {
+                name,
+                methods,
+                span: start_span.merge(end_span),
+            })
+        } else {
+            Err(Error::Parse {
+                message: "Expected func, type, or resource in interface".to_string(),
+            })
+        }
+    }
+    
+    /// Parse function signature for WebAssembly-style interfaces
+    fn parse_function_signature(&mut self) -> Result<FunctionSignature> {
+        let start_span = self.current_span();
+        
+        // Parse parameters: (param type type ...)
+        let mut params = Vec::new();
+        if self.match_token(&TokenKind::LeftParen) {
+            if self.check(&TokenKind::Param) {
+                self.advance(); // consume 'param'
+                
+                while !self.check(&TokenKind::RightParen) && !self.is_at_end() {
+                    params.push(self.parse_wasm_type()?);
+                }
+            }
+            self.expect(TokenKind::RightParen)?;
+        }
+        
+        // Parse results: (result type type ...)
+        let mut results = Vec::new();
+        if self.match_token(&TokenKind::LeftParen) {
+            if self.check(&TokenKind::Result) {
+                self.advance(); // consume 'result'
+                
+                while !self.check(&TokenKind::RightParen) && !self.is_at_end() {
+                    results.push(self.parse_wasm_type()?);
+                }
+            }
+            self.expect(TokenKind::RightParen)?;
+        }
+        
+        let end_span = self.current_span();
+        Ok(FunctionSignature {
+            params,
+            results,
+            span: start_span.merge(end_span),
+        })
+    }
+    
+    /// Parse WebAssembly type
+    fn parse_wasm_type(&mut self) -> Result<WasmType> {
+        match &self.current_token().kind {
+            TokenKind::Ident(type_name) => {
+                let wasm_type = match type_name.as_str() {
+                    "i32" => WasmType::I32,
+                    "i64" => WasmType::I64,
+                    "f32" => WasmType::F32,
+                    "f64" => WasmType::F64,
+                    "v128" => WasmType::V128,
+                    "funcref" => WasmType::FuncRef,
+                    "externref" => WasmType::ExternRef,
+                    _ => WasmType::Named(Symbol::intern(type_name)),
+                };
+                self.advance();
+                Ok(wasm_type)
+            }
+            _ => Err(Error::Parse {
+                message: "Expected WebAssembly type".to_string(),
+            }),
+        }
+    }
+    
+    /// Parse resource method
+    fn parse_resource_method(&mut self) -> Result<ResourceMethod> {
+        let start_span = self.current_span();
+        
+        // Check for constructor or static modifiers
+        let is_constructor = self.match_token(&TokenKind::Ident("constructor".to_string()));
+        let is_static = self.match_token(&TokenKind::Ident("static".to_string()));
+        
+        let name = self.parse_identifier()?;
+        let signature = self.parse_function_signature()?;
+        
+        let end_span = self.current_span();
+        Ok(ResourceMethod {
+            name,
+            signature,
+            is_constructor,
+            is_static,
             span: start_span.merge(end_span),
         })
     }
@@ -546,9 +799,71 @@ impl Parser {
         Ok(params)
     }
     
-    /// Parse expression
+    /// Parse expression with precedence climbing
     fn parse_expression(&mut self) -> Result<Expr> {
-        self.parse_application()
+        self.parse_binary_expression(0)
+    }
+    
+    /// Parse binary expressions with precedence climbing
+    fn parse_binary_expression(&mut self, min_precedence: u8) -> Result<Expr> {
+        let mut left = self.parse_application()?;
+        
+        while !self.is_at_end() {
+            let token_kind = self.current_token().kind.clone();
+            
+            // Check if current token is a binary operator
+            if let Some(precedence) = token_kind.precedence() {
+                if precedence < min_precedence {
+                    break;
+                }
+                
+                let operator = token_kind.clone();
+                self.advance(); // consume operator
+                
+                let right_precedence = if token_kind.is_left_associative() {
+                    precedence + 1
+                } else {
+                    precedence
+                };
+                
+                let right = self.parse_binary_expression(right_precedence)?;
+                
+                // Handle pipeline operator specifically
+                if matches!(operator, TokenKind::PipeForward) {
+                    // Transform x |> f into f(x)
+                    let span = left.span().merge(right.span());
+                    left = Expr::App(Box::new(right), vec![left], span);
+                } else {
+                    // For other operators, create function application
+                    let span = left.span().merge(right.span());
+                    let op_var = Expr::Var(self.operator_to_symbol(&operator), span);
+                    left = Expr::App(Box::new(op_var), vec![left, right], span);
+                }
+            } else {
+                break;
+            }
+        }
+        
+        Ok(left)
+    }
+    
+    /// Convert operator token to symbol
+    fn operator_to_symbol(&self, operator: &TokenKind) -> Symbol {
+        match operator {
+            TokenKind::Plus => Symbol::intern("+"),
+            TokenKind::Minus => Symbol::intern("-"),
+            TokenKind::Star => Symbol::intern("*"),
+            TokenKind::Slash => Symbol::intern("/"),
+            TokenKind::EqualEqual => Symbol::intern("=="),
+            TokenKind::NotEqual => Symbol::intern("!="),
+            TokenKind::Less => Symbol::intern("<"),
+            TokenKind::LessEqual => Symbol::intern("<="),
+            TokenKind::Greater => Symbol::intern(">"),
+            TokenKind::GreaterEqual => Symbol::intern(">="),
+            TokenKind::And => Symbol::intern("&&"),
+            TokenKind::Or => Symbol::intern("||"),
+            _ => Symbol::intern("unknown_op"),
+        }
     }
     
     /// Parse function application and other high-precedence expressions
@@ -589,7 +904,8 @@ impl Parser {
         matches!(self.current_token().kind,
             TokenKind::LeftParen | TokenKind::Integer(_) | TokenKind::Float(_) |
             TokenKind::String(_) | TokenKind::Bool(_) | TokenKind::Ident(_) |
-            TokenKind::If | TokenKind::Let | TokenKind::Fun | TokenKind::Match | TokenKind::Do
+            TokenKind::Number(_) | TokenKind::If | TokenKind::Let | TokenKind::Fun | 
+            TokenKind::Match | TokenKind::Do
         )
     }
     
@@ -878,6 +1194,28 @@ impl Parser {
                 let b = *b;
                 self.advance();
                 Ok(Expr::Literal(Literal::Bool(b), start_span))
+            }
+            TokenKind::Number(s) => {
+                let s = s.clone();
+                self.advance();
+                // Parse as integer or float
+                if s.contains('.') {
+                    if let Ok(f) = s.parse::<f64>() {
+                        Ok(Expr::Literal(Literal::Float(f), start_span))
+                    } else {
+                        Err(Error::Parse {
+                            message: format!("Invalid float literal: {}", s),
+                        })
+                    }
+                } else {
+                    if let Ok(i) = s.parse::<i64>() {
+                        Ok(Expr::Literal(Literal::Integer(i), start_span))
+                    } else {
+                        Err(Error::Parse {
+                            message: format!("Invalid integer literal: {}", s),
+                        })
+                    }
+                }
             }
             TokenKind::Ident(name) => {
                 let name = Symbol::intern(name);

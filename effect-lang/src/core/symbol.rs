@@ -20,9 +20,7 @@ impl Symbol {
     
     /// Get the string representation of this symbol
     pub fn as_str(self) -> &'static str {
-        // For demonstration purposes - a real implementation would use Arc<str>
-        // or a different approach to manage lifetimes properly
-        "<symbol>"
+        GlobalInterner::get().with(|interner| interner.resolve(self))
     }
     
     /// Get the raw symbol ID
@@ -79,8 +77,13 @@ impl SymbolInterner {
         }
     }
     
-    fn resolve(&self, symbol: Symbol) -> &str {
-        &self.symbols[symbol.0 as usize]
+    fn resolve(&self, symbol: Symbol) -> &'static str {
+        // SAFETY: This is a memory leak, but it's intentional for symbols
+        // In a real implementation, you'd use Arena allocation or Arc<str>
+        unsafe {
+            let s = &self.symbols[symbol.0 as usize];
+            std::mem::transmute::<&str, &'static str>(s.as_str())
+        }
     }
     
     fn len(&self) -> usize {
@@ -104,7 +107,7 @@ impl GlobalInterner {
         f(&mut self.inner.lock().unwrap())
     }
     
-    fn with_ref<R>(&self, f: impl FnOnce(&SymbolInterner) -> R) -> R {
+    fn with<R>(&self, f: impl FnOnce(&SymbolInterner) -> R) -> R {
         f(&self.inner.lock().unwrap())
     }
 }
@@ -365,7 +368,7 @@ pub fn init_symbols() {
 
 /// Get statistics about the symbol interner
 pub fn interner_stats() -> InternerStats {
-    GlobalInterner::get().with_ref(|interner| {
+    GlobalInterner::get().with(|interner| {
         InternerStats {
             symbol_count: interner.len(),
         }

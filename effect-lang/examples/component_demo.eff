@@ -1,0 +1,83 @@
+// WebAssembly Component Model demonstration
+module ComponentDemo
+
+// WASI filesystem interface
+pub interface "wasi:filesystem@0.2.0"
+  func open(path: i32) -> i32
+  func read(fd: i32, size: i32) -> i32
+  func write(fd: i32, data: i32) -> i32
+  func close(fd: i32)
+  
+  type descriptor = i32
+  type size = i64
+  
+  resource file
+    method constructor create(path: i32) -> i32
+    method get-size(fd: i32) -> i64
+    method read-at(fd: i32, offset: i64) -> i32
+    method write-at(fd: i32, offset: i64) -> i32
+
+// Custom computation interface
+pub interface "compute:math@1.0.0"
+  func add(x: f64, y: f64) -> f64
+  func multiply(x: f64, y: f64) -> f64
+  func sqrt(x: f64) -> f64
+  
+  resource matrix
+    method constructor new(rows: i32, cols: i32)
+    method get(row: i32, col: i32) -> f64
+    method set(row: i32, col: i32, value: f64)
+    method multiply(other: matrix) -> matrix
+
+// Import WASI interfaces
+import (interface "wasi:io/poll@0.2.0") poll-one poll-list
+import (interface "wasi:clocks/wall-clock@0.2.0") now duration
+
+// Import core WebAssembly modules
+import (core "env") memory malloc free
+
+// Import specific functions
+import (func "env" "abort" (param i32))
+import (func "console" "log" (param i32))
+
+// Exported functions with effect system
+pub let process-file = fun filename ->
+  filename
+  |> open
+  |> fun fd -> (fd, read fd 1024)
+  |> fun (fd, content) ->
+      let processed = content |> to-uppercase |> trim in
+      write fd processed;
+      close fd;
+      processed
+
+// Effect handling
+effect IO[a] = { read: String -> a, write: String -> a -> Unit }
+effect Console[a] = { print: String -> a, log: String -> a }
+
+pub let main = 
+  handle (
+    do {
+      let result <- process-file "input.txt";
+      Console.print ("Processed: " ^ result);
+      return result
+    }
+  ) with {
+    IO.read path k -> k (native-read path);
+    IO.write path content k -> k (native-write path content);
+    Console.print msg k -> k (console-print msg);
+    Console.log msg k -> k (console-log msg);
+    return value -> value
+  }
+
+// Private helper functions
+let to-uppercase = fun s -> native-to-uppercase s
+let trim = fun s -> native-trim s
+let console-print = fun msg -> native-console-print msg
+let console-log = fun msg -> native-console-log msg
+let native-read = fun path -> "file content"
+let native-write = fun path content -> unit
+let native-to-uppercase = fun s -> s
+let native-trim = fun s -> s
+let native-console-print = fun msg -> unit
+let native-console-log = fun msg -> unit

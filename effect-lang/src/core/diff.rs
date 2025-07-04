@@ -222,6 +222,7 @@ fn item_type_name(item: &Item) -> &'static str {
         Item::EffectDef(_) => "EffectDef",
         Item::HandlerDef(_) => "HandlerDef",
         Item::ModuleTypeDef(_) => "ModuleTypeDef",
+        Item::InterfaceDef(_) => "InterfaceDef",
     }
 }
 

@@ -1,0 +1,44 @@
+module BasicExample
+
+(* OCaml-style syntax with visibility modifiers and pipeline operations *)
+
+(* Public value with pipeline syntax *)
+pub let process_data = fun x ->
+  x |> normalize |> validate |> transform
+
+(* Package-visible type definition *)
+pub(package) type UserId = Int
+
+(* Crate-visible data type *)
+pub(crate) data Result[a, e] =
+  | Ok a
+  | Error e
+
+(* Private helper function *)
+let normalize = fun x -> x * 2
+
+(* Super-visible function *)
+pub(super) let validate = fun x ->
+  if x > 0 then Ok x else Error "Invalid value"
+
+(* In-path visible transformation *)
+pub(in Core.Utils) let transform = fun result ->
+  match result with
+  | Ok value -> value + 10
+  | Error msg -> 0
+
+(* Module-private type alias *)
+type ProcessingState = {
+  current: Int,
+  processed: Bool
+}
+
+(* Main computation with pipeline *)
+pub let main = fun input ->
+  input 
+  |> process_data
+  |> fun result -> 
+      match result with
+      | value when value > 100 -> "large"
+      | value when value > 50 -> "medium"
+      | _ -> "small"

@@ -1,0 +1,77 @@
+;; S-expression style effects and handlers
+
+(module EffectsExample
+
+  ;; Public effect for state management
+  (pub effect State (s)
+    (get s)
+    (put (-> s Unit)))
+
+  ;; Public effect for console I/O
+  (pub effect Console
+    (print (-> String Unit))
+    (read String))
+
+  ;; Crate-visible effect for error handling
+  (pub (crate) effect Error (e)
+    (throw (-> e Unit)))
+
+  ;; Private helper effect
+  (effect Logger
+    (log (-> String Unit)))
+
+  ;; Handler for State effect
+  (pub let state-handler
+    (lambda (initial-state)
+      (handler
+        ((State get) (lambda (cont) (cont initial-state)))
+        ((State put) (lambda (new-state cont) (cont unit)))
+        (return (lambda (value) value)))))
+
+  ;; Handler for Console effect using pipeline
+  (pub let console-handler
+    (handler
+      ((Console print) 
+        (lambda (msg cont)
+          (|> msg format-message system-print (lambda (_) (cont unit)))))
+      ((Console read)
+        (lambda (cont)
+          (|> (system-read) parse-input cont)))
+      (return (lambda (value) value))))
+
+  ;; Complex computation using multiple effects
+  (pub let compute-with-effects
+    (lambda (input)
+      (do
+        (let current <- (State get))
+        (Console print (string-append "Current state: " (string-of-int current)))
+        (State put (+ current input))
+        (let user-input <- (Console read))
+        (let result (parse-int user-input))
+        (State put (+ current result))
+        (return result))))
+
+  ;; Pipeline with effect handling
+  (pub let main
+    (lambda (input)
+      (|> input
+          compute-with-effects
+          (handle state-handler 0)
+          (handle console-handler)
+          (lambda (result)
+            (match result
+              ((Ok value) value)
+              ((Error msg) 0))))))
+
+  ;; Private formatting helpers
+  (let format-message
+    (lambda (msg) (string-append "[LOG] " msg)))
+    
+  (let parse-input
+    (lambda (raw) (string-trim raw)))
+    
+  (let parse-int
+    (lambda (s)
+      (try (string-to-int s)
+           (catch (_ (Error throw "Invalid integer"))))))
+)

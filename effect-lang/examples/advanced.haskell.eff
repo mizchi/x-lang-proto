@@ -1,0 +1,127 @@
+module AdvancedExample where
+
+-- Advanced type system and module features
+
+-- Higher-kinded types and complex visibility
+pub(in Core.Types) data Functor f = Functor 
+  { fmap :: forall a b. (a -> b) -> f a -> f b }
+
+pub(crate) data Monad m = Monad
+  { return :: forall a. a -> m a
+  , bind :: forall a b. m a -> (a -> m b) -> m b
+  }
+
+-- Existential types with visibility
+pub data SomeMonad = forall m. SomeMonad (Monad m) (m Int)
+
+-- Row polymorphism
+pub(super) data Record r = Record { name :: String | r }
+data ExtendedRecord = Record { age :: Int, email :: String }
+
+-- Effect polymorphism
+pub effect Async a where
+  await :: a
+
+pub effect State s a where
+  get :: s
+  put :: s -> a
+
+-- Complex pipeline with type annotations
+pub complexPipeline :: forall e. Int -> State Int (Console | e) Int
+complexPipeline input = do
+  result <- input
+    |> (* 2)
+    |> \x -> do
+        current <- State.get
+        Console.print ("Processing: " ++ show x)
+        State.put (current + x)
+        return (x + current)
+    |> \computation -> 
+        handle computation $ \case
+          State.Get k -> k 0
+          State.Put newState k -> k ()
+          Console.Print msg k -> 
+            msg |> formatLog |> systemOutput |> const (k ())
+          Return value -> value
+  return result
+
+-- Module type with advanced features
+pub module COLLECTION where
+  type T a
+  
+  empty :: forall a. T a
+  add :: forall a. a -> T a -> T a
+  map :: forall a b. (a -> b) -> T a -> T b
+  fold :: forall a b. (a -> b -> b) -> b -> T a -> b
+  
+  effect Iterator a where
+    next :: Maybe a
+  
+  iterate :: forall a. T a -> Iterator a ()
+
+-- Module implementation with visibility
+pub(package) module ListCollection where
+  type T a = [a]
+  
+  empty = []
+  
+  add x xs = x : xs
+  
+  map f xs = xs |> foldr (\x acc -> f x : acc) []
+  
+  fold = foldl
+  
+  iterate xs = do
+    let iter [] = Iterator.next Nothing
+        iter (x:xs) = do
+          Iterator.next (Just x)
+          iter xs
+    iter xs
+
+-- Complex type with phantom parameters
+pub(crate) data Database r w = Database
+  { read :: forall a. String -> r a
+  , write :: forall a. String -> a -> w ()
+  }
+
+-- Capability-based programming
+pub data ReadOnly
+pub data WriteOnly  
+pub data ReadWrite
+
+pub readOnlyDb :: Database IO Never
+readOnlyDb = Database
+  { read = fileRead
+  , write = \_ _ -> Never.absurd
+  }
+
+-- Advanced pattern matching with guards
+pub analyzeData :: [Item] -> String
+analyzeData items = 
+  items
+    |> map (\item -> case item of
+        Item{ score } | score > 90 -> "excellent"
+        Item{ score, category = "premium" } | score > 70 -> "good"
+        Item{ metadata = Just meta, score } | score > 50 ->
+          meta |> extractInfo |> formatResult
+        Item{ tags, score } | length tags > 3 ->
+          tags |> take 3 |> intercalate ", "
+        _ -> "unknown")
+    |> filter (/= "unknown")
+    |> concat
+
+-- Private implementation details
+formatLog :: String -> String
+formatLog msg = "[" ++ timestamp () ++ "] " ++ msg
+
+systemOutput :: String -> ()
+systemOutput msg = () -- native call
+
+extractInfo :: Metadata -> String
+extractInfo meta = description meta
+
+formatResult :: String -> String
+formatResult info = "Info: " ++ info
+
+timestamp :: () -> String
+timestamp () = "2024-01-01"

@@ -1,0 +1,144 @@
+;; Advanced type system and module features
+
+(module AdvancedExample
+
+  ;; Higher-kinded types and complex visibility
+  (pub (in Core.Types) type Functor (f)
+    (record
+      (map (forall (a b) (-> (-> a b) (f a) (f b))))))
+
+  (pub (crate) type Monad (m)
+    (record
+      (return (forall (a) (-> a (m a))))
+      (bind (forall (a b) (-> (m a) (-> a (m b)) (m b))))))
+
+  ;; Existential types with visibility
+  (pub type SomeMonad
+    (exists (m) (tuple (Monad m) (m Int))))
+
+  ;; Row polymorphism
+  (pub (super) type Record (r)
+    (record-extend (name String) r))
+    
+  (type ExtendedRecord
+    (Record (record (age Int) (email String))))
+
+  ;; Effect polymorphism
+  (pub effect Async (a)
+    (await a))
+
+  (pub effect State (s a)
+    (get s)
+    (put (-> s a)))
+
+  ;; Complex pipeline with type annotations
+  (pub let complex-pipeline
+    (lambda (input)
+      (|> input
+          (lambda (x) (* x 2))
+          (lambda (x)
+            (do
+              (let current <- (State get))
+              (Console print (string-append "Processing: " (int-to-string x)))
+              (State put (+ current x))
+              (return (+ x current))))
+          (lambda (computation)
+            (handle computation
+              ((State get) (lambda (cont) (cont 0)))
+              ((State put) (lambda (new-state cont) (cont unit)))
+              ((Console print) 
+                (lambda (msg cont)
+                  (|> msg format-log system-output (lambda (_) (cont unit)))))
+              (return (lambda (value) value)))))))
+
+  ;; Module type with advanced features
+  (pub module-type COLLECTION
+    (signature
+      (type t (a))
+      
+      (val empty (forall (a) (t a)))
+      (val add (forall (a) (-> a (t a) (t a))))
+      (val map (forall (a b) (-> (-> a b) (t a) (t b))))
+      (val fold (forall (a b) (-> (-> a b b) b (t a) b)))
+      
+      (effect Iterator (a)
+        (next (Option a)))
+      
+      (val iterate (forall (a) (-> (t a) (effect Iterator a))))))
+
+  ;; Module implementation with visibility
+  (pub (package) module ListCollection
+    (implements COLLECTION
+      (type t List)
+      
+      (let empty nil)
+      
+      (let add (lambda (x xs) (cons x xs)))
+      
+      (let map 
+        (lambda (f xs)
+          (|> xs (fold-right (lambda (x acc) (cons (f x) acc)) nil))))
+      
+      (let fold fold-left)
+      
+      (let iterate
+        (lambda (xs)
+          (let iter
+            (lambda (items)
+              (match items
+                (nil (Iterator next (None)))
+                ((cons x rest)
+                  (do
+                    (Iterator next (Some x))
+                    (iter rest))))))
+          (iter xs)))))
+
+  ;; Complex type with phantom parameters
+  (pub (crate) type Database (r w)
+    (record
+      (read (forall (a) (-> String (effect r a))))
+      (write (forall (a) (-> String a (effect w Unit))))))
+
+  ;; Capability-based programming
+  (pub type ReadOnly)
+  (pub type WriteOnly)  
+  (pub type ReadWrite)
+
+  (pub let read-only-db
+    (Database IO Never
+      (record
+        (read (lambda (key) (file-read key)))
+        (write (lambda (key value) (Never absurd))))))
+
+  ;; Advanced pattern matching with guards
+  (pub let analyze-data
+    (lambda (data)
+      (|> data
+          (map (lambda (item)
+                 (match item
+                   ((record (score s)) (when (> s 90)) "excellent")
+                   ((record (score s) (category "premium")) (when (> s 70)) "good")
+                   ((record (metadata (Some meta)) (score s)) (when (> s 50))
+                     (|> meta extract-info format-result))
+                   ((record (tags ts) (score s)) (when (> (length ts) 3))
+                     (|> ts (take 3) (string-join ", ")))
+                   (_ "unknown"))))
+          (filter (lambda (result) (!= result "unknown")))
+          (fold string-append ""))))
+
+  ;; Private implementation details
+  (let format-log 
+    (lambda (msg) (string-append "[" (timestamp) "] " msg)))
+    
+  (let system-output 
+    (lambda (msg) unit)) ;; native call
+    
+  (let extract-info 
+    (lambda (meta) (field meta description)))
+    
+  (let format-result 
+    (lambda (info) (string-append "Info: " info)))
+    
+  (let timestamp 
+    (lambda () "2024-01-01"))
+)

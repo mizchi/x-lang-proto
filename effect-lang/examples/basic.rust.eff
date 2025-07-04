@@ -1,0 +1,56 @@
+mod BasicExample {
+    // Rust-style syntax with visibility modifiers and pipeline operations
+
+    // Public value with pipeline syntax
+    pub fn process_data(x: i32) -> i32 {
+        x |> normalize |> validate |> transform
+    }
+
+    // Package-visible type definition
+    pub(package) type UserId = i32;
+
+    // Crate-visible data type
+    pub(crate) enum Result<T, E> {
+        Ok(T),
+        Error(E),
+    }
+
+    // Private helper function
+    fn normalize(x: i32) -> i32 {
+        x * 2
+    }
+
+    // Super-visible function
+    pub(super) fn validate(x: i32) -> Result<i32, String> {
+        if x > 0 {
+            Result::Ok(x)
+        } else {
+            Result::Error("Invalid value".to_string())
+        }
+    }
+
+    // In-path visible transformation
+    pub(in crate::core::utils) fn transform(result: Result<i32, String>) -> i32 {
+        match result {
+            Result::Ok(value) => value + 10,
+            Result::Error(_) => 0,
+        }
+    }
+
+    // Module-private type alias
+    struct ProcessingState {
+        current: i32,
+        processed: bool,
+    }
+
+    // Main computation with pipeline
+    pub fn main(input: i32) -> String {
+        input 
+            |> process_data
+            |> |result| match result {
+                value if value > 100 => "large",
+                value if value > 50 => "medium",
+                _ => "small",
+            }
+    }
+}
