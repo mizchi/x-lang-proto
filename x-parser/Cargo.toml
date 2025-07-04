@@ -19,6 +19,7 @@ bitflags = { workspace = true }
 once_cell = { workspace = true }
 lsp-types = { workspace = true }
 sha2 = { workspace = true }
+im = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

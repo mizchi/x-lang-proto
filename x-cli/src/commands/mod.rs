@@ -1,0 +1,31 @@
+//! Command implementations for x CLI
+
+use anyhow::Result;
+use std::path::Path;
+
+pub mod new;
+pub mod convert;
+pub mod show;
+pub mod query;
+pub mod edit;
+// pub mod rename;
+// pub mod extract;
+pub mod check;
+pub mod compile;
+pub mod repl;
+pub mod lsp;
+pub mod stats;
+
+// Re-export command functions
+pub use new::new_command;
+pub use convert::convert_command;
+pub use show::show_command;
+pub use query::query_command;
+pub use edit::edit_command;
+// pub use rename::rename_command;
+// pub use extract::extract_command;
+pub use check::check_command;
+pub use compile::compile_command;
+pub use repl::repl_command;
+pub use lsp::lsp_command;
+pub use stats::stats_command;

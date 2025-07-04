@@ -383,7 +383,7 @@ pub struct InternerStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use span::{FileId, ByteOffset, Span};
+    use crate::span::{FileId, ByteOffset, Span};
 
     #[test]
     fn test_symbol_interning() {

@@ -234,11 +234,38 @@ impl BinarySerializer {
         self.symbol_table.clear();
         self.next_symbol_id = 0;
         
+        // Write magic number
+        self.buffer.extend_from_slice(&MAGIC_NUMBER);
+        
+        // Write format version
+        self.write_u32(FORMAT_VERSION)?;
+        
+        // Write header
+        self.serialize_header()?;
+        
+        // Write actual content
         self.write_u8(TypeCode::CompilationUnit as u8)?;
         self.serialize_module(&cu.module)?;
         self.serialize_span(&cu.span)?;
         
         Ok(self.buffer.clone())
+    }
+    
+    /// Serialize binary header
+    fn serialize_header(&mut self) -> Result<()> {
+        // Flags
+        self.write_u32(self.header.flags.bits() as u32)?;
+        
+        // Placeholder for symbol table offset (will be filled later)
+        self.write_u32(0)?;
+        
+        // Placeholder for type metadata offset (will be filled later) 
+        self.write_u32(0)?;
+        
+        // Placeholder for inference cache offset (will be filled later)
+        self.write_u32(0)?;
+        
+        Ok(())
     }
     
     /// Calculate content hash of the binary representation
@@ -284,7 +311,27 @@ impl BinarySerializer {
     fn serialize_expr(&mut self, expr: &Expr) -> Result<()> {
         match expr {
             Expr::Literal(lit, span) => {
-                self.serialize_literal(lit)?;
+                match lit {
+                    Literal::Integer(n) => {
+                        self.write_u8(TypeCode::LiteralInteger as u8)?;
+                        self.write_i64(*n)?;
+                    }
+                    Literal::Float(f) => {
+                        self.write_u8(TypeCode::LiteralFloat as u8)?;
+                        self.write_f64(*f)?;
+                    }
+                    Literal::String(s) => {
+                        self.write_u8(TypeCode::LiteralString as u8)?;
+                        self.write_string(s)?;
+                    }
+                    Literal::Bool(b) => {
+                        self.write_u8(TypeCode::LiteralBool as u8)?;
+                        self.write_u8(if *b { 1 } else { 0 })?;
+                    }
+                    Literal::Unit => {
+                        self.write_u8(TypeCode::LiteralUnit as u8)?;
+                    }
+                }
                 self.serialize_span(span)?;
             }
             Expr::Var(symbol, span) => {
@@ -401,6 +448,19 @@ impl BinarySerializer {
                 }
                 self.serialize_span(span)?;
             }
+            Type::Fun { params, return_type, effects, span } => {
+                self.write_u8(TypeCode::AstTypeFun as u8)?;
+                // Serialize parameter types
+                self.write_varint(params.len() as u64)?;
+                for param in params {
+                    self.serialize_type(param)?;
+                }
+                // Serialize return type
+                self.serialize_type(return_type)?;
+                // Serialize effects
+                self.serialize_effect_set(effects)?;
+                self.serialize_span(span)?;
+            }
             Type::Hole(span) => {
                 self.write_u8(TypeCode::AstTypeHole as u8)?;
                 self.serialize_span(span)?;
@@ -408,7 +468,7 @@ impl BinarySerializer {
             // Add other type constructors as needed...
             _ => {
                 return Err(Error::Parse {
-                    message: "Unsupported type for serialization".to_string(),
+                    message: format!("Unsupported type for serialization: {:?}", typ),
                 });
             }
         }
@@ -465,6 +525,34 @@ impl BinarySerializer {
         Ok(())
     }
     
+    /// Serialize an effect set
+    fn serialize_effect_set(&mut self, effects: &crate::ast::EffectSet) -> Result<()> {
+        // Serialize effect list
+        self.write_varint(effects.effects.len() as u64)?;
+        for effect in &effects.effects {
+            self.serialize_symbol(effect.name)?;
+            self.write_varint(effect.args.len() as u64)?;
+            for arg in &effect.args {
+                self.serialize_type(arg)?;
+            }
+            self.serialize_span(&effect.span)?;
+        }
+        
+        // Serialize row variable
+        match &effects.row_var {
+            Some(var) => {
+                self.write_u8(1)?; // Some
+                self.serialize_symbol(*var)?;
+            }
+            None => {
+                self.write_u8(0)?; // None
+            }
+        }
+        
+        self.serialize_span(&effects.span)?;
+        Ok(())
+    }
+    
     // Placeholder implementations for missing methods
     fn serialize_module_path(&mut self, _path: &ModulePath) -> Result<()> {
         // TODO: Implement module path serialization
@@ -481,8 +569,73 @@ impl BinarySerializer {
         Ok(())
     }
     
-    fn serialize_item(&mut self, _item: &Item) -> Result<()> {
-        // TODO: Implement item serialization
+    fn serialize_item(&mut self, item: &Item) -> Result<()> {
+        match item {
+            Item::ValueDef(value_def) => {
+                self.write_u8(TypeCode::ItemValueDef as u8)?;
+                self.serialize_symbol(value_def.name)?;
+                
+                // Serialize type annotation
+                match &value_def.type_annotation {
+                    Some(type_ann) => {
+                        self.write_u8(1)?; // Some
+                        self.serialize_type(type_ann)?;
+                    }
+                    None => {
+                        self.write_u8(0)?; // None
+                    }
+                }
+                
+                // Serialize parameters
+                self.write_varint(value_def.parameters.len() as u64)?;
+                for param in &value_def.parameters {
+                    self.serialize_pattern(param)?;
+                }
+                
+                // Serialize body
+                self.serialize_expr(&value_def.body)?;
+                
+                // Serialize visibility and purity
+                self.write_u8(match value_def.visibility {
+                    Visibility::Public => 0,
+                    Visibility::Private => 1,
+                    Visibility::Crate => 2,
+                    Visibility::Package => 3,
+                    Visibility::Super => 4,
+                    Visibility::InPath(_) => 5,
+                    Visibility::SelfModule => 6,
+                    Visibility::Component { .. } => 7,
+                })?;
+                
+                self.write_u8(match value_def.purity {
+                    Purity::Pure => 0,
+                    Purity::Impure => 1,
+                    Purity::Inferred => 2,
+                })?;
+                
+                self.serialize_span(&value_def.span)?;
+            }
+            Item::TypeDef(_) => {
+                self.write_u8(TypeCode::ItemTypeDef as u8)?;
+                // TODO: Implement type definition serialization
+            }
+            Item::EffectDef(_) => {
+                self.write_u8(TypeCode::ItemEffectDef as u8)?;
+                // TODO: Implement effect definition serialization
+            }
+            Item::HandlerDef(_) => {
+                self.write_u8(TypeCode::ItemHandlerDef as u8)?;
+                // TODO: Implement handler definition serialization
+            }
+            Item::ModuleTypeDef(_) => {
+                self.write_u8(TypeCode::ItemTypeDef as u8)?; 
+                // TODO: Implement module type definition serialization
+            }
+            Item::InterfaceDef(_) => {
+                self.write_u8(TypeCode::ItemTypeDef as u8)?;
+                // TODO: Implement interface definition serialization 
+            }
+        }
         Ok(())
     }
     
@@ -545,11 +698,41 @@ impl BinaryDeserializer {
             effect_cache: Vec::new(),
         };
         
+        // Check minimum file size for magic number + version
+        if deserializer.data.len() < 8 {
+            return Err(Error::Parse {
+                message: "File too short to be a valid x Language binary file".to_string(),
+            });
+        }
+        
+        // Check magic number
+        let magic_bytes = &deserializer.data[0..4];
+        if magic_bytes != MAGIC_NUMBER {
+            return Err(Error::Parse {
+                message: "Invalid magic number. This is not a valid x Language binary file".to_string(),
+            });
+        }
+        
+        // Read format version
+        let version = u32::from_le_bytes([
+            deserializer.data[4], 
+            deserializer.data[5], 
+            deserializer.data[6], 
+            deserializer.data[7]
+        ]);
+        
+        if version != FORMAT_VERSION {
+            return Err(Error::Parse {
+                message: format!("Unsupported format version: {}. Expected: {}", version, FORMAT_VERSION),
+            });
+        }
+        
+        // Move position past magic number and version
+        deserializer.pos = 8;
+        
         // Try to read header if present
-        if deserializer.data.len() >= 16 {
-            if let Ok(header) = deserializer.read_header() {
-                deserializer.header = Some(header);
-            }
+        if let Ok(header) = deserializer.read_header() {
+            deserializer.header = Some(header);
         }
         
         Ok(deserializer)
@@ -584,7 +767,7 @@ impl BinaryDeserializer {
         };
         
         let effects = if self.has_cached_effects() {
-            Some(self.deserialize_effect_set()?)
+            Some(self.deserialize_internal_effect_set()?)
         } else {
             None
         };
@@ -599,39 +782,32 @@ impl BinaryDeserializer {
     }
     
     fn read_header(&mut self) -> Result<BinaryHeader> {
-        let magic_bytes = &self.data[0..4];
-        let mut magic = [0u8; 4];
-        magic.copy_from_slice(magic_bytes);
+        // Magic number and version already read and validated in new()
+        // Header starts at position 8
         
-        let version = u16::from_le_bytes([self.data[4], self.data[5]]);
-        let flags = BinaryFlags::from_bits_truncate(u16::from_le_bytes([self.data[6], self.data[7]]));
-        let symbol_table_size = u32::from_le_bytes([self.data[8], self.data[9], self.data[10], self.data[11]]);
-        let type_metadata_offset = u32::from_le_bytes([self.data[12], self.data[13], self.data[14], self.data[15]]);
-        let inference_cache_offset = if self.data.len() >= 20 {
-            u32::from_le_bytes([self.data[16], self.data[17], self.data[18], self.data[19]])
-        } else {
-            0
-        };
-        let checksum = if self.data.len() >= 24 {
-            u32::from_le_bytes([self.data[20], self.data[21], self.data[22], self.data[23]])
-        } else {
-            0
-        };
+        if self.data.len() < self.pos + 16 {
+            return Err(Error::Parse {
+                message: "File too short to contain complete header".to_string(),
+            });
+        }
         
-        self.pos = 24; // Skip header
+        let flags = self.read_u32()?;
+        let symbol_table_offset = self.read_u32()?;
+        let type_metadata_offset = self.read_u32()?;
+        let inference_cache_offset = self.read_u32()?;
         
         Ok(BinaryHeader {
-            magic,
-            version,
-            flags,
-            symbol_table_size,
+            magic: MAGIC_NUMBER,
+            version: 1, // Already validated
+            flags: BinaryFlags::from_bits_truncate(flags as u16),
+            symbol_table_size: symbol_table_offset,
             type_metadata_offset,
             inference_cache_offset,
-            checksum,
+            checksum: 0, // TODO: Implement checksum if needed
         })
     }
     
-    pub fn deserialize_effect_set(&mut self) -> Result<EffectSet> {
+    pub fn deserialize_internal_effect_set(&mut self) -> Result<EffectSet> {
         let effect_code = self.read_u8()?;
         match effect_code {
             0x60 => Ok(EffectSet::Empty), // EffectSetEmpty
@@ -651,7 +827,7 @@ impl BinaryDeserializer {
                 }
                 let has_tail = self.read_u8()? != 0;
                 let tail = if has_tail {
-                    Some(Box::new(self.deserialize_effect_set()?))
+                    Some(Box::new(self.deserialize_internal_effect_set()?))
                 } else {
                     None
                 };
@@ -752,18 +928,317 @@ impl BinaryDeserializer {
     }
     
     fn deserialize_item(&mut self) -> Result<Item> {
-        // TODO: Implement item deserialization
-        Ok(Item::ValueDef(ValueDef {
-            name: Symbol::intern("test"),
-            type_annotation: None,
-            parameters: Vec::new(),
-            body: Expr::Literal(Literal::Unit, Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0))),
-            visibility: Visibility::Public,
-            purity: Purity::Inferred,
-            span: Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0)),
-        }))
+        let type_code = self.read_u8()?;
+        match type_code {
+            code if code == TypeCode::ItemValueDef as u8 => {
+                let name = self.deserialize_symbol()?;
+                
+                // Deserialize type annotation
+                let type_annotation = if self.read_u8()? == 1 {
+                    Some(self.deserialize_type()?)
+                } else {
+                    None
+                };
+                
+                // Deserialize parameters
+                let param_count = self.read_varint()? as usize;
+                let mut parameters = Vec::with_capacity(param_count);
+                for _ in 0..param_count {
+                    parameters.push(self.deserialize_pattern()?);
+                }
+                
+                // Deserialize body
+                let body = self.deserialize_expr()?;
+                
+                // Deserialize visibility and purity
+                let visibility = match self.read_u8()? {
+                    0 => Visibility::Public,
+                    1 => Visibility::Private,
+                    2 => Visibility::Crate,
+                    3 => Visibility::Package,
+                    4 => Visibility::Super,
+                    5 => Visibility::InPath(ModulePath::new(vec![], Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0)))),
+                    6 => Visibility::SelfModule,
+                    7 => Visibility::Component { export: false, import: false, interface: None },
+                    _ => Visibility::Public, // default
+                };
+                
+                let purity = match self.read_u8()? {
+                    0 => Purity::Pure,
+                    1 => Purity::Impure,
+                    2 => Purity::Inferred,
+                    _ => Purity::Inferred, // default
+                };
+                
+                let span = self.deserialize_span()?;
+                
+                Ok(Item::ValueDef(ValueDef {
+                    name,
+                    type_annotation,
+                    parameters,
+                    body,
+                    visibility,
+                    purity,
+                    span,
+                }))
+            }
+            code if code == TypeCode::ItemTypeDef as u8 => {
+                // TODO: Implement type definition deserialization
+                Ok(Item::ValueDef(ValueDef {
+                    name: Symbol::intern("placeholder"),
+                    type_annotation: None,
+                    parameters: Vec::new(),
+                    body: Expr::Literal(Literal::Unit, Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0))),
+                    visibility: Visibility::Public,
+                    purity: Purity::Inferred,
+                    span: Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0)),
+                }))
+            }
+            _ => Err(Error::Parse {
+                message: format!("Unknown item type code: {}", type_code),
+            }),
+        }
     }
     
+    fn deserialize_symbol(&mut self) -> Result<Symbol> {
+        let id = self.read_varint()?;
+        if id < self.symbol_table.len() as u64 {
+            Ok(self.symbol_table[id as usize])
+        } else {
+            // New symbol - read string
+            let string_len = self.read_varint()? as usize;
+            if self.pos + string_len > self.data.len() {
+                return Err(Error::Parse {
+                    message: "Not enough data for string".to_string(),
+                });
+            }
+            
+            let string_bytes = &self.data[self.pos..self.pos + string_len];
+            self.pos += string_len;
+            
+            let symbol_str = std::str::from_utf8(string_bytes)
+                .map_err(|_| Error::Parse {
+                    message: "Invalid UTF-8 in symbol".to_string(),
+                })?;
+            
+            let symbol = Symbol::intern(symbol_str);
+            self.symbol_table.push(symbol);
+            Ok(symbol)
+        }
+    }
+    
+    fn deserialize_expr(&mut self) -> Result<Expr> {
+        let type_code = self.read_u8()?;
+        match type_code {
+            code if code == TypeCode::ExprVar as u8 => {
+                let symbol = self.deserialize_symbol()?;
+                let span = self.deserialize_span()?;
+                Ok(Expr::Var(symbol, span))
+            }
+            code if code == TypeCode::ExprApp as u8 => {
+                let func = Box::new(self.deserialize_expr()?);
+                let arg_count = self.read_varint()? as usize;
+                let mut args = Vec::with_capacity(arg_count);
+                for _ in 0..arg_count {
+                    args.push(self.deserialize_expr()?);
+                }
+                let span = self.deserialize_span()?;
+                Ok(Expr::App(func, args, span))
+            }
+            code if code == TypeCode::ExprLambda as u8 => {
+                let param_count = self.read_varint()? as usize;
+                let mut parameters = Vec::with_capacity(param_count);
+                for _ in 0..param_count {
+                    parameters.push(self.deserialize_pattern()?);
+                }
+                let body = Box::new(self.deserialize_expr()?);
+                let span = self.deserialize_span()?;
+                Ok(Expr::Lambda { parameters, body, span })
+            }
+            code if code == TypeCode::ExprLet as u8 => {
+                let pattern = self.deserialize_pattern()?;
+                let type_annotation = if self.read_u8()? == 1 {
+                    Some(self.deserialize_type()?)
+                } else {
+                    None
+                };
+                let value = Box::new(self.deserialize_expr()?);
+                let body = Box::new(self.deserialize_expr()?);
+                let span = self.deserialize_span()?;
+                Ok(Expr::Let { pattern, type_annotation, value, body, span })
+            }
+            code if code == TypeCode::LiteralInteger as u8 => {
+                let value = self.read_i64()?;
+                let span = self.deserialize_span()?;
+                Ok(Expr::Literal(Literal::Integer(value), span))
+            }
+            code if code == TypeCode::LiteralString as u8 => {
+                let string_len = self.read_varint()? as usize;
+                if self.pos + string_len > self.data.len() {
+                    return Err(Error::Parse {
+                        message: "Not enough data for string literal".to_string(),
+                    });
+                }
+                
+                let string_bytes = &self.data[self.pos..self.pos + string_len];
+                self.pos += string_len;
+                
+                let string_value = std::str::from_utf8(string_bytes)
+                    .map_err(|_| Error::Parse {
+                        message: "Invalid UTF-8 in string literal".to_string(),
+                    })?
+                    .to_string();
+                
+                let span = self.deserialize_span()?;
+                Ok(Expr::Literal(Literal::String(string_value), span))
+            }
+            code if code == TypeCode::LiteralBool as u8 => {
+                let value = self.read_u8()? == 1;
+                let span = self.deserialize_span()?;
+                Ok(Expr::Literal(Literal::Bool(value), span))
+            }
+            code if code == TypeCode::LiteralFloat as u8 => {
+                let value = self.read_f64()?;
+                let span = self.deserialize_span()?;
+                Ok(Expr::Literal(Literal::Float(value), span))
+            }
+            code if code == TypeCode::LiteralUnit as u8 => {
+                let span = self.deserialize_span()?;
+                Ok(Expr::Literal(Literal::Unit, span))
+            }
+            _ => Err(Error::Parse {
+                message: format!("Unknown expression type code: {}", type_code),
+            }),
+        }
+    }
+    
+    fn deserialize_pattern(&mut self) -> Result<Pattern> {
+        let type_code = self.read_u8()?;
+        match type_code {
+            code if code == TypeCode::PatternVariable as u8 => {
+                let symbol = self.deserialize_symbol()?;
+                let span = self.deserialize_span()?;
+                Ok(Pattern::Variable(symbol, span))
+            }
+            code if code == TypeCode::PatternWildcard as u8 => {
+                let span = self.deserialize_span()?;
+                Ok(Pattern::Wildcard(span))
+            }
+            code if code == TypeCode::PatternLiteral as u8 => {
+                // Read the literal
+                let literal_type = self.read_u8()?;
+                let literal = match literal_type {
+                    code if code == TypeCode::LiteralInteger as u8 => {
+                        Literal::Integer(self.read_i64()?)
+                    }
+                    code if code == TypeCode::LiteralString as u8 => {
+                        let string_len = self.read_varint()? as usize;
+                        if self.pos + string_len > self.data.len() {
+                            return Err(Error::Parse {
+                                message: "Not enough data for string".to_string(),
+                            });
+                        }
+                        
+                        let string_bytes = &self.data[self.pos..self.pos + string_len];
+                        self.pos += string_len;
+                        
+                        let string_value = std::str::from_utf8(string_bytes)
+                            .map_err(|_| Error::Parse {
+                                message: "Invalid UTF-8 in string".to_string(),
+                            })?;
+                        
+                        Literal::String(string_value.to_string())
+                    }
+                    code if code == TypeCode::LiteralUnit as u8 => Literal::Unit,
+                    _ => return Err(Error::Parse {
+                        message: format!("Unknown literal type in pattern: {}", literal_type),
+                    }),
+                };
+                
+                let span = self.deserialize_span()?;
+                Ok(Pattern::Literal(literal, span))
+            }
+            _ => Err(Error::Parse {
+                message: format!("Unknown pattern type code: {}", type_code),
+            }),
+        }
+    }
+    
+    fn deserialize_type(&mut self) -> Result<Type> {
+        let type_code = self.read_u8()?;
+        match type_code {
+            code if code == TypeCode::AstTypeVar as u8 => {
+                let symbol = self.deserialize_symbol()?;
+                let span = self.deserialize_span()?;
+                Ok(Type::Var(symbol, span))
+            }
+            code if code == TypeCode::AstTypeCon as u8 => {
+                let symbol = self.deserialize_symbol()?;
+                let span = self.deserialize_span()?;
+                Ok(Type::Con(symbol, span))
+            }
+            code if code == TypeCode::AstTypeFun as u8 => {
+                // Deserialize parameter types
+                let param_count = self.read_varint()? as usize;
+                let mut params = Vec::with_capacity(param_count);
+                for _ in 0..param_count {
+                    params.push(self.deserialize_type()?);
+                }
+                
+                // Deserialize return type
+                let return_type = Box::new(self.deserialize_type()?);
+                
+                // Deserialize effects
+                let effects = self.deserialize_effect_set()?;
+                
+                let span = self.deserialize_span()?;
+                Ok(Type::Fun { 
+                    params, 
+                    return_type, 
+                    effects, 
+                    span 
+                })
+            }
+            code if code == TypeCode::AstTypeHole as u8 => {
+                let span = self.deserialize_span()?;
+                Ok(Type::Hole(span))
+            }
+            _ => Err(Error::Parse {
+                message: format!("Unknown type code: {}", type_code),
+            }),
+        }
+    }
+    
+    fn deserialize_effect_set(&mut self) -> Result<crate::ast::EffectSet> {
+        // Deserialize effect list
+        let effect_count = self.read_varint()? as usize;
+        let mut effects = Vec::with_capacity(effect_count);
+        for _ in 0..effect_count {
+            let name = self.deserialize_symbol()?;
+            let arg_count = self.read_varint()? as usize;
+            let mut args = Vec::with_capacity(arg_count);
+            for _ in 0..arg_count {
+                args.push(self.deserialize_type()?);
+            }
+            let span = self.deserialize_span()?;
+            effects.push(crate::ast::EffectRef { name, args, span });
+        }
+        
+        // Deserialize row variable
+        let row_var = if self.read_u8()? == 1 {
+            Some(self.deserialize_symbol()?)
+        } else {
+            None
+        };
+        
+        let span = self.deserialize_span()?;
+        Ok(crate::ast::EffectSet {
+            effects,
+            row_var,
+            span,
+        })
+    }
+
     fn deserialize_span(&mut self) -> Result<Span> {
         let type_code = self.read_u8()?;
         if type_code != TypeCode::Span as u8 {
@@ -867,7 +1342,7 @@ impl Default for BinarySerializer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use span::{FileId, ByteOffset};
+    use crate::span::{FileId, ByteOffset};
 
     #[test]
     fn test_basic_serialization() {

@@ -213,7 +213,7 @@ impl Default for MultiSyntax {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use span::FileId;
+    use crate::span::FileId;
 
     #[test]
     fn test_syntax_style_parsing() {

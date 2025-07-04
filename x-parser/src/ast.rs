@@ -800,7 +800,7 @@ pub struct ResourceMethod {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use span::{FileId, ByteOffset};
+    use crate::span::{FileId, ByteOffset};
 
     fn test_span() -> Span {
         Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(10))

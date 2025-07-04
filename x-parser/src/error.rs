@@ -208,14 +208,14 @@ impl ErrorReporter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::span::{Position, FileId};
+    use crate::span::{Position, FileId, ByteOffset};
 
     #[test]
     fn test_error_creation() {
         let span = Span::new(
-            Position::new(0, 0),
-            Position::new(0, 5),
             FileId::new(0),
+            ByteOffset::new(0),
+            ByteOffset::new(5),
         );
 
         let error = ParseError::syntax("test error", span);
@@ -228,9 +228,9 @@ mod tests {
         let mut reporter = ErrorReporter::new();
         
         let span = Span::new(
-            Position::new(0, 0),
-            Position::new(0, 5),
             FileId::new(0),
+            ByteOffset::new(0),
+            ByteOffset::new(5),
         );
 
         reporter.report_error(ParseError::syntax("test error", span));
@@ -248,9 +248,9 @@ mod tests {
         let source = "let x = 42\nlet y = invalid";
         
         let span = Span::new(
-            Position::new(1, 8),
-            Position::new(1, 15),
             FileId::new(0),
+            ByteOffset::new(8),
+            ByteOffset::new(15),
         );
 
         reporter.report_error(ParseError::syntax("invalid syntax", span));

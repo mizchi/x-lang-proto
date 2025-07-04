@@ -4,6 +4,7 @@ members = [
     "x-checker", 
     "x-compiler",
     "x-editor",
+    "x-cli",
 ]
 resolver = "2"
 

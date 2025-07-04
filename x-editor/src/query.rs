@@ -1,23 +1,55 @@
-//! AST querying and navigation
+//! Advanced AST querying and navigation system
 
-use x_parser::{CompilationUnit, AstNode, Module, Item, Expression};
+use x_parser::{
+    persistent_ast::{PersistentAstNode, NodeId},
+    symbol::Symbol,
+};
+use crate::index_system::Position;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use im::Vector;
 
-/// Query for finding nodes in an AST
+/// Advanced query types for AST exploration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AstQuery {
-    /// Find nodes by type name
-    FindByType(String),
-    /// Find a node by its path
-    FindByPath(Vec<usize>),
-    /// Find nodes matching a pattern
-    FindByPattern(QueryPattern),
-    /// Get children of a node
-    GetChildren(Vec<usize>),
+    // Basic structural queries
+    FindByType { node_type: String },
+    FindByPath { path: Vec<usize> },
+    FindByPattern { pattern: QueryPattern },
+    GetChildren { node_id: NodeId },
+    GetParent { node_id: NodeId },
+    GetSiblings { node_id: NodeId },
+    
+    // Symbol-based queries
+    FindReferences { symbol: Symbol },
+    FindDefinition { symbol: Symbol },
+    FindUsages { symbol: Symbol },
+    FindTypeReferences { type_name: String },
+    
+    // Position-based queries
+    NodesInRange { start: Position, end: Position },
+    ContainingNode { position: Position },
+    NodesAtLine { line: u32 },
+    
+    // Semantic queries
+    FindDependencies { node_id: NodeId },
+    FindDependents { node_id: NodeId },
+    FindCallSites { function: Symbol },
+    FindOverrides { method: Symbol },
+    
+    // Complex composite queries
+    And { queries: Vec<AstQuery> },
+    Or { queries: Vec<AstQuery> },
+    Filter { base: Box<AstQuery>, predicate: QueryPredicate },
+    Map { base: Box<AstQuery>, transform: QueryTransform },
+    
+    // Navigation queries
+    AncestorsOfType { node_id: NodeId, node_type: String },
+    DescendantsOfType { node_id: NodeId, node_type: String },
+    NextSiblingOfType { node_id: NodeId, node_type: String },
+    PreviousSiblingOfType { node_id: NodeId, node_type: String },
 }
 
-/// Pattern for matching AST nodes
+/// Advanced pattern matching for AST nodes
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QueryPattern {
     /// Match any node
@@ -26,6 +58,8 @@ pub enum QueryPattern {
     Type(String),
     /// Match nodes with specific value
     Value(String),
+    /// Match nodes with specific symbol name
+    Symbol(Symbol),
     /// Match nodes that are children of another pattern
     Child(Box<QueryPattern>),
     /// Match nodes that are descendants of another pattern
@@ -36,6 +70,78 @@ pub enum QueryPattern {
     Or(Vec<QueryPattern>),
     /// Match nodes that don't satisfy a pattern
     Not(Box<QueryPattern>),
+    /// Match nodes with specific annotation
+    HasAnnotation { key: String, value: Option<String> },
+    /// Match nodes with specific type annotation
+    HasType { type_name: String },
+    /// Match nodes with specific effect annotation
+    HasEffect { effect_name: String },
+    /// Match nodes at specific depth
+    AtDepth { depth: usize },
+    /// Match nodes in specific position range
+    InRange { start: Position, end: Position },
+}
+
+/// Predicate for filtering query results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum QueryPredicate {
+    /// Filter by node type
+    IsType(String),
+    /// Filter by symbol presence
+    HasSymbol(Symbol),
+    /// Filter by annotation presence
+    HasAnnotation(String),
+    /// Filter by type information
+    HasTypeInfo,
+    /// Filter by position
+    InPosition { start: Position, end: Position },
+    /// Filter by custom condition
+    Custom(String), // JavaScript-like expression
+    /// Combine predicates
+    And(Vec<QueryPredicate>),
+    Or(Vec<QueryPredicate>),
+    Not(Box<QueryPredicate>),
+}
+
+/// Transform operations for query results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum QueryTransform {
+    /// Get parent nodes
+    GetParents,
+    /// Get child nodes
+    GetChildren,
+    /// Get all descendants
+    GetDescendants,
+    /// Get ancestors of specific type
+    GetAncestorsOfType(String),
+    /// Extract symbol names
+    ExtractSymbols,
+    /// Extract type information
+    ExtractTypes,
+    /// Extract source positions
+    ExtractPositions,
+}
+
+/// Query execution result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueryResult {
+    /// Matched node IDs
+    pub nodes: Vector<NodeId>,
+    /// Execution metadata
+    pub metadata: QueryMetadata,
+}
+
+/// Query execution metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueryMetadata {
+    /// Execution time in microseconds
+    pub execution_time_us: u64,
+    /// Number of nodes examined
+    pub nodes_examined: u64,
+    /// Whether the query was satisfied from cache
+    pub from_cache: bool,
+    /// Query complexity score
+    pub complexity_score: f64,
 }
 
 /// Node selector for precise targeting
@@ -47,353 +153,106 @@ pub struct NodeSelector {
     pub node_type: Option<String>,
     /// Optional value constraint
     pub value_constraint: Option<String>,
+    /// Optional position constraint
+    pub position_constraint: Option<Position>,
 }
 
-/// Result of a query operation
-#[derive(Debug, Clone)]
-pub enum QueryResult {
-    /// Single node result
-    Single(QueryNode),
-    /// Multiple nodes result
-    Multiple(Vec<QueryNode>),
-    /// No results found
-    None,
-}
-
-/// A node found by a query
-#[derive(Debug, Clone)]
-pub struct QueryNode {
-    /// Path to the node in the AST
-    pub path: Vec<usize>,
-    /// The actual node
-    pub node: AstNode,
-    /// Parent path (if any)
-    pub parent_path: Option<Vec<usize>>,
-    /// Children paths
-    pub children_paths: Vec<Vec<usize>>,
-}
-
-/// AST query engine
-#[derive(Debug, Default)]
-pub struct QueryEngine {
-    /// Cache for query results
-    cache: HashMap<String, QueryResult>,
-}
-
-impl QueryEngine {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Execute a query against an AST
-    pub fn execute(
-        &mut self,
-        ast: &CompilationUnit,
-        query: &AstQuery,
-    ) -> QueryResult {
-        // Check cache first
-        let cache_key = self.query_cache_key(query);
-        if let Some(cached_result) = self.cache.get(&cache_key) {
-            return cached_result.clone();
-        }
-
-        let result = match query {
-            AstQuery::FindByType(type_name) => {
-                self.find_by_type(ast, type_name)
-            }
-            AstQuery::FindByPath(path) => {
-                self.find_by_path(ast, path)
-            }
-            AstQuery::FindByPattern(pattern) => {
-                self.find_by_pattern(ast, pattern)
-            }
-            AstQuery::GetChildren(path) => {
-                self.get_children(ast, path)
-            }
-        };
-
-        // Cache the result
-        self.cache.insert(cache_key, result.clone());
-        result
-    }
-
-    /// Find nodes by type
-    fn find_by_type(&self, ast: &CompilationUnit, type_name: &str) -> QueryResult {
-        let mut results = Vec::new();
-        self.traverse_and_collect(
-            ast,
-            &mut results,
-            &mut vec![],
-            |node, _path| self.node_matches_type(node, type_name)
-        );
-        
-        if results.is_empty() {
-            QueryResult::None
-        } else {
-            QueryResult::Multiple(results)
+impl QueryResult {
+    /// Create a new query result
+    pub fn new(nodes: Vec<NodeId>) -> Self {
+        Self {
+            nodes: Vector::from(nodes),
+            metadata: QueryMetadata {
+                execution_time_us: 0,
+                nodes_examined: 0,
+                from_cache: false,
+                complexity_score: 0.0,
+            },
         }
     }
-
-    /// Find node by path
-    fn find_by_path(&self, ast: &CompilationUnit, path: &[usize]) -> QueryResult {
-        if let Some(node) = self.navigate_to_path(ast, path) {
-            let parent_path = if path.is_empty() {
-                None
-            } else {
-                Some(path[..path.len() - 1].to_vec())
-            };
-            
-            let children_paths = self.get_children_paths(ast, path);
-            
-            QueryResult::Single(QueryNode {
-                path: path.to_vec(),
-                node,
-                parent_path,
-                children_paths,
-            })
-        } else {
-            QueryResult::None
+    
+    /// Create an empty query result
+    pub fn empty() -> Self {
+        Self::new(Vec::new())
+    }
+    
+    /// Create result with metadata
+    pub fn with_metadata(nodes: Vec<NodeId>, metadata: QueryMetadata) -> Self {
+        Self {
+            nodes: Vector::from(nodes),
+            metadata,
         }
     }
-
-    /// Find nodes by pattern
-    fn find_by_pattern(&self, ast: &CompilationUnit, pattern: &QueryPattern) -> QueryResult {
-        let mut results = Vec::new();
-        self.traverse_and_collect(
-            ast,
-            &mut results,
-            &mut vec![],
-            |node, path| self.node_matches_pattern(ast, node, path, pattern)
-        );
-        
-        if results.is_empty() {
-            QueryResult::None
-        } else {
-            QueryResult::Multiple(results)
-        }
+    
+    /// Get node IDs as a vector
+    pub fn node_ids(&self) -> Vec<NodeId> {
+        self.nodes.iter().cloned().collect()
     }
-
-    /// Get children of a node
-    fn get_children(&self, ast: &CompilationUnit, path: &[usize]) -> QueryResult {
-        let children_paths = self.get_children_paths(ast, path);
-        let mut children = Vec::new();
-        
-        for child_path in children_paths {
-            if let Some(node) = self.navigate_to_path(ast, &child_path) {
-                children.push(QueryNode {
-                    path: child_path.clone(),
-                    node,
-                    parent_path: Some(path.to_vec()),
-                    children_paths: self.get_children_paths(ast, &child_path),
-                });
+    
+    /// Check if result is empty
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+    
+    /// Get the number of results
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+    
+    /// Get the first result if any
+    pub fn first(&self) -> Option<NodeId> {
+        self.nodes.get(0).copied()
+    }
+    
+    /// Combine two query results
+    pub fn union(&self, other: &QueryResult) -> QueryResult {
+        let mut combined_nodes = self.nodes.clone();
+        for node in &other.nodes {
+            if !combined_nodes.contains(node) {
+                combined_nodes = combined_nodes.push_back(*node);
             }
         }
         
-        if children.is_empty() {
-            QueryResult::None
-        } else {
-            QueryResult::Multiple(children)
+        QueryResult {
+            nodes: combined_nodes,
+            metadata: QueryMetadata {
+                execution_time_us: self.metadata.execution_time_us + other.metadata.execution_time_us,
+                nodes_examined: self.metadata.nodes_examined + other.metadata.nodes_examined,
+                from_cache: self.metadata.from_cache && other.metadata.from_cache,
+                complexity_score: self.metadata.complexity_score + other.metadata.complexity_score,
+            },
         }
     }
-
-    /// Traverse AST and collect matching nodes
-    fn traverse_and_collect<F>(
-        &self,
-        ast: &CompilationUnit,
-        results: &mut Vec<QueryNode>,
-        current_path: &mut Vec<usize>,
-        predicate: F,
-    ) where
-        F: Fn(&AstNode, &[usize]) -> bool + Copy,
-    {
-        // Check compilation unit
-        let cu_node = AstNode::CompilationUnit(ast.clone());
-        if predicate(&cu_node, current_path) {
-            results.push(QueryNode {
-                path: current_path.clone(),
-                node: cu_node,
-                parent_path: None,
-                children_paths: self.get_children_paths(ast, current_path),
-            });
-        }
-
-        // Traverse modules
-        for (i, module) in ast.modules.iter().enumerate() {
-            current_path.push(i);
-            let module_node = AstNode::Module(module.clone());
-            
-            if predicate(&module_node, current_path) {
-                results.push(QueryNode {
-                    path: current_path.clone(),
-                    node: module_node,
-                    parent_path: Some(current_path[..current_path.len() - 1].to_vec()),
-                    children_paths: self.get_children_paths(ast, current_path),
-                });
-            }
-            
-            // Traverse items
-            for (j, item) in module.items.iter().enumerate() {
-                current_path.push(j);
-                let item_node = AstNode::Item(item.clone());
-                
-                if predicate(&item_node, current_path) {
-                    results.push(QueryNode {
-                        path: current_path.clone(),
-                        node: item_node,
-                        parent_path: Some(current_path[..current_path.len() - 1].to_vec()),
-                        children_paths: self.get_children_paths(ast, current_path),
-                    });
-                }
-                
-                current_path.pop();
-            }
-            
-            current_path.pop();
-        }
-    }
-
-    /// Check if a node matches a specific type
-    fn node_matches_type(&self, node: &AstNode, type_name: &str) -> bool {
-        let node_type = match node {
-            AstNode::CompilationUnit(_) => "CompilationUnit",
-            AstNode::Module(_) => "Module",
-            AstNode::Item(_) => "Item",
-            AstNode::Expression(_) => "Expression",
-            AstNode::Statement(_) => "Statement",
-            AstNode::Literal(_) => "Literal",
-        };
+    
+    /// Intersect two query results
+    pub fn intersection(&self, other: &QueryResult) -> QueryResult {
+        let intersection_nodes: Vector<NodeId> = self.nodes
+            .iter()
+            .filter(|node| other.nodes.contains(node))
+            .cloned()
+            .collect();
         
-        node_type == type_name
-    }
-
-    /// Check if a node matches a pattern
-    fn node_matches_pattern(
-        &self,
-        ast: &CompilationUnit,
-        node: &AstNode,
-        path: &[usize],
-        pattern: &QueryPattern,
-    ) -> bool {
-        match pattern {
-            QueryPattern::Any => true,
-            QueryPattern::Type(type_name) => self.node_matches_type(node, type_name),
-            QueryPattern::Value(value) => self.node_matches_value(node, value),
-            QueryPattern::Child(child_pattern) => {
-                // Check if any child matches the pattern
-                let children_paths = self.get_children_paths(ast, path);
-                children_paths.iter().any(|child_path| {
-                    if let Some(child_node) = self.navigate_to_path(ast, child_path) {
-                        self.node_matches_pattern(ast, &child_node, child_path, child_pattern)
-                    } else {
-                        false
-                    }
-                })
-            }
-            QueryPattern::Descendant(desc_pattern) => {
-                // Check if any descendant matches the pattern (recursive)
-                self.has_descendant_matching(ast, path, desc_pattern)
-            }
-            QueryPattern::And(patterns) => {
-                patterns.iter().all(|p| self.node_matches_pattern(ast, node, path, p))
-            }
-            QueryPattern::Or(patterns) => {
-                patterns.iter().any(|p| self.node_matches_pattern(ast, node, path, p))
-            }
-            QueryPattern::Not(pattern) => {
-                !self.node_matches_pattern(ast, node, path, pattern)
-            }
+        QueryResult {
+            nodes: intersection_nodes,
+            metadata: QueryMetadata {
+                execution_time_us: self.metadata.execution_time_us + other.metadata.execution_time_us,
+                nodes_examined: self.metadata.nodes_examined + other.metadata.nodes_examined,
+                from_cache: self.metadata.from_cache && other.metadata.from_cache,
+                complexity_score: self.metadata.complexity_score + other.metadata.complexity_score,
+            },
         }
     }
-
-    /// Check if a node matches a specific value
-    fn node_matches_value(&self, _node: &AstNode, _value: &str) -> bool {
-        // TODO: Implement value matching based on node content
-        false
+    
+    /// Apply a transform to the result
+    pub fn transform(&self, _transform: &QueryTransform) -> QueryResult {
+        // TODO: Implement query transforms
+        self.clone()
     }
-
-    /// Check if a node has a descendant matching a pattern
-    fn has_descendant_matching(
-        &self,
-        ast: &CompilationUnit,
-        path: &[usize],
-        pattern: &QueryPattern,
-    ) -> bool {
-        let children_paths = self.get_children_paths(ast, path);
-        
-        for child_path in children_paths {
-            if let Some(child_node) = self.navigate_to_path(ast, &child_path) {
-                if self.node_matches_pattern(ast, &child_node, &child_path, pattern) {
-                    return true;
-                }
-                
-                // Recursively check descendants
-                if self.has_descendant_matching(ast, &child_path, pattern) {
-                    return true;
-                }
-            }
-        }
-        
-        false
-    }
-
-    /// Navigate to a specific path in the AST
-    fn navigate_to_path(&self, ast: &CompilationUnit, path: &[usize]) -> Option<AstNode> {
-        if path.is_empty() {
-            return Some(AstNode::CompilationUnit(ast.clone()));
-        }
-
-        if path.len() == 1 {
-            let module_index = path[0];
-            if module_index < ast.modules.len() {
-                return Some(AstNode::Module(ast.modules[module_index].clone()));
-            }
-        } else if path.len() == 2 {
-            let module_index = path[0];
-            let item_index = path[1];
-            
-            if module_index < ast.modules.len() {
-                let module = &ast.modules[module_index];
-                if item_index < module.items.len() {
-                    return Some(AstNode::Item(module.items[item_index].clone()));
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Get paths to all children of a node
-    fn get_children_paths(&self, ast: &CompilationUnit, path: &[usize]) -> Vec<Vec<usize>> {
-        let mut children = Vec::new();
-        
-        if path.is_empty() {
-            // Children of CompilationUnit are modules
-            for i in 0..ast.modules.len() {
-                children.push(vec![i]);
-            }
-        } else if path.len() == 1 {
-            // Children of Module are items
-            let module_index = path[0];
-            if module_index < ast.modules.len() {
-                let module = &ast.modules[module_index];
-                for j in 0..module.items.len() {
-                    children.push(vec![module_index, j]);
-                }
-            }
-        }
-        // TODO: Add more levels as needed
-        
-        children
-    }
-
-    /// Generate cache key for a query
-    fn query_cache_key(&self, query: &AstQuery) -> String {
-        format!("{:?}", query)
-    }
-
-    /// Clear the query cache
-    pub fn clear_cache(&mut self) {
-        self.cache.clear();
+    
+    /// Filter the result with a predicate
+    pub fn filter(&self, _predicate: &QueryPredicate) -> QueryResult {
+        // TODO: Implement query filtering
+        self.clone()
     }
 }
 
@@ -404,111 +263,71 @@ impl NodeSelector {
             path,
             node_type: None,
             value_constraint: None,
+            position_constraint: None,
         }
     }
-
+    
     /// Add type constraint
     pub fn with_type(mut self, node_type: String) -> Self {
         self.node_type = Some(node_type);
         self
     }
-
+    
     /// Add value constraint
     pub fn with_value(mut self, value: String) -> Self {
         self.value_constraint = Some(value);
         self
     }
-
-    /// Check if a node matches this selector
-    pub fn matches(&self, node: &AstNode) -> bool {
-        if let Some(expected_type) = &self.node_type {
-            let node_type = match node {
-                AstNode::CompilationUnit(_) => "CompilationUnit",
-                AstNode::Module(_) => "Module",
-                AstNode::Item(_) => "Item",
-                AstNode::Expression(_) => "Expression",
-                AstNode::Statement(_) => "Statement",
-                AstNode::Literal(_) => "Literal",
-            };
-            
-            if node_type != expected_type {
-                return false;
-            }
-        }
-        
-        // TODO: Add value constraint checking
-        
-        true
+    
+    /// Add position constraint
+    pub fn with_position(mut self, position: Position) -> Self {
+        self.position_constraint = Some(position);
+        self
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use x_parser::{parse_source, FileId, SyntaxStyle};
+    use x_parser::persistent_ast::NodeId;
 
     #[test]
-    fn test_query_engine_creation() {
-        let engine = QueryEngine::new();
-        assert!(engine.cache.is_empty());
+    fn test_query_result_creation() {
+        let result = QueryResult::new(vec![NodeId::new(1), NodeId::new(2)]);
+        assert_eq!(result.len(), 2);
+        assert!(!result.is_empty());
     }
 
     #[test]
-    fn test_find_by_type() {
-        let mut engine = QueryEngine::new();
-        let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::OCaml).unwrap();
+    fn test_query_result_union() {
+        let result1 = QueryResult::new(vec![NodeId::new(1), NodeId::new(2)]);
+        let result2 = QueryResult::new(vec![NodeId::new(2), NodeId::new(3)]);
+        let union = result1.union(&result2);
         
-        let query = AstQuery::FindByType("Module".to_string());
-        let result = engine.execute(&ast, &query);
-        
-        match result {
-            QueryResult::Multiple(nodes) => {
-                assert!(!nodes.is_empty());
-            }
-            _ => panic!("Expected multiple results"),
-        }
+        assert_eq!(union.len(), 3);
+        assert!(union.node_ids().contains(&NodeId::new(1)));
+        assert!(union.node_ids().contains(&NodeId::new(2)));
+        assert!(union.node_ids().contains(&NodeId::new(3)));
     }
 
     #[test]
-    fn test_find_by_path() {
-        let mut engine = QueryEngine::new();
-        let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::OCaml).unwrap();
+    fn test_query_result_intersection() {
+        let result1 = QueryResult::new(vec![NodeId::new(1), NodeId::new(2)]);
+        let result2 = QueryResult::new(vec![NodeId::new(2), NodeId::new(3)]);
+        let intersection = result1.intersection(&result2);
         
-        let query = AstQuery::FindByPath(vec![0]);
-        let result = engine.execute(&ast, &query);
-        
-        match result {
-            QueryResult::Single(_) => {
-                // Success
-            }
-            _ => panic!("Expected single result"),
-        }
+        assert_eq!(intersection.len(), 1);
+        assert_eq!(intersection.first(), Some(NodeId::new(2)));
     }
 
     #[test]
-    fn test_node_selector() {
+    fn test_node_selector_builder() {
         let selector = NodeSelector::new(vec![0, 1])
-            .with_type("Item".to_string());
+            .with_type("ValueDef".to_string())
+            .with_value("test".to_string());
         
         assert_eq!(selector.path, vec![0, 1]);
-        assert_eq!(selector.node_type, Some("Item".to_string()));
-    }
-
-    #[test]
-    fn test_query_patterns() {
-        let pattern = QueryPattern::And(vec![
-            QueryPattern::Type("Item".to_string()),
-            QueryPattern::Not(Box::new(QueryPattern::Value("test".to_string())))
-        ]);
-        
-        // Test pattern creation
-        match pattern {
-            QueryPattern::And(patterns) => {
-                assert_eq!(patterns.len(), 2);
-            }
-            _ => panic!("Expected And pattern"),
-        }
+        assert_eq!(selector.node_type, Some("ValueDef".to_string()));
+        assert_eq!(selector.value_constraint, Some("test".to_string()));
     }
 }

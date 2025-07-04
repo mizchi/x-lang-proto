@@ -5,6 +5,7 @@
 //! and handles conversion from text to AST representation.
 
 pub mod ast;
+pub mod persistent_ast;
 pub mod lexer;
 pub mod parser;
 pub mod syntax;
@@ -14,12 +15,15 @@ pub mod token;
 pub mod binary;
 pub mod error;
 
+#[cfg(test)]
+mod binary_tests;
+
 // Re-export core types
 pub use ast::*;
 pub use lexer::Lexer;
 pub use parser::Parser;
-pub use span::{Span, FileId};
-pub use symbol::Symbol;
+pub use crate::span::{Span, FileId};
+pub use crate::symbol::Symbol;
 pub use token::{Token, TokenKind};
 pub use error::{ParseError, Result};
 

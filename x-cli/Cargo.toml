@@ -1,0 +1,37 @@
+[package]
+name = "x-cli"
+version = "0.1.0"
+edition = "2021"
+authors = ["mizchi"]
+description = "Command-line interface for x Language - direct AST manipulation and conversion tools"
+license = "MIT"
+
+[[bin]]
+name = "x"
+path = "src/main.rs"
+
+[dependencies]
+# Local dependencies
+x-parser = { path = "../x-parser" }
+# x-checker = { path = "../x-checker" }
+# x-compiler = { path = "../x-compiler" }
+# x-editor = { path = "../x-editor" }
+
+# Workspace dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+toml = { workspace = true }
+
+# Additional CLI dependencies
+colored = "2.0"
+indicatif = "0.17"
+dialoguer = "0.11"
+console = "0.15"
+dirs = "5.0"
+im = { workspace = true }

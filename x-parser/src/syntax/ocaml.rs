@@ -993,8 +993,8 @@ impl OCamlPrinter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use span::{FileId, Span, ByteOffset};
-    use symbol::Symbol;
+    use crate::span::{FileId, Span, ByteOffset};
+    use crate::symbol::Symbol;
 
     #[test]
     fn test_ocaml_parser_creation() {
