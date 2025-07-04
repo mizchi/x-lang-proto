@@ -1,6 +1,6 @@
-//! EffectLang compiler CLI
+//! x Language compiler CLI
 //! 
-//! Multi-target compiler for EffectLang supporting TypeScript and WebAssembly GC
+//! Multi-target compiler for x Language supporting TypeScript and WebAssembly GC
 
 use effect_lang::{
     core::{ast::*, span::FileId},
@@ -37,7 +37,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Compile EffectLang source to target language
+    /// Compile x Language source to target language
     Compile {
         /// Input source file
         input: PathBuf,
@@ -75,7 +75,7 @@ enum Commands {
         source_maps: bool,
     },
     
-    /// Check EffectLang source for errors
+    /// Check x Language source for errors
     Check {
         /// Input source file
         input: PathBuf,
@@ -321,7 +321,7 @@ fn show_targets() -> Result<()> {
     
     println!("TypeScript (typescript, ts):");
     println!("  - Generates type-safe TypeScript code");
-    println!("  - Supports all EffectLang features via async/await");
+    println!("  - Supports all x Language features via async/await");
     println!("  - Module systems: ES2020, CommonJS, AMD, SystemJS");
     println!("  - Full type information emission");
     println!();
@@ -344,7 +344,7 @@ fn show_targets() -> Result<()> {
     println!("  - Generates WebAssembly Interface Types definitions");
     println!("  - Language-agnostic interface specifications");
     println!("  - Compatible with wasm-tools and wit-bindgen");
-    println!("  - Export EffectLang interfaces to other languages");
+    println!("  - Export x Language interfaces to other languages");
     println!();
     
     println!("Backend features:");

@@ -1,4 +1,4 @@
-//! Binary serialization tests for EffectLang
+//! Binary serialization tests for x Language
 
 use effect_lang::{
     analysis::parser::parse,

@@ -1,4 +1,4 @@
-//! EffectLang - LSP-first effect system functional programming language
+//! x Language - LSP-first effect system functional programming language
 //! 
 //! This crate provides a complete implementation of a statically-typed functional
 //! programming language with algebraic effects and handlers, designed primarily
@@ -43,7 +43,7 @@ pub enum Error {
 
 /// Language version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const LANGUAGE_NAME: &str = "EffectLang";
+pub const LANGUAGE_NAME: &str = "x Language";
 pub const FILE_EXTENSIONS: &[&str] = &["eff", "effect"];
 
 /// LSP server capabilities that we support

@@ -1,4 +1,4 @@
-//! EffectLang CLI tool for binary AST operations
+//! x Language CLI tool for binary AST operations
 
 use clap::{Parser, Subcommand};
 use effect_lang::{
@@ -18,7 +18,7 @@ use std::{
 
 #[derive(Parser)]
 #[command(name = "effect-cli")]
-#[command(about = "EffectLang CLI tool for binary AST operations")]
+#[command(about = "x Language CLI tool for binary AST operations")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -26,7 +26,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Parse EffectLang source and serialize to binary AST
+    /// Parse x Language source and serialize to binary AST
     Compile {
         /// Input source file (.eff)
         #[arg(short, long)]

@@ -2,6 +2,11 @@
 //! 
 //! This module provides efficient binary serialization/deserialization for AST nodes,
 //! optimized for type checking and LSP scenarios with embedded type information.
+//!
+//! ## Magic Number
+//! 
+//! x Language binary files start with a 4-byte magic number: `\0xlg` (0x00786C67)
+//! This follows the WebAssembly pattern where the magic number includes readable text.
 
 use crate::core::{
     ast::*,
@@ -13,6 +18,12 @@ use crate::{Error, Result};
 use sha2::{Sha256, Digest};
 use std::collections::HashMap;
 use std::io::{Write, Read};
+
+/// Magic number for x Language binary format: '\0xlg' (0x00786C67)
+pub const MAGIC_NUMBER: [u8; 4] = [0x00, 0x78, 0x6C, 0x67];
+
+/// Current version of the binary format
+pub const FORMAT_VERSION: u32 = 1;
 
 /// Enhanced binary format type codes with type checking support
 #[derive(Debug, Clone, Copy, PartialEq)]

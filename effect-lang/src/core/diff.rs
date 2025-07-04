@@ -1,4 +1,4 @@
-//! Binary AST diff system for EffectLang
+//! Binary AST diff system for x Language
 //! 
 //! This module provides structural diff algorithms for binary-serialized AST nodes,
 //! enabling efficient version control and incremental compilation.

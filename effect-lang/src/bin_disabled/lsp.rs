@@ -1,10 +1,10 @@
-//! LSP server binary for EffectLang
+//! LSP server binary for x Language
 //! 
-//! This binary provides Language Server Protocol support for EffectLang,
+//! This binary provides Language Server Protocol support for x Language,
 //! enabling rich editor integration with real-time type checking,
 //! effect inference, and intelligent code completion.
 
-use effect_lang::{EffectLanguageServer, Result};
+use effect_lang::{x LanguageuageServer, Result};
 use lsp_server::{Connection, Message, Response};
 use tracing::{error, info, warn};
 use tracing_subscriber;
@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
         )
         .init();
 
-    info!("Starting EffectLang LSP server");
+    info!("Starting x Language LSP server");
 
     // Check if we should run in stdio mode
     let args: Vec<String> = std::env::args().collect();
@@ -77,7 +77,7 @@ async fn run_server(connection: Connection) -> Result<()> {
     info!("LSP server initialized");
     
     // Create the language server instance
-    let mut server = EffectLanguageServer::new();
+    let mut server = x LanguageuageServer::new();
     
     // Main message loop
     for msg in &connection.receiver {
@@ -105,7 +105,7 @@ async fn run_server(connection: Connection) -> Result<()> {
 
 /// Handle LSP requests
 async fn handle_request(
-    server: &mut EffectLanguageServer,
+    server: &mut x LanguageuageServer,
     connection: &Connection,
     req: lsp_server::Request,
 ) -> Result<()> {
@@ -171,7 +171,7 @@ async fn handle_request(
 
 /// Handle LSP notifications
 async fn handle_notification(
-    server: &mut EffectLanguageServer,
+    server: &mut x LanguageuageServer,
     not: lsp_server::Notification,
 ) -> Result<()> {
     use lsp_types::notification::*;
@@ -209,7 +209,7 @@ async fn handle_notification(
 
 /// Print usage information
 fn print_usage() {
-    println!("EffectLang LSP Server");
+    println!("x Language LSP Server");
     println!();
     println!("USAGE:");
     println!("    effect-lsp [FLAGS]");

@@ -1,4 +1,4 @@
-//! Parser tests for EffectLang
+//! Parser tests for x Language
 
 use effect_lang::{
     analysis::parser::parse,

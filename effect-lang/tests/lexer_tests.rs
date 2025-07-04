@@ -1,4 +1,4 @@
-//! Lexer tests for EffectLang
+//! Lexer tests for x Language
 
 use effect_lang::{
     analysis::lexer::Lexer,

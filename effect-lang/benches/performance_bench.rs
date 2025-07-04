@@ -1,4 +1,4 @@
-//! Performance benchmarks for EffectLang components
+//! Performance benchmarks for x Language components
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use effect_lang::{

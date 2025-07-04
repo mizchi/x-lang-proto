@@ -1,4 +1,4 @@
-//! WebAssembly runtime tests for EffectLang
+//! WebAssembly runtime tests for x Language
 
 use effect_lang::{
     core::{ast::*, span::{Span, FileId, ByteOffset}, symbol::Symbol},

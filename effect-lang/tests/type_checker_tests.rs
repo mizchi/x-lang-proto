@@ -1,4 +1,4 @@
-//! Type checker tests for EffectLang
+//! Type checker tests for x Language
 //! 
 //! These tests verify the correctness of:
 //! - Type inference

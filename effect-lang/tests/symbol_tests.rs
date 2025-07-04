@@ -1,4 +1,4 @@
-//! Symbol interning tests for EffectLang
+//! Symbol interning tests for x Language
 
 use effect_lang::core::symbol::{
     Symbol, SymbolTable, SymbolInfo, SymbolKind, SymbolVisibility, 

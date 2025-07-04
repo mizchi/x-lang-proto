@@ -1,9 +1,9 @@
 [workspace]
 members = [
-    "effect-lang-parser",
-    "effect-lang-checker", 
-    "effect-lang-compiler",
-    "effect-lang-editor",
+    "x-lang-parser",
+    "x-lang-checker", 
+    "x-lang-compiler",
+    "x-lang-editor",
 ]
 resolver = "2"
 

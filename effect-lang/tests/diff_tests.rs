@@ -1,4 +1,4 @@
-//! Binary AST diff tests for EffectLang
+//! Binary AST diff tests for x Language
 
 use effect_lang::{
     analysis::parser::parse,

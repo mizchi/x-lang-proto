@@ -1,4 +1,4 @@
-//! Integration tests for EffectLang CLI and end-to-end workflows
+//! Integration tests for x Language CLI and end-to-end workflows
 
 use std::fs;
 use std::path::PathBuf;
