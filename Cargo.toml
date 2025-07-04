@@ -1,9 +1,9 @@
 [workspace]
 members = [
-    "x-lang-parser",
-    "x-lang-checker", 
-    "x-lang-compiler",
-    "x-lang-editor",
+    "x-parser",
+    "x-checker", 
+    "x-compiler",
+    "x-editor",
 ]
 resolver = "2"
 

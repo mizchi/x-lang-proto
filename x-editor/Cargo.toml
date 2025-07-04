@@ -1,0 +1,27 @@
+[package]
+name = "x-editor"
+version = "0.1.0"
+edition = "2021"
+authors = ["mizchi"]
+description = "Language service and AST editor for x Language with AI-friendly direct manipulation"
+license = "MIT"
+
+[dependencies]
+# Local dependencies
+x-parser = { path = "../x-parser" }
+x-checker = { path = "../x-checker" }
+
+# Workspace dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# Additional dependencies
+dashmap = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio-test = "0.4"
