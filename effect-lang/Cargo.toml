@@ -47,6 +47,7 @@ sha2 = "0.10"    # Cryptographic hashing
 # Type checking and effects
 ena = "0.14"     # Union-find for unification
 petgraph = "0.6" # Graph algorithms
+bitflags = "2.0" # Bit flags for binary format
 
 [dev-dependencies]
 tokio-test = "0.4"
