@@ -1,0 +1,9 @@
+module Simple
+
+let identity = fun x -> x
+
+let add = fun x y -> x + y
+
+let factorial = fun n ->
+  if n <= 1 then 1
+  else n * factorial (n - 1)
