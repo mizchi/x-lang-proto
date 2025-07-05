@@ -13,17 +13,19 @@ use x_parser::{
 };
 use crate::types::*;
 use crate::error_reporting::*;
+use crate::builtins::Builtins;
 use std::result::Result as StdResult;
 
 use std::collections::{HashMap, HashSet};
 
 /// Type inference context
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct InferenceContext {
     pub env: TypeEnv,
     pub var_gen: VarGen,
     pub constraints: Vec<Constraint>,
     pub errors: Vec<TypeError>,
+    pub builtins: Builtins,
 }
 
 /// Inference result containing type and effects
@@ -41,6 +43,7 @@ impl InferenceContext {
             var_gen: VarGen::new(),
             constraints: Vec::new(),
             errors: Vec::new(),
+            builtins: Builtins::new(),
         }
     }
     
@@ -164,14 +167,12 @@ impl InferenceContext {
     }
     
     fn infer_literal(&mut self, lit: &Literal) -> StdResult<InferenceResult, String> {
-        use x_parser::symbol::symbols;
-        
         let typ = match lit {
-            Literal::Integer(_) => Type::Con(symbols::INT()),
-            Literal::Float(_) => Type::Con(symbols::FLOAT()),
-            Literal::String(_) => Type::Con(symbols::STRING()),
-            Literal::Bool(_) => Type::Con(symbols::BOOL()),
-            Literal::Unit => Type::Con(symbols::UNIT_TYPE()),
+            Literal::Integer(_) => Type::Con(Symbol::intern("Int")),
+            Literal::Float(_) => Type::Con(Symbol::intern("Float")),
+            Literal::String(_) => Type::Con(Symbol::intern("String")),
+            Literal::Bool(_) => Type::Con(Symbol::intern("Bool")),
+            Literal::Unit => Type::Con(Symbol::intern("Unit")),
         };
         
         Ok(InferenceResult {
@@ -186,6 +187,18 @@ impl InferenceContext {
     }
     
     fn infer_var_with_span(&mut self, name: Symbol, span: Option<Span>) -> StdResult<InferenceResult, String> {
+        // First check if it's a builtin
+        if let Some(scheme) = self.builtins.get_type_scheme(&name) {
+            let scheme = scheme.clone();
+            let (typ, effects) = self.instantiate(&scheme);
+            return Ok(InferenceResult {
+                typ,
+                effects,
+                constraints: Vec::new(),
+            });
+        }
+        
+        // Then check the environment
         match self.env.lookup_var(name) {
             Some(scheme) => {
                 let scheme = scheme.clone();

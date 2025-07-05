@@ -314,7 +314,7 @@ fn infer_type(db: &dyn IncrementalTypeCheckDb, node_id: NodeId) -> Result<TypeSc
         },
         _ => {
             // TODO: Implement other node types
-            Ok(TypeScheme::monotype(Type::Con(Symbol::new("Unit"))))
+            Ok(TypeScheme::monotype(Type::Con(Symbol::intern("Unit"))))
         }
     }
 }
@@ -324,12 +324,12 @@ fn infer_literal_type(value: &x_parser::persistent_ast::LiteralValue) -> Result<
     use x_parser::persistent_ast::LiteralValue;
     
     let ty = match value {
-        LiteralValue::Unit => Type::Con(Symbol::new("Unit")),
-        LiteralValue::Boolean(_) => Type::Con(Symbol::new("Bool")),
-        LiteralValue::Integer(_) => Type::Con(Symbol::new("Int")),
-        LiteralValue::Float(_) => Type::Con(Symbol::new("Float")),
-        LiteralValue::String(_) => Type::Con(Symbol::new("String")),
-        LiteralValue::Char(_) => Type::Con(Symbol::new("Char")),
+        LiteralValue::Unit => Type::Con(Symbol::intern("Unit")),
+        LiteralValue::Boolean(_) => Type::Con(Symbol::intern("Bool")),
+        LiteralValue::Integer(_) => Type::Con(Symbol::intern("Int")),
+        LiteralValue::Float(_) => Type::Con(Symbol::intern("Float")),
+        LiteralValue::String(_) => Type::Con(Symbol::intern("String")),
+        LiteralValue::Char(_) => Type::Con(Symbol::intern("Char")),
     };
     
     Ok(TypeScheme::monotype(ty))
@@ -380,7 +380,7 @@ fn infer_lambda_type(
     _effect_annotation: Option<&PersistentAstNode>,
 ) -> Result<TypeScheme, TypeError> {
     // TODO: Implement lambda type inference
-    Ok(TypeScheme::monotype(Type::Con(Symbol::new("Unit"))))
+    Ok(TypeScheme::monotype(Type::Con(Symbol::intern("Unit"))))
 }
 
 fn infer_let_type(
@@ -390,7 +390,7 @@ fn infer_let_type(
     _body: &PersistentAstNode,
 ) -> Result<TypeScheme, TypeError> {
     // TODO: Implement let type inference
-    Ok(TypeScheme::monotype(Type::Con(Symbol::new("Unit"))))
+    Ok(TypeScheme::monotype(Type::Con(Symbol::intern("Unit"))))
 }
 
 fn infer_if_type(
@@ -401,7 +401,7 @@ fn infer_if_type(
     _else_branch: Option<&PersistentAstNode>,
 ) -> Result<TypeScheme, TypeError> {
     // TODO: Implement if type inference
-    Ok(TypeScheme::monotype(Type::Con(Symbol::new("Unit"))))
+    Ok(TypeScheme::monotype(Type::Con(Symbol::intern("Unit"))))
 }
 
 /// Additional helper structures

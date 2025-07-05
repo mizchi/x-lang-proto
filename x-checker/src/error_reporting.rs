@@ -127,8 +127,8 @@ mod tests {
         assert!(!reporter.has_errors());
         
         let error = TypeError::TypeMismatch {
-            expected: Type::Con(Symbol::new("Int")),
-            found: Type::Con(Symbol::new("String")),
+            expected: Type::Con(Symbol::intern("Int")),
+            found: Type::Con(Symbol::intern("String")),
             span: test_span(),
         };
         

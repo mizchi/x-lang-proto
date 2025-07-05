@@ -12,6 +12,7 @@ pub mod error_reporting;
 pub mod binary_type_checker;
 pub mod constraints;
 pub mod checker;
+pub mod builtins;
 
 // Re-export core types
 pub use types::{Type, TypeScheme, TypeVar, TypeEnv};
