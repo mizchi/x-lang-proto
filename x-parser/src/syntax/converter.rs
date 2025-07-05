@@ -5,7 +5,7 @@
 
 use super::{MultiSyntax, SyntaxStyle, SyntaxConfig};
 use crate::{ast::*, span::FileId};
-use crate::error::{ParseError as Error, Result};
+use crate::error::Result;
 
 /// Syntax converter that can transform code between different styles
 pub struct SyntaxConverter {
@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_converter_creation() {
-        let converter = SyntaxConverter::new();
+        let _converter = SyntaxConverter::new();
         // Just test that it can be created
     }
 

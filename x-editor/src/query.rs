@@ -1,7 +1,7 @@
 //! Advanced AST querying and navigation system
 
 use x_parser::{
-    persistent_ast::{PersistentAstNode, NodeId},
+    persistent_ast::NodeId,
     symbol::Symbol,
 };
 use crate::index_system::Position;

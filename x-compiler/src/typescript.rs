@@ -16,6 +16,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 /// TypeScript code generation backend
+#[allow(dead_code)]
 pub struct TypeScriptBackend {
     module_system: TypeScriptModuleSystem,
     emit_types: bool,
@@ -78,7 +79,7 @@ impl CodegenBackend for TypeScriptBackend {
         
         // Generate TypeScript code
         let mut files = HashMap::new();
-        let mut diagnostics = Vec::new();
+        let diagnostics = Vec::new();
         
         for module in &ir.modules {
             let module_code = self.generate_ir_module(module, type_info, options)?;
@@ -185,7 +186,7 @@ impl TypeScriptBackend {
         &mut self,
         module: &IRModule,
         _type_info: &HashMap<Symbol, TypeScheme>,
-        options: &CodegenOptions,
+        _options: &CodegenOptions,
     ) -> Result<String> {
         let mut code = String::new();
         

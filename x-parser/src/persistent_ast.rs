@@ -5,7 +5,6 @@
 
 use crate::{span::{Span, FileId, ByteOffset}, symbol::Symbol};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use std::collections::HashMap;
 // use im::Vector;
 

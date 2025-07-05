@@ -175,10 +175,10 @@ fn save_json_ast(ast: &PersistentAstNode) -> Result<Vec<u8>> {
 
 /// Load text AST format
 fn load_text_ast(content: &[u8], format: Format) -> Result<PersistentAstNode> {
-    let text = std::str::from_utf8(content)
+    let _text = std::str::from_utf8(content)
         .context("Invalid UTF-8 in text file")?;
     
-    let syntax_style = format.syntax_style()
+    let _syntax_style = format.syntax_style()
         .context("Format does not support text parsing")?;
     
     // TODO: Use actual parser
@@ -270,7 +270,7 @@ fn convert_ast_to_persistent(cu: &x_parser::ast::CompilationUnit) -> Result<Pers
 /// Convert PersistentAstNode to AST
 fn convert_persistent_to_ast(ast: &PersistentAstNode) -> Result<x_parser::ast::CompilationUnit> {
     use x_parser::ast::*;
-    use x_parser::span::{FileId, ByteOffset};
+    
     
     match &ast.kind {
         AstNodeKind::CompilationUnit { modules, imports: _, exports: _ } => {

@@ -20,9 +20,7 @@ pub use types::{Effect, EffectSet};
 pub use error_reporting::{TypeError, TypeErrorReporter};
 pub use checker::{TypeChecker, CheckResult, EffectConstraint};
 
-use x_parser::{CompilationUnit, Symbol, Span, FileId};
-use x_parser::span::ByteOffset;
-use std::collections::HashMap;
+use x_parser::{CompilationUnit, Symbol, Span};
 
 /// Type check a compilation unit
 pub fn type_check(cu: &CompilationUnit) -> CheckResult {
@@ -142,7 +140,7 @@ mod tests {
         let mut db = TypeCheckDatabaseImpl::new();
         
         let symbol = Symbol::intern("test");
-        let type_scheme = TypeScheme::monotype(types::Type::Int);
+        let type_scheme = TypeScheme::monotype(types::Type::Con(Symbol::intern("Int")));
         
         db.set_type_for_symbol(symbol, type_scheme.clone());
         assert_eq!(db.symbol_type(symbol), Some(type_scheme));

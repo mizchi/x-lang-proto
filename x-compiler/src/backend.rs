@@ -1,7 +1,7 @@
 //! Abstract backend interface for code generation
 
 use x_parser::{CompilationUnit, Module, Span, Symbol};
-use x_checker::{Type, TypeScheme};
+use x_checker::TypeScheme;
 use crate::{CompilerError, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -88,13 +88,13 @@ pub trait CodegenBackend {
     fn generate_runtime(&self, options: &CodegenOptions) -> Result<String>;
     
     /// Optimize generated code
-    fn optimize_code(&self, code: &str, level: u8) -> Result<String> {
+    fn optimize_code(&self, code: &str, _level: u8) -> Result<String> {
         // Default: no optimization
         Ok(code.to_string())
     }
     
     /// Validate the generated code
-    fn validate_output(&self, code: &str) -> Vec<CodegenDiagnostic> {
+    fn validate_output(&self, _code: &str) -> Vec<CodegenDiagnostic> {
         // Default: no validation
         Vec::new()
     }

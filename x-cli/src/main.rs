@@ -201,7 +201,7 @@ async fn main() -> Result<()> {
     init_logging(cli.verbose)?;
     
     // Load configuration
-    let config = CliConfig::load(cli.config.as_deref())?;
+    let _config = CliConfig::load(cli.config.as_deref())?;
     
     // Execute command
     let result = match cli.command {
@@ -220,12 +220,12 @@ async fn main() -> Result<()> {
         Commands::Edit { input, output, commands, interactive } => {
             edit_command(&input, output.as_deref(), commands.as_deref(), interactive).await
         },
-        Commands::Rename { input, from, to, output } => {
+        Commands::Rename { input: _, from: _, to: _, output: _ } => {
             // rename_command(&input, &from, &to, output.as_deref()).await
             println!("Rename command not yet implemented");
             Ok(())
         },
-        Commands::Extract { input, start, end, name, output } => {
+        Commands::Extract { input: _, start: _, end: _, name: _, output: _ } => {
             // extract_command(&input, &start, &end, &name, output.as_deref()).await
             println!("Extract command not yet implemented");
             Ok(())
@@ -275,6 +275,7 @@ fn init_logging(verbose: bool) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn print_banner() {
     println!("{}", r#"
  ╔═══════════════════════════════════════════════════════════════════════╗

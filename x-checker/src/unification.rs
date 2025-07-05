@@ -7,13 +7,10 @@
 //! - Substitution composition and application
 
 use crate::types::*;
-use crate::effects::*;
-use x_parser::{Symbol, Span, FileId};
-use x_parser::span::ByteOffset;
-use crate::error_reporting::TypeError;
+use x_parser::Symbol;
 use std::result::Result;
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::VecDeque;
 
 /// Unification engine
 #[derive(Debug, Clone)]
@@ -30,6 +27,7 @@ pub struct Unifier {
 
 /// Internal constraints for unification
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum UnificationConstraint {
     /// Type equality constraint
     Unify(Type, Type),
@@ -445,6 +443,7 @@ impl Unifier {
 
 /// Constraint propagation and simplification
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ConstraintSolver {
     /// Constraints to solve
     constraints: Vec<Constraint>,
@@ -505,6 +504,7 @@ impl ConstraintSolver {
         Err(format!("No instance found for {} {:?}", class, types))
     }
     
+    #[allow(dead_code)]
     fn match_instance(&self, instance_head: &Constraint, types: &[Type]) -> Result<Substitution, String> {
         match instance_head {
             Constraint::Class { class: _, types: instance_types } => {

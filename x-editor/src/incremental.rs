@@ -3,8 +3,6 @@
 use x_parser::CompilationUnit;
 use x_checker::CheckResult;
 use dashmap::DashMap;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
@@ -28,6 +26,7 @@ pub struct AnalysisResult {
 
 /// Cache entry for incremental analysis
 #[derive(Debug)]
+#[allow(dead_code)]
 struct CacheEntry {
     /// Hash of the input
     hash: u64,
@@ -39,6 +38,7 @@ struct CacheEntry {
 
 /// Incremental analyzer for efficient reanalysis
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct IncrementalAnalyzer {
     /// Cache of analysis results
     cache: Arc<DashMap<String, CacheEntry>>,
@@ -195,6 +195,7 @@ impl IncrementalAnalyzer {
 
 
     /// Evict least recently used entries
+    #[allow(dead_code)]
     fn evict_lru_entries(&self) {
         let mut entries: Vec<_> = self.cache.iter()
             .map(|entry| (entry.key().clone(), entry.last_accessed))

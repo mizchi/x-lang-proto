@@ -1,5 +1,4 @@
-use x_parser::{CompilationUnit, Module, Item, TypeDef, TypeDefKind, Constructor, ValueDef, ModulePath, Symbol, Type, Visibility, Pattern, WasmType, ComponentInterface, InterfaceItem, FunctionSignature, ResourceMethod, span::{Span, FileId, ByteOffset}};
-use std::collections::HashMap;
+use x_parser::{CompilationUnit, Module, Item, TypeDef, TypeDefKind, ValueDef, Symbol, Type, Visibility, WasmType, ComponentInterface, InterfaceItem, FunctionSignature, ResourceMethod, span::{Span, FileId, ByteOffset}};
 use std::fmt::Write;
 
 /// WebAssembly Interface Types (WIT) generator
@@ -142,6 +141,7 @@ impl WitGenerator {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn generate_wasm_type(&mut self, name: &Symbol, wasm_type: &WasmType) -> Result<(), String> {
         writeln!(self.output, "{}type {} = {};", self.indent(), name.as_str(), self.wasm_type_to_wit(wasm_type))
             .map_err(|e| format!("Failed to write type definition: {}", e))?;
@@ -344,6 +344,7 @@ impl WitGenerator {
         }
     }
 
+    #[allow(dead_code)]
     fn visibility_to_wit_export(&self, visibility: &Visibility) -> Option<String> {
         match visibility {
             Visibility::Component { export: true, interface: Some(interface_name), .. } => {

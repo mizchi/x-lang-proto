@@ -169,7 +169,7 @@ fn ast_to_json_with_depth(ast: &PersistentAstNode, max_depth: usize) -> serde_js
         });
     }
     
-    let mut value = serde_json::to_value(ast).unwrap_or(serde_json::Value::Null);
+    let value = serde_json::to_value(ast).unwrap_or(serde_json::Value::Null);
     
     // Recursively limit depth of children
     // This is a simplified implementation - real implementation would traverse the JSON structure
@@ -392,7 +392,7 @@ fn show_sexp(ast: &PersistentAstNode, _max_depth: Option<usize>) -> Result<()> {
 
 /// Convert PersistentAstNode to regular CompilationUnit
 /// This is a simplified conversion - a full implementation would reconstruct the entire AST
-fn convert_persistent_to_ast(ast: &PersistentAstNode) -> Result<x_parser::ast::CompilationUnit> {
+fn convert_persistent_to_ast(_ast: &PersistentAstNode) -> Result<x_parser::ast::CompilationUnit> {
     use x_parser::ast::*;
     use x_parser::symbol::Symbol;
     use x_parser::span::{Span, FileId, ByteOffset};

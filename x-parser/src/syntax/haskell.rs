@@ -6,7 +6,6 @@
 use super::{SyntaxParser, SyntaxPrinter, SyntaxStyle, SyntaxConfig};
 use crate::{ast::*, span::{FileId, Span, ByteOffset}, symbol::Symbol};
 use crate::error::{ParseError as Error, Result};
-use std::collections::HashMap;
 
 /// Haskell-style parser
 pub struct HaskellParser;
@@ -119,7 +118,7 @@ impl HaskellPrinter {
         Ok(output)
     }
     
-    fn print_import(&self, import: &Import, config: &SyntaxConfig) -> Result<String> {
+    fn print_import(&self, import: &Import, _config: &SyntaxConfig) -> Result<String> {
         let mut output = String::new();
         
         output.push_str(&format!("import {}", import.module_path.to_string()));
@@ -280,7 +279,7 @@ impl HaskellPrinter {
         Ok(output)
     }
     
-    fn print_handler_def(&self, def: &HandlerDef, config: &SyntaxConfig, level: usize) -> Result<String> {
+    fn print_handler_def(&self, def: &HandlerDef, config: &SyntaxConfig, _level: usize) -> Result<String> {
         let mut output = String::new();
         
         // In Haskell, handlers might be represented as instances
@@ -455,7 +454,7 @@ impl HaskellPrinter {
                 
                 Ok(output)
             }
-            Expr::Handle { expr, handlers, return_clause, span: _ } => {
+            Expr::Handle { expr, handlers: _, return_clause: _, span: _ } => {
                 // Haskell doesn't have algebraic effects syntax, so we use a comment
                 let mut output = String::new();
                 output.push_str("-- handle ");
@@ -466,7 +465,7 @@ impl HaskellPrinter {
             Expr::Resume { value, span: _ } => {
                 Ok(format!("resume {}", self.print_expr(value, config, level)?))
             }
-            Expr::Perform { effect, operation, args, span: _ } => {
+            Expr::Perform { effect: _, operation, args, span: _ } => {
                 let mut output = format!("{}", operation.as_str()); // Simplified
                 for arg in args {
                     output.push(' ');
@@ -735,7 +734,7 @@ impl HaskellPrinter {
         }
     }
     
-    fn needs_parens_in_infix(&self, expr: &Expr, is_left: bool) -> bool {
+    fn needs_parens_in_infix(&self, expr: &Expr, _is_left: bool) -> bool {
         match expr {
             Expr::App(func, args, _) => {
                 if let Expr::Var(op, _) = func.as_ref() {
@@ -809,6 +808,7 @@ impl HaskellPrinter {
 
 // Simplified Haskell lexer and parser (stub implementation)
 
+#[allow(dead_code)]
 struct HaskellLexer {
     input: String,
     file_id: FileId,
@@ -833,6 +833,7 @@ enum HaskellToken {
     Eof,
 }
 
+#[allow(dead_code)]
 struct HaskellTokenParser {
     tokens: Vec<HaskellToken>,
     file_id: FileId,

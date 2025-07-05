@@ -7,14 +7,11 @@
 //! - Pretty-printed error displays
 
 use x_parser::{
-    Span, FileId,
+    Span,
     Symbol,
 };
-use x_parser::span::ByteOffset;
 use crate::types::*;
-use std::result::Result as StdResult;
 use std::fmt;
-use std::collections::HashMap;
 
 /// Enhanced type error with context and suggestions
 #[derive(Debug, Clone)]

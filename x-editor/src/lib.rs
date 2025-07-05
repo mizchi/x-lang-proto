@@ -27,7 +27,6 @@ pub use validation::{ValidationResult, ValidationError};
 use x_parser::CompilationUnit;
 use x_checker::CheckResult;
 use std::collections::HashMap;
-use uuid::Uuid;
 
 /// Main entry point for the language service
 #[derive(Debug)]

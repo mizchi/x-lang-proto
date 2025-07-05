@@ -5,7 +5,7 @@
 
 use super::{SyntaxParser, SyntaxPrinter, SyntaxStyle, SyntaxConfig};
 use crate::{ast::*, span::{FileId, Span, ByteOffset}, symbol::Symbol};
-use crate::error::{ParseError as Error, Result};
+use crate::error::Result;
 
 /// Rust-like parser
 pub struct RustLikeParser;
@@ -17,7 +17,7 @@ impl RustLikeParser {
 }
 
 impl SyntaxParser for RustLikeParser {
-    fn parse(&mut self, input: &str, file_id: FileId) -> Result<CompilationUnit> {
+    fn parse(&mut self, _input: &str, _file_id: FileId) -> Result<CompilationUnit> {
         // Stub implementation - full parser would be needed
         let module = Module {
             name: ModulePath::single(Symbol::intern("main"), dummy_span()),
@@ -33,7 +33,7 @@ impl SyntaxParser for RustLikeParser {
         })
     }
     
-    fn parse_expression(&mut self, input: &str, file_id: FileId) -> Result<Expr> {
+    fn parse_expression(&mut self, _input: &str, _file_id: FileId) -> Result<Expr> {
         // Stub implementation
         Ok(Expr::Literal(Literal::Unit, dummy_span()))
     }
@@ -107,7 +107,7 @@ impl RustLikePrinter {
         Ok(output)
     }
     
-    fn print_import(&self, import: &Import, config: &SyntaxConfig) -> Result<String> {
+    fn print_import(&self, import: &Import, _config: &SyntaxConfig) -> Result<String> {
         let mut output = String::new();
         
         output.push_str("use ");
@@ -373,7 +373,7 @@ impl RustLikePrinter {
             output.push_str(&handler.operation.as_str());
             output.push_str("(&self");
             
-            for (i, param) in handler.parameters.iter().enumerate() {
+            for (_i, param) in handler.parameters.iter().enumerate() {
                 output.push_str(", ");
                 output.push_str(&self.print_pattern(param, config)?);
                 output.push_str(": _"); // Type would be inferred from trait
@@ -555,7 +555,7 @@ impl RustLikePrinter {
                 output.push('}');
                 Ok(output)
             }
-            Expr::Handle { expr, handlers, return_clause, span: _ } => {
+            Expr::Handle { expr, handlers: _, return_clause: _, span: _ } => {
                 // Rust doesn't have algebraic effects, so we use a comment
                 let mut output = String::new();
                 output.push_str("/* handle ");

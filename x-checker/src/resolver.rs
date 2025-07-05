@@ -5,10 +5,8 @@
 
 use x_parser::{
     ModulePath, Import, ImportKind,
-    FileId, Span,
-    Symbol,
+    FileId,
 };
-use x_parser::span::ByteOffset;
 // use crate::database::Database;
 use std::result::Result as StdResult;
 
@@ -106,7 +104,7 @@ impl ModuleResolver {
         }
         
         // Try different resolution strategies
-        let file_path = self.resolve_local_module(module_path)
+        let _file_path = self.resolve_local_module(module_path)
             .or_else(|| self.resolve_dependency_module(module_path))
             .or_else(|| self.resolve_standard_module(module_path))
             .ok_or_else(|| format!("Module not found: {}", module_path.to_string()))?;
@@ -121,7 +119,7 @@ impl ModuleResolver {
     /// Resolve module imports and build dependency graph
     pub fn resolve_imports(
         &mut self, 
-        file_id: FileId, 
+        _file_id: FileId, 
         imports: &[Import]
     ) -> StdResult<Vec<FileId>, String> {
         let mut resolved_deps = Vec::new();
@@ -414,6 +412,7 @@ impl DependencyGraph {
 /// Workspace configuration structure
 // TODO: Enable when toml crate is added
 // #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct WorkspaceConfig {
     // #[serde(default)]
     dependencies: HashMap<String, DependencyInfo>,

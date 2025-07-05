@@ -6,7 +6,6 @@
 use super::{SyntaxParser, SyntaxPrinter, SyntaxStyle, SyntaxConfig};
 use crate::{ast::*, span::{FileId, Span, ByteOffset}, symbol::Symbol};
 use crate::error::{ParseError as Error, Result};
-use std::collections::HashMap;
 
 /// S-expression parser
 pub struct SExpParser;
@@ -88,7 +87,7 @@ impl SExpPrinter {
                 } else if list.len() == 1 {
                     format!("({})", self.print_sexp(&list[0], config, level))
                 } else {
-                    let indent = self.indent(level, config);
+                    let _indent = self.indent(level, config);
                     let mut output = String::new();
                     output.push('(');
                     
@@ -113,7 +112,7 @@ impl SExpPrinter {
         }
     }
     
-    fn should_break_line(&self, first: &SExp, item: &SExp, config: &SyntaxConfig) -> bool {
+    fn should_break_line(&self, first: &SExp, item: &SExp, _config: &SyntaxConfig) -> bool {
         // Break lines for certain constructs to improve readability
         if let SExp::Atom(atom) = first {
             match atom.as_str() {
@@ -145,6 +144,7 @@ enum SExpToken {
 }
 
 /// S-expression lexer
+#[allow(dead_code)]
 struct SExpLexer {
     input: String,
     chars: Vec<char>,
@@ -284,6 +284,7 @@ impl SExpLexer {
 }
 
 /// S-expression token parser
+#[allow(dead_code)]
 struct SExpTokenParser {
     tokens: Vec<SExpToken>,
     current: usize,
@@ -888,7 +889,7 @@ fn type_to_sexp(typ: &Type) -> SExp {
                 type_to_sexp(body),
             ])
         }
-        Type::Effects(effects, _) => {
+        Type::Effects(_effects, _) => {
             SExp::List(vec![SExp::Atom("effects".to_string())]) // Simplified
         }
         Type::Exists { type_params, body, span: _ } => {

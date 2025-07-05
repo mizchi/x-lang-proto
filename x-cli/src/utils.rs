@@ -36,12 +36,14 @@ impl ProgressIndicator {
     }
     
     /// Finish the progress indicator with an error message
+    #[allow(dead_code)]
     pub fn finish_error(&self, message: &str) {
         self.bar.finish_with_message(format!("{} {}", "✗".red(), message));
     }
 }
 
 /// Format file size in human-readable format
+#[allow(dead_code)]
 pub fn format_file_size(bytes: u64) -> String {
     const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
     const THRESHOLD: u64 = 1024;
@@ -66,6 +68,7 @@ pub fn format_file_size(bytes: u64) -> String {
 }
 
 /// Format duration in human-readable format
+#[allow(dead_code)]
 pub fn format_duration(duration: Duration) -> String {
     let total_secs = duration.as_secs();
     let nanos = duration.subsec_nanos();
@@ -86,6 +89,7 @@ pub fn format_duration(duration: Duration) -> String {
 }
 
 /// Print a styled header
+#[allow(dead_code)]
 pub fn print_header(title: &str) {
     println!();
     println!("{}", title.bold().underline());
@@ -93,12 +97,14 @@ pub fn print_header(title: &str) {
 }
 
 /// Print a styled subheader
+#[allow(dead_code)]
 pub fn print_subheader(title: &str) {
     println!();
     println!("{}", title.bold());
 }
 
 /// Print an error message with consistent styling
+#[allow(dead_code)]
 pub fn print_error(message: &str) {
     eprintln!("{} {}", "Error:".red().bold(), message);
 }
@@ -114,11 +120,13 @@ pub fn print_success(message: &str) {
 }
 
 /// Print an info message with consistent styling
+#[allow(dead_code)]
 pub fn print_info(message: &str) {
     println!("{} {}", "Info:".blue().bold(), message);
 }
 
 /// Confirm user action
+#[allow(dead_code)]
 pub fn confirm_action(message: &str) -> bool {
     use dialoguer::Confirm;
     
@@ -130,6 +138,7 @@ pub fn confirm_action(message: &str) -> bool {
 }
 
 /// Get user input
+#[allow(dead_code)]
 pub fn get_user_input(prompt: &str) -> Option<String> {
     use dialoguer::Input;
     
@@ -140,6 +149,7 @@ pub fn get_user_input(prompt: &str) -> Option<String> {
 }
 
 /// Select from multiple options
+#[allow(dead_code)]
 pub fn select_option(prompt: &str, options: &[&str]) -> Option<usize> {
     use dialoguer::Select;
     

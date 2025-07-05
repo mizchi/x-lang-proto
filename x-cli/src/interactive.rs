@@ -6,6 +6,7 @@ use std::path::Path;
 use crate::utils::{print_header, get_user_input, select_option};
 
 /// Interactive AST editor
+#[allow(dead_code)]
 pub struct InteractiveEditor {
     // TODO: Add AST engine and state
 }

@@ -5,7 +5,7 @@ use std::path::Path;
 use colored::*;
 use crate::utils::{ProgressIndicator, TableBuilder};
 
-pub async fn stats_command(input: &Path, format: &str) -> Result<()> {
+pub async fn stats_command(_input: &Path, format: &str) -> Result<()> {
     let progress = ProgressIndicator::new("Analyzing project");
     
     progress.set_message("Scanning files");

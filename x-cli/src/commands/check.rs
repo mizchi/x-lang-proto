@@ -1,11 +1,11 @@
 //! Type checking commands
 
-use anyhow::{Result, Context};
+use anyhow::Result;
 use std::path::Path;
 use colored::*;
-use crate::utils::{ProgressIndicator, print_success, print_error};
+use crate::utils::{ProgressIndicator, print_success};
 
-pub async fn check_command(input: &Path, detailed: bool, quiet: bool) -> Result<()> {
+pub async fn check_command(_input: &Path, detailed: bool, quiet: bool) -> Result<()> {
     let progress = ProgressIndicator::new("Type checking");
     
     progress.set_message("Loading AST");

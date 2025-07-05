@@ -6,9 +6,8 @@
 use x_parser::{
     binary::{BinaryDeserializer, TypeCode, TypedBinaryNode},
     Symbol,
-    Span, FileId,
+    Span,
 };
-use x_parser::span::ByteOffset;
 use crate::{
     types::*,
     inference::{InferenceContext, InferenceResult},
@@ -19,6 +18,7 @@ use std::collections::HashMap;
 
 /// Binary type checker that operates directly on binary AST
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct BinaryTypeChecker {
     type_env: TypeEnv,
     var_gen: VarGen,
@@ -104,12 +104,12 @@ impl BinaryTypeChecker {
     }
     
     /// Perform type inference directly on binary AST
-    fn infer_types_from_binary(&mut self, deserializer: &mut BinaryDeserializer) -> StdResult<TypeCheckResult, String> {
-        let mut results = Vec::new();
-        let mut node_count = 0;
+    fn infer_types_from_binary(&mut self, _deserializer: &mut BinaryDeserializer) -> StdResult<TypeCheckResult, String> {
+        let results = Vec::new();
+        let node_count = 0;
         
         // Create inference context
-        let mut inference_ctx = InferenceContext::new();
+        let _inference_ctx = InferenceContext::new();
         
         // TODO: Implement proper binary node processing
         // For now, skip binary node processing since the deserialize_binary_node method is not available
@@ -123,6 +123,7 @@ impl BinaryTypeChecker {
     }
     
     /// Infer type for a single binary node
+    #[allow(dead_code)]
     fn infer_binary_node(&mut self, ctx: &mut InferenceContext, node: &TypedBinaryNode) -> StdResult<InferenceResult, String> {
         match node.node_type {
             TypeCode::LiteralInteger => {
@@ -214,6 +215,7 @@ impl BinaryTypeChecker {
     }
     
     /// Validate a cached type against current context
+    #[allow(dead_code)]
     fn validate_type_in_context(&self, _typ: &Type, _effects: &EffectSet) -> StdResult<(), String> {
         // Simplified validation for now
         // TODO: Add proper type variable and effect validation
@@ -221,6 +223,7 @@ impl BinaryTypeChecker {
     }
     
     /// Decode symbol from binary payload
+    #[allow(dead_code)]
     fn decode_symbol_from_payload(&self, payload: &[u8]) -> StdResult<Symbol, String> {
         if payload.len() < 4 {
             return Err("Invalid symbol payload".to_string());
@@ -232,7 +235,8 @@ impl BinaryTypeChecker {
     }
     
     /// Infer function application from binary payload
-    fn infer_application_from_payload(&mut self, ctx: &mut InferenceContext, payload: &[u8]) -> StdResult<InferenceResult, String> {
+    #[allow(dead_code)]
+    fn infer_application_from_payload(&mut self, ctx: &mut InferenceContext, _payload: &[u8]) -> StdResult<InferenceResult, String> {
         // Simplified implementation - would need proper payload parsing
         let result_type = ctx.fresh_type_var();
         Ok(InferenceResult {
@@ -243,7 +247,8 @@ impl BinaryTypeChecker {
     }
     
     /// Infer lambda expression from binary payload  
-    fn infer_lambda_from_payload(&mut self, ctx: &mut InferenceContext, payload: &[u8]) -> StdResult<InferenceResult, String> {
+    #[allow(dead_code)]
+    fn infer_lambda_from_payload(&mut self, ctx: &mut InferenceContext, _payload: &[u8]) -> StdResult<InferenceResult, String> {
         // Simplified implementation - would need proper payload parsing
         let param_type = ctx.fresh_type_var();
         let return_type = ctx.fresh_type_var();
@@ -319,6 +324,7 @@ impl TypeCheckResult {
 }
 
 /// Extension trait for BinaryDeserializer to support type checking
+#[allow(dead_code)]
 trait BinaryDeserializerExt {
     fn deserialize_binary_node(&mut self) -> StdResult<TypedBinaryNode, String>;
     fn deserialize_internal_type(&mut self) -> StdResult<Type, String>;
@@ -417,6 +423,7 @@ impl BinaryDeserializerExt for BinaryDeserializer {
 */
 
 /// Extension trait for reading exact bytes
+#[allow(dead_code)]
 trait ReadExact {
     fn read_exact(&mut self, buf: &mut [u8]) -> StdResult<(), String>;
     fn read_u8(&mut self) -> StdResult<u8, String>;

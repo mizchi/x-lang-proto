@@ -1,10 +1,9 @@
 use crate::backend::*;
 use crate::wit::WitGenerator;
-use x_parser::{CompilationUnit, Module, Symbol, TypeDefKind, Constructor, Type, Visibility, Item, TypeDef, ValueDef};
+use x_parser::{CompilationUnit, Module, Symbol, TypeDefKind, Type, Visibility, Item, TypeDef, ValueDef};
 use x_checker::TypeScheme;
 use crate::{CompilerError, Result};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::fmt::Write;
 
 /// WebAssembly Component Model backend

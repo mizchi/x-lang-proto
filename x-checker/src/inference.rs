@@ -6,12 +6,11 @@
 //! - Let-polymorphism with value restriction
 
 use x_parser::{
-    Expr, Pattern, Literal, Item, ValueDef, TypeDef, Module, CompilationUnit,
+    Expr, Pattern, Literal, Item, ValueDef, TypeDef, Module,
     LetBinding, MatchArm, DoStatement, EffectHandler, Type as AstType,
-    Span, FileId,
+    Span,
     Symbol,
 };
-use x_parser::span::ByteOffset;
 use crate::types::*;
 use crate::error_reporting::*;
 use std::result::Result as StdResult;
@@ -76,7 +75,7 @@ impl InferenceContext {
     }
     
     /// Generalize a type to a type scheme
-    pub fn generalize(&self, typ: &Type, effects: &EffectSet) -> TypeScheme {
+    pub fn generalize(&self, typ: &Type, _effects: &EffectSet) -> TypeScheme {
         let type_free_vars = typ.free_vars();
         let env_free_vars = self.env_free_vars();
         
@@ -503,7 +502,7 @@ impl InferenceContext {
             Pattern::Constructor { name: _, args, .. } => {
                 // TODO: Implement constructor patterns
                 let mut bindings = HashMap::new();
-                for (i, arg) in args.iter().enumerate() {
+                for (_i, arg) in args.iter().enumerate() {
                     let arg_type = self.fresh_type_var();
                     let arg_bindings = self.infer_pattern(arg, &arg_type)?;
                     bindings.extend(arg_bindings);

@@ -3,7 +3,7 @@
 //! This IR provides a common abstraction layer between the x Language AST
 //! and the target-specific code generators.
 
-use x_parser::{CompilationUnit, Module, Expr, Item, Pattern, Literal, Symbol, Span, ValueDef, TypeDef, Visibility};
+use x_parser::{CompilationUnit, Module, Expr, Item, Pattern, Literal, Symbol, TypeDef, Visibility};
 use x_checker::{Type, EffectSet};
 use crate::Result;
 use std::collections::HashMap;
@@ -235,6 +235,7 @@ pub struct IRAttribute {
 }
 
 /// IR builder for converting AST to IR
+#[allow(dead_code)]
 pub struct IRBuilder {
     current_module: Option<Symbol>,
     type_context: HashMap<Symbol, Type>,

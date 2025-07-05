@@ -1,12 +1,12 @@
 //! AST editing commands
 
-use anyhow::{Result, Context};
+use anyhow::Result;
 use std::path::Path;
 use crate::utils::{ProgressIndicator, print_success, print_warning};
 
 pub async fn edit_command(
-    input: &Path,
-    output: Option<&Path>,
+    _input: &Path,
+    _output: Option<&Path>,
     commands: Option<&str>,
     interactive: bool,
 ) -> Result<()> {
@@ -30,11 +30,12 @@ pub async fn edit_command(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn rename_command(
     input: &Path,
     from: &str,
     to: &str,
-    output: Option<&Path>,
+    _output: Option<&Path>,
 ) -> Result<()> {
     let progress = ProgressIndicator::new("Renaming symbols");
     
@@ -47,12 +48,13 @@ pub async fn rename_command(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn extract_command(
     input: &Path,
     start: &str,
     end: &str,
     name: &str,
-    output: Option<&Path>,
+    _output: Option<&Path>,
 ) -> Result<()> {
     let progress = ProgressIndicator::new("Extracting method");
     

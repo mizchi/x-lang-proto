@@ -229,7 +229,7 @@ async fn handle_check(args: CheckArgs) -> Result<(), Box<dyn std::error::Error>>
     let syntax_style = parse_syntax_style(&args.syntax)?;
     
     // Parse and type check
-    let ast = convenience::parse_source_only(&source, syntax_style)?;
+    let _ast = convenience::parse_source_only(&source, syntax_style)?;
     let check_result = convenience::type_check_source(&source)?;
     
     if check_result.errors.is_empty() {

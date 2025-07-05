@@ -21,6 +21,7 @@ use crate::{
 pub struct InternalType;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct EffectVar(u32);
 
 #[derive(Debug, Clone)]
@@ -37,7 +38,6 @@ pub enum EffectSet {
 }
 use sha2::{Sha256, Digest};
 use std::collections::HashMap;
-use std::io::{Write, Read};
 
 /// Magic number for x Language binary format: '\0xlg' (0x00786C67)
 pub const MAGIC_NUMBER: [u8; 4] = [0x00, 0x78, 0x6C, 0x67];
@@ -193,6 +193,7 @@ pub struct TypedBinaryNode {
 }
 
 /// Enhanced binary AST serializer with type checking support
+#[allow(dead_code)]
 pub struct BinarySerializer {
     buffer: Vec<u8>,
     symbol_table: HashMap<Symbol, u32>,
@@ -678,6 +679,7 @@ impl BinarySerializer {
 }
 
 /// Enhanced binary AST deserializer with type checking support
+#[allow(dead_code)]
 pub struct BinaryDeserializer {
     data: Vec<u8>,
     pos: usize,

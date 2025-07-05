@@ -5,7 +5,7 @@ use crate::{
     config::CompilerConfig,
     CompilerError, CompilationResult, CompilationMetadata, CompilerDiagnostic, DiagnosticSource,
 };
-use x_parser::{parse_with_metadata, SyntaxStyle, FileId};
+use x_parser::{parse_with_metadata, FileId};
 use x_checker::type_check;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -313,7 +313,7 @@ impl CompilationPipeline {
     fn create_compilation_target(
         &self,
         target_name: &str,
-        target_config: &crate::config::TargetConfig,
+        _target_config: &crate::config::TargetConfig,
     ) -> Result<CompilationTarget, CompilerError> {
         let file_extension = match target_name {
             "typescript" | "ts" => "ts",
@@ -373,6 +373,7 @@ impl CompilationPipeline {
     }
 
     /// Get stage execution order
+    #[allow(dead_code)]
     fn stage_order(&self, stage: PipelineStage) -> u8 {
         match stage {
             PipelineStage::Parse => 0,

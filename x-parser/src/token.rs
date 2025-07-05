@@ -369,7 +369,7 @@ pub fn keyword_to_token(s: &str) -> Option<TokenKind> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::span::{FileId, ByteOffset};
+    
 
     #[test]
     fn test_token_precedence() {

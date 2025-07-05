@@ -132,6 +132,7 @@ impl CliConfig {
     }
     
     /// Save configuration to file
+    #[allow(dead_code)]
     pub fn save(&self, config_path: Option<&Path>) -> Result<()> {
         let config_path = match config_path {
             Some(path) => path.to_owned(),

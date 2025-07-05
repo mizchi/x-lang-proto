@@ -10,12 +10,13 @@ use crate::{
     Result,
 };
 use crate::codegen_mod::{WasmOptLevel, GCStrategy};
-use x_parser::{CompilationUnit, Module, Symbol, Visibility};
+use x_parser::{CompilationUnit, Module, Symbol};
 use x_checker::TypeScheme;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::Write;
 
 /// WebAssembly GC code generation backend
+#[allow(dead_code)]
 pub struct WasmGCBackend {
     optimization_level: WasmOptLevel,
     debug_info: bool,
@@ -92,7 +93,7 @@ impl CodegenBackend for WasmGCBackend {
         
         // Generate WebAssembly text format
         let mut files = HashMap::new();
-        let mut diagnostics = Vec::new();
+        let diagnostics = Vec::new();
         
         for module in &ir.modules {
             let wat_code = self.generate_wat_module(module, type_info, options)?;
@@ -123,7 +124,7 @@ impl CodegenBackend for WasmGCBackend {
         type_info: &HashMap<Symbol, TypeScheme>,
         options: &CodegenOptions,
     ) -> Result<String> {
-        let mut ir_builder = IRBuilder::new();
+        let _ir_builder = IRBuilder::new();
         // This is a placeholder - we need to add this method to IRBuilder
         let ir_module = IRModule {
             name: module.name.segments[0],
@@ -383,7 +384,7 @@ impl WasmGCBackend {
                 
                 Ok(code)
             }
-            IRExpression::Lambda { parameters, body, .. } => {
+            IRExpression::Lambda {   .. } => {
                 // Lambda expressions need to be converted to closures
                 let mut code = String::new();
                 

@@ -5,7 +5,7 @@
 //! - Row polymorphism for effects
 //! - Kind system for higher-kinded types
 
-use x_parser::{Type as AstType, Expr, Pattern, Item, Literal, Span, Symbol};
+use x_parser::Symbol;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use serde::{Deserialize, Serialize};

@@ -19,6 +19,7 @@ use std::collections::{HashMap, HashSet};
 
 /// Effect system context
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct EffectContext {
     /// Available effects
     effects: HashMap<Symbol, EffectDefinition>,
@@ -223,7 +224,7 @@ impl EffectContext {
         }
         
         // Check return clause if present
-        if let Some(return_clause) = &handler.return_clause {
+        if let Some(_return_clause) = &handler.return_clause {
             // TODO: Check return clause type
         }
         

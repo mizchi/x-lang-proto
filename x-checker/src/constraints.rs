@@ -3,9 +3,8 @@
 use crate::{
     types::{Type, TypeVar, TypeScheme, Effect, EffectSet},
 };
-use x_parser::{Symbol, Span, FileId};
-use x_parser::span::ByteOffset;
-use std::collections::{HashMap, HashSet};
+use x_parser::{Symbol, Span};
+use std::collections::HashMap;
 
 /// Type constraint for constraint-based type inference
 #[derive(Debug, Clone, PartialEq)]
@@ -198,16 +197,16 @@ impl ConstraintSolver {
         &mut self,
         record_type: &Type,
         field: Symbol,
-        field_type: &Type,
+        _field_type: &Type,
         span: Span,
     ) -> Result<(), ConstraintError> {
         match record_type {
-            Type::Con(name) => {
+            Type::Con(_name) => {
                 // Look up record type definition and check field
                 // TODO: Implement proper record field checking
                 Ok(())
             }
-            Type::Var(var) => {
+            Type::Var(_var) => {
                 // Create a record type constraint for this variable
                 // TODO: Implement row polymorphism
                 Ok(())
@@ -273,13 +272,13 @@ impl ConstraintSolver {
     }
 
     /// Verify handler capability
-    fn verify_handler_capability(&self, handler: Symbol, effect: &Effect) -> Result<(), ConstraintError> {
+    fn verify_handler_capability(&self, _handler: Symbol, _effect: &Effect) -> Result<(), ConstraintError> {
         // TODO: Implement handler capability verification
         Ok(())
     }
 
     /// Ensure effect is available
-    fn ensure_effect_available(&self, effect: &Effect) -> Result<(), ConstraintError> {
+    fn ensure_effect_available(&self, _effect: &Effect) -> Result<(), ConstraintError> {
         // TODO: Implement effect availability checking
         Ok(())
     }
@@ -444,7 +443,7 @@ mod tests {
         assert!(constraints.is_empty());
 
         let span = Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0));
-        constraints.equal(Type::Con(Symbol::new("Int")), Type::Con(Symbol::new("Int")), span);
+        constraints.equal(Type::Con(Symbol::intern("Int")), Type::Con(Symbol::intern("Int")), span);
         assert!(!constraints.is_empty());
         assert_eq!(constraints.type_constraints.len(), 1);
     }
@@ -471,7 +470,7 @@ mod tests {
     #[test]
     fn test_type_substitution() {
         let mut type_sub = HashMap::new();
-        type_sub.insert(TypeVar(0), Type::Con(Symbol::new("Int")));
+        type_sub.insert(TypeVar(0), Type::Con(Symbol::intern("Int")));
         
         let substitution = Substitution {
             type_substitution: type_sub,
@@ -481,6 +480,6 @@ mod tests {
         let var_type = Type::Var(TypeVar(0));
         let applied = substitution.apply_to_type(&var_type);
         
-        assert_eq!(applied, Type::Con(Symbol::new("Int")));
+        assert_eq!(applied, Type::Con(Symbol::intern("Int")));
     }
 }

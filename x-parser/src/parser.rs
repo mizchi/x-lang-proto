@@ -12,6 +12,7 @@ use crate::{
 };
 
 /// Parser state
+#[allow(dead_code)]
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
@@ -328,6 +329,7 @@ impl Parser {
     }
     
     /// Parse data type definition (backward compatibility)
+    #[allow(dead_code)]
     fn parse_data_type(&mut self) -> Result<TypeDef> {
         self.parse_data_type_with_visibility(Visibility::Private)
     }
@@ -355,6 +357,7 @@ impl Parser {
     }
     
     /// Parse type alias (backward compatibility)
+    #[allow(dead_code)]
     fn parse_type_alias(&mut self) -> Result<TypeDef> {
         self.parse_type_alias_with_visibility(Visibility::Private)
     }
@@ -407,6 +410,7 @@ impl Parser {
     }
     
     /// Parse effect definition (backward compatibility)
+    #[allow(dead_code)]
     fn parse_effect_def(&mut self) -> Result<EffectDef> {
         self.parse_effect_def_with_visibility(Visibility::Private)
     }
@@ -486,6 +490,7 @@ impl Parser {
     }
     
     /// Parse handler definition (backward compatibility)
+    #[allow(dead_code)]
     fn parse_handler_def(&mut self) -> Result<HandlerDef> {
         self.parse_handler_def_with_visibility(Visibility::Private)
     }
@@ -521,12 +526,13 @@ impl Parser {
     }
     
     /// Parse value definition (backward compatibility)
+    #[allow(dead_code)]
     fn parse_value_def(&mut self) -> Result<ValueDef> {
         self.parse_value_def_with_visibility(Visibility::Private)
     }
     
     /// Parse component interface definition
-    fn parse_interface_def(&mut self, visibility: Visibility) -> Result<ComponentInterface> {
+    fn parse_interface_def(&mut self, _visibility: Visibility) -> Result<ComponentInterface> {
         let start_span = self.current_span();
         self.expect(TokenKind::Interface)?;
         

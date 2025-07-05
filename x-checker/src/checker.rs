@@ -2,7 +2,7 @@
 
 use crate::{
     types::{Type, TypeScheme, TypeEnv, EffectSet},
-    inference::{InferenceContext, InferenceResult},
+    inference::InferenceContext,
     error_reporting::{TypeError, TypeErrorReporter},
 };
 use x_parser::{CompilationUnit, Module, Item, ValueDef, TypeDef, Symbol, Span, FileId};
@@ -123,7 +123,7 @@ impl TypeChecker {
     /// Type check a type definition
     fn check_type_def(&mut self, type_def: &TypeDef) {
         // Add type constructor to environment
-        let type_scheme = self.create_type_scheme_for_type_def(type_def);
+        let _type_scheme = self.create_type_scheme_for_type_def(type_def);
         // TODO: Add type constructor to environment properly
         // self.env.insert_type_con(type_def.name, type_scheme);
 
@@ -170,6 +170,7 @@ impl TypeChecker {
         // TODO: Implement import checking
     }
 
+    #[allow(dead_code)]
     fn check_export(&mut self, _export: &x_parser::ExportList) {
         // TODO: Implement export checking
     }
@@ -214,7 +215,7 @@ impl TypeChecker {
                     _ => Type::App(Box::new(con_type), arg_types),
                 }
             }
-            x_parser::Type::Fun { params, return_type, effects, .. } => {
+            x_parser::Type::Fun { params, return_type,  .. } => {
                 Type::Fun {
                     params: params.iter().map(|t| self.convert_parser_type_to_checker_type(t)).collect(),
                     return_type: Box::new(self.convert_parser_type_to_checker_type(return_type)),

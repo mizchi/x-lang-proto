@@ -1,6 +1,6 @@
 //! Compilation commands
 
-use anyhow::{Result, Context};
+use anyhow::Result;
 use std::path::Path;
 use colored::*;
 use crate::utils::{ProgressIndicator, print_success};

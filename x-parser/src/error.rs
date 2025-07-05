@@ -188,7 +188,7 @@ impl ErrorReporter {
         let lines: Vec<&str> = source.lines().collect();
         // Convert byte offsets to line numbers
         let start_line = self.byte_to_line(source, span.start.as_u32()).saturating_sub(1);
-        let end_line = self.byte_to_line(source, span.end.as_u32()).min(lines.len());
+        let _end_line = self.byte_to_line(source, span.end.as_u32()).min(lines.len());
 
         let mut output = String::new();
         
@@ -208,7 +208,7 @@ impl ErrorReporter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::span::{Position, FileId, ByteOffset};
+    use crate::span::{FileId, ByteOffset};
 
     #[test]
     fn test_error_creation() {

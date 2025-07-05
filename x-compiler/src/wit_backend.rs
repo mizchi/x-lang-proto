@@ -4,7 +4,6 @@ use x_parser::{CompilationUnit, Module, Symbol};
 use x_checker::TypeScheme;
 use crate::{CompilerError, Result};
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 /// WIT (WebAssembly Interface Types) backend
 pub struct WitBackend {

@@ -13,9 +13,8 @@ use x_parser::{
     symbol::Symbol,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, BTreeMap, HashSet};
-use im::{Vector, OrdMap, OrdSet};
-use std::sync::Arc;
+use std::collections::{HashMap, BTreeMap};
+use im::OrdSet;
 
 /// Collection of all indices for fast AST queries
 #[derive(Debug, Clone)]
@@ -156,7 +155,7 @@ impl TypeIndex {
         let type_name = self.get_type_name(&node.kind);
         
         self.node_to_type.insert(node_id, type_name.clone());
-        self.type_to_nodes
+        let _ = self.type_to_nodes
             .entry(type_name)
             .or_insert_with(OrdSet::new)
             .update(node_id);
@@ -249,7 +248,7 @@ impl SymbolIndex {
         // Index definitions
         for symbol in &defined_symbols {
             self.definitions.insert(*symbol, node_id);
-            self.node_definitions
+            let _ = self.node_definitions
                 .entry(node_id)
                 .or_insert_with(OrdSet::new)
                 .update(*symbol);
@@ -257,11 +256,11 @@ impl SymbolIndex {
         
         // Index references
         for symbol in &referenced_symbols {
-            self.references
+            let _ = self.references
                 .entry(*symbol)
                 .or_insert_with(OrdSet::new)
                 .update(node_id);
-            self.node_references
+            let _ = self.node_references
                 .entry(node_id)
                 .or_insert_with(OrdSet::new)
                 .update(*symbol);
@@ -370,7 +369,7 @@ impl PositionIndex {
         let start = span.start.as_u32();
         let end = span.end.as_u32();
         
-        self.intervals
+        let _ = self.intervals
             .entry(start)
             .or_insert_with(BTreeMap::new)
             .entry(end)
@@ -506,12 +505,12 @@ impl DependencyIndex {
     }
     
     pub fn add_dependency(&mut self, dependent: NodeId, dependency: NodeId) {
-        self.dependencies
+        let _ = self.dependencies
             .entry(dependent)
             .or_insert_with(OrdSet::new)
             .update(dependency);
         
-        self.dependents
+        let _ = self.dependents
             .entry(dependency)
             .or_insert_with(OrdSet::new)
             .update(dependent);
@@ -564,7 +563,7 @@ impl HierarchyIndex {
         
         if let Some(parent_id) = parent {
             self.parent_map.insert(node_id, parent_id);
-            self.children_map
+            let _ = self.children_map
                 .entry(parent_id)
                 .or_insert_with(OrdSet::new)
                 .update(node_id);

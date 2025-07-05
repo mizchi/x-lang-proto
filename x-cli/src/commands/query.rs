@@ -4,7 +4,7 @@ use anyhow::{Result, Context};
 use std::path::Path;
 use colored::*;
 use serde_json;
-use x_parser::{persistent_ast::{PersistentAstNode, AstNodeKind}, symbol::Symbol};
+use x_parser::persistent_ast::{PersistentAstNode, AstNodeKind};
 use crate::format::{detect_format, load_ast};
 use crate::utils::ProgressIndicator;
 

@@ -4,11 +4,7 @@ use anyhow::{Result, Context, bail};
 use std::path::Path;
 use std::fs;
 use colored::*;
-use x_parser::{
-    persistent_ast::PersistentAstNode,
-    span::FileId,
-    symbol::Symbol,
-};
+use x_parser::persistent_ast::PersistentAstNode;
 // use x_editor::ast_engine::AstEngine;
 use crate::format::{Format, detect_format, load_ast, save_ast};
 use crate::utils::ProgressIndicator;

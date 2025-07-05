@@ -9,6 +9,7 @@ use crate::{
 };
 
 /// Lexical analyzer
+#[allow(dead_code)]
 pub struct Lexer {
     input: String,
     chars: Vec<char>,

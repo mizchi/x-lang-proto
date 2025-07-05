@@ -3,6 +3,8 @@
 //! This module provides a global symbol table for interning strings,
 //! which is essential for performance when dealing with many identifiers.
 
+#![allow(non_snake_case)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};

@@ -1,8 +1,8 @@
 //! Direct AST editing operations without text representation
 
 use crate::operations::{EditOperation, InsertOperation, DeleteOperation, ReplaceOperation, MoveOperation, EditableNode};
-use crate::query::{AstQuery, QueryResult, NodeSelector};
-use crate::validation::{ValidationResult, ValidationError};
+use crate::query::{AstQuery, QueryResult};
+use crate::validation::ValidationResult;
 use x_parser::{CompilationUnit, Module, Item, Expr, Literal};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -409,6 +409,7 @@ impl AstEditor {
     }
 
     /// Get children of a node
+    #[allow(dead_code)]
     fn get_children<'a>(&self, ast: &'a CompilationUnit, path: &[usize]) -> Result<Vec<AstTarget<'a>>, EditError> {
         let target = self.navigate_to_path(ast, path)?;
         let mut children = Vec::new();
@@ -470,6 +471,7 @@ impl Default for AstEditor {
 
 /// Target for AST navigation
 #[derive(Debug)]
+#[allow(dead_code)]
 enum AstTarget<'a> {
     CompilationUnit(&'a CompilationUnit),
     Module(&'a Module),
