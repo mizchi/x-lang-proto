@@ -5,11 +5,7 @@
 //! - Row polymorphism for effects
 //! - Kind system for higher-kinded types
 
-use crate::core::{
-    ast::{Type as AstType, Expr, Pattern, Item, Literal},
-    span::Span,
-    symbol::Symbol,
-};
+use x_parser::{Type as AstType, Expr, Pattern, Item, Literal, Span, Symbol};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use serde::{Deserialize, Serialize};
@@ -27,7 +23,7 @@ pub struct EffectVar(pub u32);
 pub struct RowVar(pub u32);
 
 /// Types in the type system
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Type {
     /// Type variable (unification variable)
     Var(TypeVar),
@@ -69,10 +65,13 @@ pub enum Type {
         var: TypeVar,
         body: Box<Type>,
     },
+    
+    /// Unknown type (used during type checking)
+    Unknown,
 }
 
 /// Effect sets with row polymorphism
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EffectSet {
     /// Empty effect set
     Empty,
@@ -88,14 +87,14 @@ pub enum EffectSet {
 }
 
 /// Individual effects
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Effect {
     pub name: Symbol,
     pub operations: Vec<Operation>,
 }
 
 /// Effect operations
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Operation {
     pub name: Symbol,
     pub params: Vec<Type>,
@@ -119,7 +118,7 @@ pub enum Kind {
 }
 
 /// Type scheme (polymorphic type)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TypeScheme {
     pub type_vars: Vec<TypeVar>,
     pub effect_vars: Vec<EffectVar>,
@@ -127,8 +126,20 @@ pub struct TypeScheme {
     pub body: Type,
 }
 
+impl TypeScheme {
+    /// Create a monomorphic type scheme (no type variables)
+    pub fn monotype(typ: Type) -> Self {
+        TypeScheme {
+            type_vars: Vec::new(),
+            effect_vars: Vec::new(),
+            constraints: Vec::new(),
+            body: typ,
+        }
+    }
+}
+
 /// Type constraints for qualified types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Constraint {
     /// Type class constraint
     Class {
@@ -229,7 +240,7 @@ impl TypeEnv {
     }
     
     fn add_builtin_types(&mut self) {
-        use crate::core::symbol::symbols;
+        use x_parser::symbol::symbols;
         
         // Basic types
         self.type_cons.insert(symbols::INT(), (Kind::Star, vec![]));
@@ -328,6 +339,7 @@ impl Type {
             Type::Tuple(_) => Kind::Star,
             Type::Hole => Kind::Star,
             Type::Rec { body, .. } => body.kind(env),
+            Type::Unknown => Kind::Star,
         }
     }
     
@@ -391,6 +403,7 @@ impl Type {
                 body_vars.remove(var);
                 vars.extend(body_vars);
             }
+            Type::Unknown => {}
         }
     }
     
@@ -458,11 +471,16 @@ impl Type {
                     body: Box::new(body.apply_subst(&filtered_subst)),
                 }
             },
+            Type::Unknown => Type::Unknown,
         }
     }
 }
 
 impl EffectSet {
+    pub fn empty() -> Self {
+        EffectSet::Empty
+    }
+    
     pub fn collect_free_vars(&self, vars: &mut HashSet<TypeVar>) {
         match self {
             EffectSet::Empty => {}
@@ -489,6 +507,17 @@ impl EffectSet {
                     effects: effects.iter().map(|e| e.apply_subst(subst)).collect(),
                     tail: tail.as_ref().map(|t| Box::new(t.apply_subst(subst))),
                 }
+            }
+        }
+    }
+    
+    pub fn contains_effect(&self, effect_name: Symbol) -> bool {
+        match self {
+            EffectSet::Empty => false,
+            EffectSet::Var(_) => false, // Can't determine
+            EffectSet::Row { effects, tail } => {
+                effects.iter().any(|e| e.name == effect_name) ||
+                tail.as_ref().map_or(false, |t| t.contains_effect(effect_name))
             }
         }
     }
@@ -529,8 +558,8 @@ impl Operation {
 /// Type substitution
 #[derive(Debug, Clone, Default)]
 pub struct Substitution {
-    type_subst: HashMap<TypeVar, Type>,
-    effect_subst: HashMap<EffectVar, EffectSet>,
+    pub type_subst: HashMap<TypeVar, Type>,
+    pub effect_subst: HashMap<EffectVar, EffectSet>,
 }
 
 impl Substitution {
@@ -740,6 +769,7 @@ impl fmt::Display for Type {
             Type::Rec { var, body } => {
                 write!(f, "μ{}.{}", Type::Var(*var), body)
             },
+            Type::Unknown => write!(f, "?")
         }
     }
 }
@@ -768,7 +798,7 @@ impl fmt::Display for EffectSet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::symbol::Symbol;
+    use x_parser::Symbol;
     
     #[test]
     fn test_type_construction() {

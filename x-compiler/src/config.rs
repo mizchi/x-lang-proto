@@ -144,7 +144,7 @@ impl CompilerConfig {
 
     /// Get target option
     pub fn get_target_option(&self, target: &str, key: &str) -> Option<&ConfigValue> {
-        self.target_config(target).options.get(key)
+        self.target_configs.get(target)?.options.get(key)
     }
 
     /// Set target option

@@ -3,13 +3,14 @@
 //! This module implements the core logic for resolving module paths,
 //! managing dependencies, and providing incremental module analysis.
 
-use crate::core::{
-    ast::{ModulePath, Import, ImportKind},
-    span::{FileId, Span},
-    symbol::Symbol,
+use x_parser::{
+    ModulePath, Import, ImportKind,
+    FileId, Span,
+    Symbol,
 };
-// use crate::analysis::database::Database;
-use crate::{Error, Result};
+use x_parser::span::ByteOffset;
+// use crate::database::Database;
+use std::result::Result as StdResult;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
@@ -92,23 +93,13 @@ impl ModuleResolver {
     }
     
     /// Load workspace configuration from effect.toml
-    pub fn load_workspace_config(&mut self, config_path: &Path) -> Result<()> {
-        let config_content = std::fs::read_to_string(config_path)?;
-        let config: WorkspaceConfig = toml::from_str(&config_content)
-            .map_err(|e| Error::Parse { message: format!("Invalid effect.toml: {}", e) })?;
-        
-        self.dependencies = config.dependencies;
-        
-        // Add additional source directories
-        for source_dir in config.source_dirs.unwrap_or_default() {
-            self.source_dirs.push(self.workspace_root.join(source_dir));
-        }
-        
+    pub fn load_workspace_config(&mut self, _config_path: &Path) -> StdResult<(), std::io::Error> {
+        // TODO: Implement toml parsing when toml crate is added
         Ok(())
     }
     
     /// Resolve a module path to a file ID
-    pub fn resolve_module(&mut self, module_path: &ModulePath) -> Result<FileId> {
+    pub fn resolve_module(&mut self, module_path: &ModulePath) -> StdResult<FileId, String> {
         // Check cache first
         if let Some(&file_id) = self.module_cache.get(module_path) {
             return Ok(file_id);
@@ -118,9 +109,7 @@ impl ModuleResolver {
         let file_path = self.resolve_local_module(module_path)
             .or_else(|| self.resolve_dependency_module(module_path))
             .or_else(|| self.resolve_standard_module(module_path))
-            .ok_or_else(|| Error::Parse { 
-                message: format!("Module not found: {}", module_path.to_string()) 
-            })?;
+            .ok_or_else(|| format!("Module not found: {}", module_path.to_string()))?;
         
         // Register file with database
         let file_id = FileId::new(self.module_cache.len() as u32);
@@ -134,7 +123,7 @@ impl ModuleResolver {
         &mut self, 
         file_id: FileId, 
         imports: &[Import]
-    ) -> Result<Vec<FileId>> {
+    ) -> StdResult<Vec<FileId>, String> {
         let mut resolved_deps = Vec::new();
         
         for import in imports {
@@ -150,10 +139,16 @@ impl ModuleResolver {
                     resolved_deps.push(dep_file_id);
                 }
                 ImportKind::Conditional(_condition) => {
-                    // Conditional imports are resolved based on compile-time conditions
-                    // For now, always resolve them
-                    let dep_file_id = self.resolve_module(&import.module_path)?;
-                    resolved_deps.push(dep_file_id);
+                    // TODO: Handle conditional imports
+                }
+                ImportKind::Interface { .. } => {
+                    // TODO: Handle interface imports
+                }
+                ImportKind::Core { .. } => {
+                    // TODO: Handle core imports
+                }
+                ImportKind::Func { .. } => {
+                    // TODO: Handle func imports
                 }
             }
         }
@@ -162,12 +157,10 @@ impl ModuleResolver {
     }
     
     /// Check for circular dependencies
-    pub fn check_circular_dependencies(&self, graph: &DependencyGraph) -> Result<()> {
+    pub fn check_circular_dependencies(&self, graph: &DependencyGraph) -> StdResult<(), String> {
         for (&module, deps) in &graph.direct_deps {
             if self.has_circular_dependency(graph, module, deps, &mut HashSet::new()) {
-                return Err(Error::Parse {
-                    message: format!("Circular dependency detected involving module {:?}", module),
-                });
+                return Err(format!("Circular dependency detected involving module {:?}", module));
             }
         }
         Ok(())
@@ -372,7 +365,7 @@ impl DependencyGraph {
     }
     
     /// Get topological order for compilation
-    pub fn topological_order(&self) -> Result<Vec<FileId>> {
+    pub fn topological_order(&self) -> StdResult<Vec<FileId>, String> {
         let mut visited = HashSet::new();
         let mut temp_visited = HashSet::new();
         let mut result = Vec::new();
@@ -393,11 +386,9 @@ impl DependencyGraph {
         visited: &mut HashSet<FileId>,
         temp_visited: &mut HashSet<FileId>,
         result: &mut Vec<FileId>,
-    ) -> Result<()> {
+    ) -> StdResult<(), String> {
         if temp_visited.contains(&module) {
-            return Err(Error::Parse {
-                message: "Circular dependency detected".to_string(),
-            });
+            return Err("Circular dependency detected".to_string());
         }
         
         if visited.contains(&module) {
@@ -421,11 +412,12 @@ impl DependencyGraph {
 }
 
 /// Workspace configuration structure
-#[derive(Debug, Deserialize)]
+// TODO: Enable when toml crate is added
+// #[derive(Debug, Deserialize)]
 struct WorkspaceConfig {
-    #[serde(default)]
+    // #[serde(default)]
     dependencies: HashMap<String, DependencyInfo>,
-    #[serde(default)]
+    // #[serde(default)]
     source_dirs: Option<Vec<PathBuf>>,
 }
 
@@ -449,7 +441,7 @@ mod tests {
         
         let module_path = ModulePath::new(
             vec![Symbol::intern("Test")],
-            Span::new(FileId::new(0), crate::core::span::ByteOffset(0), crate::core::span::ByteOffset(4))
+            Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0))
         );
         
         let resolved = resolver.resolve_local_module(&module_path);

@@ -6,13 +6,14 @@
 //! - Handler type checking
 //! - Effect elimination through handlers
 
-use crate::core::{
-    ast::{Handler, HandlerClause, EffectDef, EffectOperation},
-    symbol::Symbol,
-    span::Span,
+use x_parser::{
+    Handler, HandlerClause, EffectDef, EffectOperation,
+    Symbol,
+    Span, FileId,
 };
-use crate::analysis::types::*;
-use crate::{Error, Result};
+use x_parser::span::ByteOffset;
+use crate::types::*;
+use std::result::Result as StdResult;
 
 use std::collections::{HashMap, HashSet};
 
@@ -75,11 +76,11 @@ impl EffectContext {
     }
     
     /// Register an effect definition
-    pub fn register_effect(&mut self, effect_def: &EffectDef) -> Result<()> {
+    pub fn register_effect(&mut self, effect_def: &EffectDef) -> StdResult<(), String> {
         let mut operations = HashMap::new();
         
         for op_def in &effect_def.operations {
-            let signature = self.effect_operation_to_signature(op_def)?;
+                let signature = self.effect_operation_to_signature(op_def)?;
             operations.insert(op_def.name, signature);
         }
         
@@ -151,27 +152,21 @@ impl EffectContext {
         effect: Symbol,
         operation: Symbol,
         args: &[Type],
-    ) -> Result<(Type, EffectSet)> {
+    ) -> StdResult<(Type, EffectSet), String> {
         let effect_def = self.lookup_effect(effect)
-            .ok_or_else(|| Error::Effect {
-                message: format!("Unknown effect: {}", effect),
-            })?;
+            .ok_or_else(|| format!("Unknown effect: {}", effect))?;
         
         let op_sig = effect_def.operations.get(&operation)
-            .ok_or_else(|| Error::Effect {
-                message: format!("Unknown operation {} in effect {}", operation, effect),
-            })?;
+            .ok_or_else(|| format!("Unknown operation {} in effect {}", operation, effect))?;
         
         // Check argument count
         if args.len() != op_sig.params.len() {
-            return Err(Error::Effect {
-                message: format!(
-                    "Operation {} expects {} arguments, got {}",
-                    operation,
-                    op_sig.params.len(),
-                    args.len()
-                ),
-            });
+            return Err(format!(
+                "Operation {} expects {} arguments, got {}",
+                operation,
+                op_sig.params.len(),
+                args.len()
+            ));
         }
         
         // Create effect set containing this effect
@@ -198,22 +193,18 @@ impl EffectContext {
         handler: &Handler,
         body_type: &Type,
         body_effects: &EffectSet,
-    ) -> Result<(Type, EffectSet)> {
+    ) -> StdResult<(Type, EffectSet), String> {
         let effect_def = self.lookup_effect(handler.effect)
-            .ok_or_else(|| Error::Effect {
-                message: format!("Unknown effect: {}", handler.effect),
-            })?;
+            .ok_or_else(|| format!("Unknown effect: {}", handler.effect))?;
         
         // Check that all operations are handled
         for (op_name, _op_sig) in &effect_def.operations {
             if !handler.clauses.iter().any(|clause| clause.operation == *op_name) {
-                return Err(Error::Effect {
-                    message: format!(
-                        "Missing handler for operation {} in effect {}",
-                        op_name,
-                        handler.effect
-                    ),
-                });
+                return Err(format!(
+                    "Missing handler for operation {} in effect {}",
+                    op_name,
+                    handler.effect
+                ));
             }
         }
         
@@ -248,26 +239,22 @@ impl EffectContext {
         clause: &HandlerClause,
         effect_def: &EffectDefinition,
         expected_result_type: &Type,
-    ) -> Result<Type> {
+    ) -> StdResult<Type, String> {
         let op_sig = effect_def.operations.get(&clause.operation)
-            .ok_or_else(|| Error::Effect {
-                message: format!(
-                    "Operation {} not found in effect {}",
-                    clause.operation,
-                    effect_def.name
-                ),
-            })?;
+            .ok_or_else(|| format!(
+                "Operation {} not found in effect {}",
+                clause.operation,
+                effect_def.name
+            ))?;
         
         // Check parameter count
         if clause.params.len() != op_sig.params.len() + 1 { // +1 for continuation
-            return Err(Error::Effect {
-                message: format!(
-                    "Handler clause for {} expects {} parameters (including continuation), got {}",
-                    clause.operation,
-                    op_sig.params.len() + 1,
-                    clause.params.len()
-                ),
-            });
+            return Err(format!(
+                "Handler clause for {} expects {} parameters (including continuation), got {}",
+                clause.operation,
+                op_sig.params.len() + 1,
+                clause.params.len()
+            ));
         }
         
         // TODO: Type check the handler body with proper environment
@@ -302,7 +289,7 @@ impl EffectContext {
     }
     
     /// Convert effect operation to signature
-    fn effect_operation_to_signature(&self, op_def: &EffectOperation) -> Result<OperationSignature> {
+    fn effect_operation_to_signature(&self, op_def: &EffectOperation) -> StdResult<OperationSignature, String> {
         // TODO: Convert AST types to internal types
         let params = op_def.parameters.iter()
             .map(|_param| Type::Hole) // Placeholder
@@ -358,17 +345,7 @@ impl EffectSet {
         }
     }
     
-    /// Check if an effect is present in this set
-    pub fn contains_effect(&self, effect: Symbol) -> bool {
-        match self {
-            EffectSet::Empty => false,
-            EffectSet::Var(_) => true, // Conservative
-            EffectSet::Row { effects, tail } => {
-                effects.iter().any(|e| e.name == effect) ||
-                tail.as_ref().map_or(false, |t| t.contains_effect(effect))
-            }
-        }
-    }
+    // contains_effect is now implemented in types.rs
     
     fn effect_in_set(&self, effect: &Symbol, set: &EffectSet) -> bool {
         set.contains_effect(*effect)
@@ -453,17 +430,13 @@ impl EffectRow {
     }
     
     /// Extend this row with another effect
-    pub fn extend(&self, effect: Effect) -> Result<EffectRow> {
+    pub fn extend(&self, effect: Effect) -> StdResult<EffectRow, String> {
         if self.present.contains_key(&effect.name) {
-            return Err(Error::Effect {
-                message: format!("Effect {} already present in row", effect.name),
-            });
+            return Err(format!("Effect {} already present in row", effect.name));
         }
         
         if self.absent.contains(&effect.name) {
-            return Err(Error::Effect {
-                message: format!("Effect {} is marked as absent in row", effect.name),
-            });
+            return Err(format!("Effect {} is marked as absent in row", effect.name));
         }
         
         let mut result = self.clone();
@@ -474,7 +447,7 @@ impl EffectRow {
 
 /// Built-in effect definitions
 pub fn create_builtin_effects() -> HashMap<Symbol, EffectDefinition> {
-    use crate::core::symbol::symbols;
+    use x_parser::symbol::symbols;
     let mut effects = HashMap::new();
     
     // IO Effect
@@ -488,11 +461,7 @@ pub fn create_builtin_effects() -> HashMap<Symbol, EffectDefinition> {
                 params: vec![Type::Con(symbols::STRING())],
                 return_type: Type::Con(symbols::UNIT_TYPE()),
                 resumption_type: Type::Con(symbols::UNIT_TYPE()),
-                span: Span::new(
-                    crate::core::span::FileId::new(0),
-                    crate::core::span::ByteOffset::new(0),
-                    crate::core::span::ByteOffset::new(0),
-                ),
+                span: Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0)),
             },
         );
         ops.insert(
@@ -503,11 +472,7 @@ pub fn create_builtin_effects() -> HashMap<Symbol, EffectDefinition> {
                 params: Vec::new(),
                 return_type: Type::Con(symbols::STRING()),
                 resumption_type: Type::Con(symbols::STRING()),
-                span: Span::new(
-                    crate::core::span::FileId::new(0),
-                    crate::core::span::ByteOffset::new(0),
-                    crate::core::span::ByteOffset::new(0),
-                ),
+                span: Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0)),
             },
         );
         ops
@@ -518,11 +483,7 @@ pub fn create_builtin_effects() -> HashMap<Symbol, EffectDefinition> {
         EffectDefinition {
             name: symbols::IO(),
             operations: io_operations,
-            span: Span::new(
-                crate::core::span::FileId::new(0),
-                crate::core::span::ByteOffset::new(0),
-                crate::core::span::ByteOffset::new(0),
-            ),
+            span: Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0)),
         },
     );
     
@@ -539,11 +500,7 @@ pub fn create_builtin_effects() -> HashMap<Symbol, EffectDefinition> {
                 params: Vec::new(),
                 return_type: Type::Var(state_var),
                 resumption_type: Type::Var(state_var),
-                span: Span::new(
-                    crate::core::span::FileId::new(0),
-                    crate::core::span::ByteOffset::new(0),
-                    crate::core::span::ByteOffset::new(0),
-                ),
+                span: Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0)),
             },
         );
         ops.insert(
@@ -554,11 +511,7 @@ pub fn create_builtin_effects() -> HashMap<Symbol, EffectDefinition> {
                 params: vec![Type::Var(state_var)],
                 return_type: Type::Con(symbols::UNIT_TYPE()),
                 resumption_type: Type::Con(symbols::UNIT_TYPE()),
-                span: Span::new(
-                    crate::core::span::FileId::new(0),
-                    crate::core::span::ByteOffset::new(0),
-                    crate::core::span::ByteOffset::new(0),
-                ),
+                span: Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0)),
             },
         );
         ops
@@ -569,11 +522,7 @@ pub fn create_builtin_effects() -> HashMap<Symbol, EffectDefinition> {
         EffectDefinition {
             name: symbols::STATE(),
             operations: state_operations,
-            span: Span::new(
-                crate::core::span::FileId::new(0),
-                crate::core::span::ByteOffset::new(0),
-                crate::core::span::ByteOffset::new(0),
-            ),
+            span: Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0)),
         },
     );
     
@@ -583,7 +532,7 @@ pub fn create_builtin_effects() -> HashMap<Symbol, EffectDefinition> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::symbol::Symbol;
+    use x_parser::symbol::Symbol;
     
     #[test]
     fn test_effect_context_creation() {

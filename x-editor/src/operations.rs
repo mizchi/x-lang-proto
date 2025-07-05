@@ -1,6 +1,6 @@
 //! Edit operations for AST manipulation
 
-use x_parser::AstNode;
+use x_parser::{Item, Expr, Pattern, Type};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -19,7 +19,7 @@ pub struct InsertOperation {
     /// Path to the parent node where the new node will be inserted
     pub path: Vec<usize>,
     /// The node to insert
-    pub node: AstNode,
+    pub node: EditableNode,
 }
 
 /// Delete a node at a specific path
@@ -35,7 +35,7 @@ pub struct ReplaceOperation {
     /// Path to the node to replace
     pub path: Vec<usize>,
     /// The new node to replace it with
-    pub new_node: AstNode,
+    pub new_node: EditableNode,
 }
 
 /// Move a node from one path to another
@@ -81,12 +81,21 @@ pub enum StructuralTransformation {
 pub struct TransformationResult {
     pub transformation: StructuralTransformation,
     pub modified_paths: Vec<Vec<usize>>,
-    pub new_nodes: Vec<AstNode>,
+    pub new_nodes: Vec<EditableNode>,
+}
+
+/// Editable AST node types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EditableNode {
+    Item(Item),
+    Expr(Expr),
+    Pattern(Pattern),
+    Type(Type),
 }
 
 impl EditOperation {
     /// Create a new insert operation
-    pub fn insert(path: Vec<usize>, node: AstNode) -> Self {
+    pub fn insert(path: Vec<usize>, node: EditableNode) -> Self {
         Self::Insert(InsertOperation { path, node })
     }
 
@@ -96,7 +105,7 @@ impl EditOperation {
     }
 
     /// Create a new replace operation
-    pub fn replace(path: Vec<usize>, new_node: AstNode) -> Self {
+    pub fn replace(path: Vec<usize>, new_node: EditableNode) -> Self {
         Self::Replace(ReplaceOperation { path, new_node })
     }
 
@@ -131,7 +140,7 @@ impl EditOperation {
         let other_paths = other.affected_paths();
         
         for self_path in self_paths {
-            for other_path in other_paths {
+            for other_path in &other_paths {
                 if paths_overlap(self_path, other_path) {
                     return true;
                 }
@@ -165,7 +174,7 @@ impl EditOperationBuilder {
     }
 
     /// Add an insert operation
-    pub fn insert(mut self, path: Vec<usize>, node: AstNode) -> Self {
+    pub fn insert(mut self, path: Vec<usize>, node: EditableNode) -> Self {
         self.operations.push(EditOperation::insert(path, node));
         self
     }
@@ -177,7 +186,7 @@ impl EditOperationBuilder {
     }
 
     /// Add a replace operation
-    pub fn replace(mut self, path: Vec<usize>, new_node: AstNode) -> Self {
+    pub fn replace(mut self, path: Vec<usize>, new_node: EditableNode) -> Self {
         self.operations.push(EditOperation::replace(path, new_node));
         self
     }

@@ -6,6 +6,7 @@
 
 pub mod backend;
 pub mod ir;
+pub mod codegen_mod;
 pub mod typescript;
 pub mod wasm_gc;
 pub mod wasm_component;
@@ -20,7 +21,7 @@ pub use backend::{
     CodegenBackend, BackendFactory, CompilationTarget, CodegenOptions, CodegenResult,
     CodegenDiagnostic, DiagnosticSeverity, CodegenMetadata,
 };
-pub use ir::{IR, IRBuilder, IRNode};
+pub use ir::{IR, IRBuilder};
 pub use pipeline::{CompilationPipeline, PipelineStage, PipelineResult};
 pub use config::{CompilerConfig, TargetConfig};
 
@@ -28,13 +29,15 @@ use x_parser::{CompilationUnit, SyntaxStyle};
 use x_checker::{type_check, CheckResult};
 use std::path::PathBuf;
 
+pub type Result<T> = std::result::Result<T, CompilerError>;
+
 /// High-level compilation function
 pub fn compile(
     source: &str,
     target: &str,
     output_dir: PathBuf,
     config: CompilerConfig,
-) -> Result<CompilationResult, CompilerError> {
+) -> Result<CompilationResult> {
     let mut pipeline = CompilationPipeline::new(config);
     pipeline.compile(source, target, output_dir)
 }
@@ -100,6 +103,33 @@ pub enum CompilerError {
 
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("Generic error: {0}")]
+    Generic(String),
+}
+
+impl From<String> for CompilerError {
+    fn from(s: String) -> Self {
+        CompilerError::Generic(s)
+    }
+}
+
+impl From<x_checker::TypeError> for CompilerError {
+    fn from(e: x_checker::TypeError) -> Self {
+        CompilerError::TypeCheck { message: e.to_string() }
+    }
+}
+
+impl From<&str> for CompilerError {
+    fn from(s: &str) -> Self {
+        CompilerError::Generic(s.to_string())
+    }
+}
+
+impl From<std::fmt::Error> for CompilerError {
+    fn from(e: std::fmt::Error) -> Self {
+        CompilerError::Generic(format!("Formatting error: {}", e))
+    }
 }
 
 /// Compiler builder for fluent configuration
@@ -168,7 +198,7 @@ impl Compiler {
         source: &str,
         target: &str,
         output_dir: PathBuf,
-    ) -> Result<CompilationResult, CompilerError> {
+    ) -> Result<CompilationResult> {
         self.pipeline.compile(source, target, output_dir)
     }
 
@@ -178,7 +208,7 @@ impl Compiler {
         input_path: &PathBuf,
         target: &str,
         output_dir: PathBuf,
-    ) -> Result<CompilationResult, CompilerError> {
+    ) -> Result<CompilationResult> {
         let source = std::fs::read_to_string(input_path)?;
         self.compile(&source, target, output_dir)
     }
@@ -192,7 +222,7 @@ impl Compiler {
     }
 
     /// Validate configuration
-    pub fn validate_config(&self) -> Result<(), CompilerError> {
+    pub fn validate_config(&self) -> Result<()> {
         // TODO: Implement configuration validation
         Ok(())
     }
@@ -214,25 +244,25 @@ pub mod convenience {
     use super::*;
 
     /// Quick compilation with default settings
-    pub fn compile_to_typescript(source: &str, output_dir: PathBuf) -> Result<CompilationResult, CompilerError> {
+    pub fn compile_to_typescript(source: &str, output_dir: PathBuf) -> Result<CompilationResult> {
         let config = CompilerConfig::default();
         compile(source, "typescript", output_dir, config)
     }
 
     /// Quick compilation to WebAssembly Component Model
-    pub fn compile_to_wasm_component(source: &str, output_dir: PathBuf) -> Result<CompilationResult, CompilerError> {
+    pub fn compile_to_wasm_component(source: &str, output_dir: PathBuf) -> Result<CompilationResult> {
         let config = CompilerConfig::default();
         compile(source, "wasm-component", output_dir, config)
     }
 
     /// Quick compilation to WIT
-    pub fn compile_to_wit(source: &str, output_dir: PathBuf) -> Result<CompilationResult, CompilerError> {
+    pub fn compile_to_wit(source: &str, output_dir: PathBuf) -> Result<CompilationResult> {
         let config = CompilerConfig::default();
         compile(source, "wit", output_dir, config)
     }
 
     /// Type check only
-    pub fn type_check_source(source: &str) -> Result<CheckResult, CompilerError> {
+    pub fn type_check_source(source: &str) -> Result<CheckResult> {
         use x_parser::{parse_source, FileId};
         
         let file_id = FileId::new(0);
@@ -241,7 +271,7 @@ pub mod convenience {
     }
 
     /// Parse only
-    pub fn parse_source_only(source: &str, syntax_style: SyntaxStyle) -> Result<CompilationUnit, CompilerError> {
+    pub fn parse_source_only(source: &str, syntax_style: SyntaxStyle) -> Result<CompilationUnit> {
         use x_parser::{parse_source, FileId};
         
         let file_id = FileId::new(0);

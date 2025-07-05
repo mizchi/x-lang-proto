@@ -3,17 +3,15 @@
 //! This backend generates WebAssembly GC code from x Language IR,
 //! leveraging the GC proposal for efficient functional programming.
 
-use super::{
+use crate::{
     backend::*,
     ir::*,
     utils,
-    Target, WasmOptLevel, GCStrategy,
+    Result,
 };
-use crate::{
-    core::{ast::*, symbol::Symbol},
-    analysis::types::TypeScheme,
-    Error, Result,
-};
+use crate::codegen_mod::{WasmOptLevel, GCStrategy};
+use x_parser::{CompilationUnit, Module, Symbol, Visibility};
+use x_checker::TypeScheme;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 

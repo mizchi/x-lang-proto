@@ -16,11 +16,12 @@ pub mod checker;
 // Re-export core types
 pub use types::{Type, TypeScheme, TypeVar, TypeEnv};
 pub use inference::{InferenceContext, InferenceResult};
-pub use effects::{Effect, EffectSet, EffectConstraint};
+pub use types::{Effect, EffectSet};
 pub use error_reporting::{TypeError, TypeErrorReporter};
-pub use checker::{TypeChecker, CheckResult};
+pub use checker::{TypeChecker, CheckResult, EffectConstraint};
 
-use x_parser::{CompilationUnit, Symbol, Span};
+use x_parser::{CompilationUnit, Symbol, Span, FileId};
+use x_parser::span::ByteOffset;
 use std::collections::HashMap;
 
 /// Type check a compilation unit
@@ -64,7 +65,7 @@ pub struct ExprId(pub u32);
 pub struct ScopeId(pub u32);
 
 /// Symbol information for resolution
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SymbolInfo {
     pub symbol: Symbol,
     pub type_scheme: TypeScheme,
@@ -88,7 +89,7 @@ impl TypeCheckDatabaseImpl {
     }
 
     /// Set type for a symbol
-    pub fn set_symbol_type(&mut self, symbol: Symbol, type_scheme: TypeScheme) {
+    pub fn set_type_for_symbol(&mut self, symbol: Symbol, type_scheme: TypeScheme) {
         self.set_symbol_type(symbol, Some(type_scheme));
     }
 
@@ -100,24 +101,23 @@ impl TypeCheckDatabaseImpl {
 }
 
 /// Query implementations
-fn infer_expression_type(db: &dyn TypeCheckDb, expr_id: ExprId) -> types::Type {
+fn infer_expression_type(_db: &dyn TypeCheckDb, _expr_id: ExprId) -> types::Type {
     // TODO: Implement incremental expression type inference
     types::Type::Unknown
 }
 
-fn infer_expression_effects(db: &dyn TypeCheckDb, expr_id: ExprId) -> EffectSet {
+fn infer_expression_effects(_db: &dyn TypeCheckDb, _expr_id: ExprId) -> EffectSet {
     // TODO: Implement incremental effect inference
     EffectSet::empty()
 }
 
-fn types_compatible(db: &dyn TypeCheckDb, t1: types::Type, t2: types::Type) -> bool {
+fn types_compatible(_db: &dyn TypeCheckDb, t1: types::Type, t2: types::Type) -> bool {
     // TODO: Implement type compatibility checking
-    use crate::unification::Unify;
     let mut unifier = crate::unification::Unifier::new();
     unifier.unify(&t1, &t2).is_ok()
 }
 
-fn resolve_symbol(db: &dyn TypeCheckDb, symbol: Symbol, scope_id: ScopeId) -> Option<SymbolInfo> {
+fn resolve_symbol(_db: &dyn TypeCheckDb, _symbol: Symbol, _scope_id: ScopeId) -> Option<SymbolInfo> {
     // TODO: Implement incremental symbol resolution
     None
 }
@@ -141,10 +141,10 @@ mod tests {
     fn test_type_database() {
         let mut db = TypeCheckDatabaseImpl::new();
         
-        let symbol = Symbol::new("test");
+        let symbol = Symbol::intern("test");
         let type_scheme = TypeScheme::monotype(types::Type::Int);
         
-        db.set_symbol_type(symbol, type_scheme.clone());
+        db.set_type_for_symbol(symbol, type_scheme.clone());
         assert_eq!(db.symbol_type(symbol), Some(type_scheme));
     }
 

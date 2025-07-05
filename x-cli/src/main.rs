@@ -71,7 +71,7 @@ pub enum Commands {
     Show {
         /// Input file
         input: PathBuf,
-        /// Display format (tree, json, summary)
+        /// Display format (tree, json, summary, compact, ocaml, haskell, sexp)
         #[arg(short, long, default_value = "tree")]
         format: String,
         /// Maximum depth to display

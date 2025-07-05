@@ -10,6 +10,7 @@ pub mod query;
 pub mod session;
 pub mod incremental;
 pub mod validation;
+pub mod index_system;
 
 // Re-export main types
 pub use ast_editor::{AstEditor, EditResult, EditError};
@@ -23,20 +24,20 @@ pub use session::{EditSession, SessionId, SessionState};
 pub use incremental::{IncrementalAnalyzer, AnalysisResult};
 pub use validation::{ValidationResult, ValidationError};
 
-use x_parser::{CompilationUnit, AstNode};
+use x_parser::CompilationUnit;
 use x_checker::CheckResult;
 use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Main entry point for the language service
 #[derive(Debug)]
-pub struct x LanguageEditor {
+pub struct XLanguageEditor {
     language_service: LanguageService,
     ast_editor: AstEditor,
     sessions: HashMap<SessionId, EditSession>,
 }
 
-impl x LanguageEditor {
+impl XLanguageEditor {
     /// Create a new editor instance
     pub fn new(config: LanguageServiceConfig) -> Self {
         Self {
@@ -71,7 +72,7 @@ impl x LanguageEditor {
         session_id: SessionId,
         operation: EditOperation,
     ) -> Result<EditResult, EditError> {
-        let session = self.get_session_mut(session_id)
+        let session = self.sessions.get_mut(&session_id)
             .ok_or_else(|| EditError::SessionNotFound { session_id })?;
         
         self.ast_editor.apply_operation(&mut session.ast, operation)
@@ -153,13 +154,11 @@ impl x LanguageEditor {
         // Simple node counting
         let mut count = 1; // CompilationUnit itself
         
-        for module in &ast.modules {
-            count += 1; // Module
-            count += module.items.len(); // Items
-        }
-        
-        count += ast.imports.len();
-        count += ast.exports.len();
+        // Count module
+        count += 1; // Module
+        count += ast.module.items.len(); // Items
+        count += ast.module.imports.len();
+        count += ast.module.exports.as_ref().map(|e| e.items.len()).unwrap_or(0);
         
         count
     }
@@ -175,7 +174,7 @@ pub struct SessionStats {
 }
 
 /// Default configuration
-impl Default for x LanguageEditor {
+impl Default for XLanguageEditor {
     fn default() -> Self {
         Self::new(LanguageServiceConfig::default())
     }
@@ -227,7 +226,7 @@ mod tests {
     #[test]
     fn test_editor_creation() {
         let config = LanguageServiceConfig::default();
-        let editor = x LanguageEditor::new(config);
+        let editor = XLanguageEditor::new(config);
         
         assert!(editor.active_sessions().is_empty());
     }
@@ -235,7 +234,7 @@ mod tests {
     #[test]
     fn test_session_lifecycle() {
         let config = LanguageServiceConfig::default();
-        let mut editor = x LanguageEditor::new(config);
+        let mut editor = XLanguageEditor::new(config);
         
         let source = "let x = 42";
         let session_id = editor.start_session(source).unwrap();
@@ -252,7 +251,7 @@ mod tests {
         let source = "let x = 42";
         let operation = EditOperation::Insert(InsertOperation {
             path: vec![0],
-            node: AstNode::Literal(x_parser::Literal::Int(100)),
+            node: crate::operations::EditableNode::Expr(x_parser::Expr::Literal(x_parser::Literal::Integer(100), x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0)))),
         });
         
         let result = convenience::parse_and_edit(source, operation);

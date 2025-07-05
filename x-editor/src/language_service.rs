@@ -65,24 +65,20 @@ impl LanguageService {
         let mut warnings = Vec::new();
         
         // Basic validation checks
-        if ast.modules.is_empty() {
+        if ast.module.items.is_empty() {
             warnings.push(ValidationError::EmptyCompilationUnit);
         }
         
-        for (i, module) in ast.modules.iter().enumerate() {
-            if module.name.as_str().is_empty() {
-                errors.push(ValidationError::EmptyModuleName { module_index: i });
-            }
-            
-            if module.items.is_empty() {
-                warnings.push(ValidationError::EmptyModule { module_index: i });
-            }
+        // Check module name
+        if ast.module.name.to_string().is_empty() {
+            errors.push(ValidationError::EmptyModuleName { module_index: 0 });
         }
         
+        let is_valid = errors.is_empty();
         Ok(ValidationResult {
             errors,
             warnings,
-            is_valid: errors.is_empty(),
+            is_valid,
         })
     }
 

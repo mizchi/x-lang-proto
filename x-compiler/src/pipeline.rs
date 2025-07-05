@@ -102,6 +102,8 @@ impl CompilationPipeline {
         let ast_nodes = self.count_ast_nodes(&ast);
         let total_output_size = final_files.values().map(|content| content.len()).sum();
 
+        let generated_files_count = final_files.len();
+        
         Ok(CompilationResult {
             target: target.to_string(),
             files: final_files,
@@ -113,7 +115,7 @@ impl CompilationPipeline {
                 total_time,
                 lines_of_code,
                 ast_nodes,
-                generated_files: final_files.len(),
+                generated_files: generated_files_count,
                 total_output_size,
             },
         })
@@ -335,13 +337,13 @@ impl CompilationPipeline {
         // Simple node counting - could be more sophisticated
         let mut count = 1; // CompilationUnit itself
         
-        for module in &ast.modules {
-            count += 1; // Module
-            count += module.items.len(); // Items
+        // Count module items
+        count += 1; // Module
+        count += ast.module.items.len(); // Items
+        count += ast.module.imports.len();
+        if let Some(ref exports) = ast.module.exports {
+            count += exports.items.len();
         }
-        
-        count += ast.imports.len();
-        count += ast.exports.len();
         
         count
     }
@@ -351,7 +353,14 @@ impl CompilationPipeline {
         if enabled {
             if !self.enabled_stages.contains(&stage) {
                 self.enabled_stages.push(stage);
-                self.enabled_stages.sort_by_key(|s| self.stage_order(*s));
+                self.enabled_stages.sort_by_key(|&s| match s {
+                    PipelineStage::Parse => 0,
+                    PipelineStage::TypeCheck => 1,
+                    PipelineStage::Optimize => 2,
+                    PipelineStage::CodeGen => 3,
+                    PipelineStage::Link => 4,
+                    PipelineStage::Write => 5,
+                });
             }
         } else {
             self.enabled_stages.retain(|&s| s != stage);

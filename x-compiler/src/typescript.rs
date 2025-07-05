@@ -3,17 +3,15 @@
 //! This backend generates TypeScript code from x Language IR,
 //! including full type information and effect system translation.
 
-use super::{
+use crate::{
     backend::*,
     ir::*,
     utils,
-    Target, TypeScriptModuleSystem,
+    Result,
 };
-use crate::{
-    core::{ast::*, symbol::Symbol},
-    analysis::types::TypeScheme,
-    Error, Result,
-};
+use crate::codegen_mod::TypeScriptModuleSystem;
+use x_parser::{CompilationUnit, Module, Symbol, Visibility};
+use x_checker::TypeScheme;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 

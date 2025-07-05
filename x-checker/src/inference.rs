@@ -5,17 +5,16 @@
 //! - Row polymorphism for extensible effects
 //! - Let-polymorphism with value restriction
 
-use crate::core::{
-    ast::{
-        Expr, Pattern, Literal, Item, ValueDef, TypeDef, Module, CompilationUnit,
-        LetBinding, MatchArm, DoStatement, EffectHandler, Type as AstType
-    },
-    span::Span,
-    symbol::Symbol,
+use x_parser::{
+    Expr, Pattern, Literal, Item, ValueDef, TypeDef, Module, CompilationUnit,
+    LetBinding, MatchArm, DoStatement, EffectHandler, Type as AstType,
+    Span, FileId,
+    Symbol,
 };
-use crate::analysis::types::*;
-use crate::analysis::error_reporting::*;
-use crate::{Error, Result};
+use x_parser::span::ByteOffset;
+use crate::types::*;
+use crate::error_reporting::*;
+use std::result::Result as StdResult;
 
 use std::collections::{HashMap, HashSet};
 
@@ -25,8 +24,7 @@ pub struct InferenceContext {
     pub env: TypeEnv,
     pub var_gen: VarGen,
     pub constraints: Vec<Constraint>,
-    pub error_reporter: ErrorReporter,
-    pub current_context: ErrorContext,
+    pub errors: Vec<TypeError>,
 }
 
 /// Inference result containing type and effects
@@ -43,8 +41,7 @@ impl InferenceContext {
             env: TypeEnv::new(),
             var_gen: VarGen::new(),
             constraints: Vec::new(),
-            error_reporter: ErrorReporter::new(),
-            current_context: ErrorContext::default(),
+            errors: Vec::new(),
         }
     }
     
@@ -108,33 +105,9 @@ impl InferenceContext {
         vars
     }
     
-    /// Report a type error with current context
-    pub fn report_error(&mut self, kind: TypeErrorKind, span: Span) {
-        let error = TypeError::new(kind, span)
-            .with_context(self.current_context.clone());
-        self.error_reporter.report(error);
-    }
-    
-    /// Set current context for error reporting
-    pub fn with_context<F, R>(&mut self, context: ErrorContext, f: F) -> R 
-    where 
-        F: FnOnce(&mut Self) -> R,
-    {
-        let old_context = self.current_context.clone();
-        self.current_context = context;
-        let result = f(self);
-        self.current_context = old_context;
-        result
-    }
-    
-    /// Check if there are any errors and return result
-    pub fn check_errors<T>(&mut self, value: T) -> Result<T> {
-        if self.error_reporter.has_errors() {
-            let errors = std::mem::take(&mut self.error_reporter);
-            errors.into_result(value)
-        } else {
-            Ok(value)
-        }
+    /// Report a type error
+    pub fn report_error(&mut self, error: TypeError) {
+        self.errors.push(error);
     }
 }
 
@@ -147,7 +120,7 @@ impl Default for InferenceContext {
 /// Main type inference functions
 impl InferenceContext {
     /// Infer the type of an expression
-    pub fn infer_expr(&mut self, expr: &Expr) -> Result<InferenceResult> {
+    pub fn infer_expr(&mut self, expr: &Expr) -> StdResult<InferenceResult, String> {
         match expr {
             Expr::Literal(lit, _span) => self.infer_literal(lit),
             
@@ -191,8 +164,8 @@ impl InferenceContext {
         }
     }
     
-    fn infer_literal(&mut self, lit: &Literal) -> Result<InferenceResult> {
-        use crate::core::symbol::symbols;
+    fn infer_literal(&mut self, lit: &Literal) -> StdResult<InferenceResult, String> {
+        use x_parser::symbol::symbols;
         
         let typ = match lit {
             Literal::Integer(_) => Type::Con(symbols::INT()),
@@ -209,11 +182,11 @@ impl InferenceContext {
         })
     }
     
-    fn infer_var(&mut self, name: Symbol) -> Result<InferenceResult> {
+    fn infer_var(&mut self, name: Symbol) -> StdResult<InferenceResult, String> {
         self.infer_var_with_span(name, None)
     }
     
-    fn infer_var_with_span(&mut self, name: Symbol, span: Option<Span>) -> Result<InferenceResult> {
+    fn infer_var_with_span(&mut self, name: Symbol, span: Option<Span>) -> StdResult<InferenceResult, String> {
         match self.env.lookup_var(name) {
             Some(scheme) => {
                 let scheme = scheme.clone();
@@ -226,22 +199,17 @@ impl InferenceContext {
             }
             None => {
                 if let Some(span) = span {
-                    self.report_error(
-                        TypeErrorKind::UnboundVariable { 
-                            name, 
-                            kind: VariableKind::Value 
-                        },
-                        span
-                    );
+                    self.report_error(TypeError::UnboundVariable {
+                        name,
+                        span,
+                    });
                 }
-                Err(Error::Type {
-                    message: format!("Unbound variable: {}", name),
-                })
+                Err(format!("Unbound variable: {}", name))
             }
         }
     }
     
-    fn infer_app(&mut self, func: &Expr, args: &[Expr]) -> Result<InferenceResult> {
+    fn infer_app(&mut self, func: &Expr, args: &[Expr]) -> StdResult<InferenceResult, String> {
         // Infer function type
         let func_result = self.infer_expr(func)?;
         
@@ -283,7 +251,7 @@ impl InferenceContext {
         params: &[Pattern],
         body: &Expr,
         _effects: Option<&()>,
-    ) -> Result<InferenceResult> {
+    ) -> StdResult<InferenceResult, String> {
         // Enter new scope
         let saved_env = self.env.clone();
         
@@ -332,7 +300,7 @@ impl InferenceContext {
         &mut self,
         bindings: &[LetBinding],
         body: &Expr,
-    ) -> Result<InferenceResult> {
+    ) -> StdResult<InferenceResult, String> {
         let saved_env = self.env.clone();
         
         // Process bindings
@@ -368,8 +336,8 @@ impl InferenceContext {
         condition: &Expr,
         then_branch: &Expr,
         else_branch: &Expr,
-    ) -> Result<InferenceResult> {
-        use crate::core::symbol::symbols;
+    ) -> StdResult<InferenceResult, String> {
+        use x_parser::symbol::symbols;
         
         // Condition must be Bool
         let cond_result = self.infer_expr(condition)?;
@@ -396,13 +364,11 @@ impl InferenceContext {
         &mut self,
         expr: &Expr,
         arms: &[MatchArm],
-    ) -> Result<InferenceResult> {
+    ) -> StdResult<InferenceResult, String> {
         let expr_result = self.infer_expr(expr)?;
         
         if arms.is_empty() {
-            return Err(Error::Type {
-                message: "Match expression must have at least one arm".to_string(),
-            });
+            return Err("Match expression must have at least one arm".to_string());
         }
         
         // Infer first arm to get result type
@@ -432,7 +398,7 @@ impl InferenceContext {
         })
     }
     
-    fn infer_do_statements(&mut self, statements: &[DoStatement]) -> Result<InferenceResult> {
+    fn infer_do_statements(&mut self, _statements: &[DoStatement]) -> StdResult<InferenceResult, String> {
         // For now, just return unit type
         Ok(InferenceResult {
             typ: Type::Con(Symbol::intern("Unit")),
@@ -445,7 +411,7 @@ impl InferenceContext {
         &mut self,
         body: &Expr,
         _handlers: &[EffectHandler],
-    ) -> Result<InferenceResult> {
+    ) -> StdResult<InferenceResult, String> {
         let body_result = self.infer_expr(body)?;
         
         // TODO: Implement proper effect handling
@@ -457,7 +423,7 @@ impl InferenceContext {
         })
     }
     
-    fn infer_resume(&mut self, expr: &Expr) -> Result<InferenceResult> {
+    fn infer_resume(&mut self, expr: &Expr) -> StdResult<InferenceResult, String> {
         // Resume passes through the expression type
         self.infer_expr(expr)
     }
@@ -467,29 +433,23 @@ impl InferenceContext {
         effect: Symbol,
         operation: Symbol,
         args: &[Expr],
-    ) -> Result<InferenceResult> {
+    ) -> StdResult<InferenceResult, String> {
         // Look up effect and operation  
         let effect_def = self.env.lookup_effect(effect)
-            .ok_or_else(|| Error::Type {
-                message: format!("Unknown effect: {}", effect),
-            })?.clone();
+            .ok_or_else(|| format!("Unknown effect: {}", effect))?.clone();
         
         let operation_def = effect_def.operations.iter()
             .find(|op| op.name == operation)
-            .ok_or_else(|| Error::Type {
-                message: format!("Unknown operation: {} in effect {}", operation, effect),
-            })?.clone();
+            .ok_or_else(|| format!("Unknown operation: {} in effect {}", operation, effect))?.clone();
         
         // Check argument types
         if args.len() != operation_def.params.len() {
-            return Err(Error::Type {
-                message: format!(
-                    "Operation {} expects {} arguments, got {}",
-                    operation,
-                    operation_def.params.len(),
-                    args.len()
-                ),
-            });
+            return Err(format!(
+                "Operation {} expects {} arguments, got {}",
+                operation,
+                operation_def.params.len(),
+                args.len()
+            ));
         }
         
         for (arg, expected_type) in args.iter().zip(&operation_def.params) {
@@ -510,7 +470,7 @@ impl InferenceContext {
         })
     }
     
-    fn infer_annotation(&mut self, expr: &Expr, typ: &AstType) -> Result<InferenceResult> {
+    fn infer_annotation(&mut self, expr: &Expr, typ: &AstType) -> StdResult<InferenceResult, String> {
         let expr_result = self.infer_expr(expr)?;
         let expected_type = self.ast_type_to_type(typ)?;
         
@@ -524,7 +484,7 @@ impl InferenceContext {
     }
     
     /// Infer pattern type and return bindings
-    fn infer_pattern(&mut self, pattern: &Pattern, expected_type: &Type) -> Result<HashMap<Symbol, Type>> {
+    fn infer_pattern(&mut self, pattern: &Pattern, expected_type: &Type) -> StdResult<HashMap<Symbol, Type>, String> {
         match pattern {
             Pattern::Wildcard(_) => Ok(HashMap::new()),
             
@@ -555,13 +515,11 @@ impl InferenceContext {
                 match expected_type {
                     Type::Tuple(types) => {
                         if patterns.len() != types.len() {
-                            return Err(Error::Type {
-                                message: format!(
-                                    "Tuple pattern expects {} elements, got {}",
-                                    types.len(),
-                                    patterns.len()
-                                ),
-                            });
+                            return Err(format!(
+                                "Tuple pattern expects {} elements, got {}",
+                                types.len(),
+                                patterns.len()
+                            ));
                         }
                         
                         let mut bindings = HashMap::new();
@@ -607,7 +565,7 @@ impl InferenceContext {
     }
     
     /// Convert AST type to internal type representation
-    fn ast_type_to_type(&mut self, ast_type: &AstType) -> Result<Type> {
+    fn ast_type_to_type(&mut self, ast_type: &AstType) -> StdResult<Type, String> {
         match ast_type {
             AstType::Var(name, _) => {
                 // For now, treat as type constructor
@@ -618,13 +576,13 @@ impl InferenceContext {
             }
             AstType::App(con, args, _) => {
                 let con_type = self.ast_type_to_type(con)?;
-                let arg_types: Result<Vec<Type>> = args.iter()
+                let arg_types: StdResult<Vec<Type>, String> = args.iter()
                     .map(|arg| self.ast_type_to_type(arg))
                     .collect();
                 Ok(Type::App(Box::new(con_type), arg_types?))
             }
             AstType::Fun { params, return_type, effects, .. } => {
-                let param_types: Result<Vec<Type>> = params.iter()
+                let param_types: StdResult<Vec<Type>, String> = params.iter()
                     .map(|param| self.ast_type_to_type(param))
                     .collect();
                 let return_typ = self.ast_type_to_type(return_type)?;
@@ -638,14 +596,12 @@ impl InferenceContext {
             }
             _ => {
                 // TODO: Implement remaining AST type conversions
-                Err(Error::Type {
-                    message: "Unsupported AST type conversion".to_string(),
-                })
+                Err("Unsupported AST type conversion".to_string())
             }
         }
     }
     
-    fn ast_effects_to_effects(&mut self, _effects: &crate::core::ast::EffectSet) -> Result<EffectSet> {
+    fn ast_effects_to_effects(&mut self, _effects: &x_parser::ast::EffectSet) -> StdResult<EffectSet, String> {
         // TODO: Implement AST effect set conversion
         Ok(EffectSet::Empty)
     }
@@ -654,27 +610,26 @@ impl InferenceContext {
 /// Unification and effect combination
 impl InferenceContext {
     /// Unify two types with enhanced error reporting
-    fn unify(&mut self, t1: &Type, t2: &Type) -> Result<()> {
+    fn unify(&mut self, t1: &Type, t2: &Type) -> StdResult<(), String> {
         self.unify_with_span(t1, t2, None)
     }
     
     /// Unify two types with span information for error reporting
-    fn unify_with_span(&mut self, t1: &Type, t2: &Type, span: Option<Span>) -> Result<()> {
+    fn unify_with_span(&mut self, t1: &Type, t2: &Type, span: Option<Span>) -> StdResult<(), String> {
         match (t1, t2) {
             (Type::Var(v1), Type::Var(v2)) if v1 == v2 => Ok(()),
             
             (Type::Var(var), typ) | (typ, Type::Var(var)) => {
                 if typ.free_vars().contains(var) {
                     if let Some(span) = span {
-                        self.report_error(
-                            TypeErrorKind::InfiniteType { var: *var, typ: typ.clone() },
-                            span
-                        );
+                        self.report_error(TypeError::InfiniteType {
+                            var: *var,
+                            typ: typ.clone(),
+                            span,
+                        });
                     }
-                    Err(Error::Type {
-                        message: format!("Occurs check failed: {} occurs in {}", 
-                                       Type::Var(*var), typ),
-                    })
+                    Err(format!("Occurs check failed: {} occurs in {}", 
+                                Type::Var(*var), typ))
                 } else {
                     // TODO: Apply substitution
                     Ok(())
@@ -687,19 +642,14 @@ impl InferenceContext {
                 self.unify(c1, c2)?;
                 if args1.len() != args2.len() {
                     if let Some(span) = span {
-                        self.report_error(
-                            TypeErrorKind::ArityMismatch { 
-                                expected: args1.len(), 
-                                actual: args2.len(),
-                                function_type: t1.clone(),
-                            },
-                            span
-                        );
+                        self.report_error(TypeError::ArityMismatch {
+                            expected: args1.len(),
+                            found: args2.len(),
+                            span,
+                        });
                     }
-                    return Err(Error::Type {
-                        message: format!("Type application arity mismatch: {} vs {}", 
-                                       args1.len(), args2.len()),
-                    });
+                    return Err(format!("Type application arity mismatch: {} vs {}", 
+                                     args1.len(), args2.len()));
                 }
                 for (a1, a2) in args1.iter().zip(args2.iter()) {
                     self.unify(a1, a2)?;
@@ -711,19 +661,14 @@ impl InferenceContext {
              Type::Fun { params: p2, return_type: r2, effects: e2 }) => {
                 if p1.len() != p2.len() {
                     if let Some(span) = span {
-                        self.report_error(
-                            TypeErrorKind::ArityMismatch { 
-                                expected: p1.len(), 
-                                actual: p2.len(),
-                                function_type: t1.clone(),
-                            },
-                            span
-                        );
+                        self.report_error(TypeError::ArityMismatch {
+                            expected: p1.len(),
+                            found: p2.len(),
+                            span,
+                        });
                     }
-                    return Err(Error::Type {
-                        message: format!("Function arity mismatch: {} vs {}", 
-                                       p1.len(), p2.len()),
-                    });
+                    return Err(format!("Function arity mismatch: {} vs {}", 
+                                     p1.len(), p2.len()));
                 }
                 for (param1, param2) in p1.iter().zip(p2.iter()) {
                     self.unify(param1, param2)?;
@@ -736,18 +681,14 @@ impl InferenceContext {
             (Type::Tuple(types1), Type::Tuple(types2)) => {
                 if types1.len() != types2.len() {
                     if let Some(span) = span {
-                        self.report_error(
-                            TypeErrorKind::TypeMismatch { 
-                                expected: t1.clone(), 
-                                actual: t2.clone(),
-                            },
-                            span
-                        );
+                        self.report_error(TypeError::TypeMismatch {
+                            expected: t1.clone(),
+                            found: t2.clone(),
+                            span,
+                        });
                     }
-                    return Err(Error::Type {
-                        message: format!("Tuple length mismatch: {} vs {}", 
-                                       types1.len(), types2.len()),
-                    });
+                    return Err(format!("Tuple length mismatch: {} vs {}", 
+                                     types1.len(), types2.len()));
                 }
                 for (t1, t2) in types1.iter().zip(types2.iter()) {
                     self.unify(t1, t2)?;
@@ -770,27 +711,23 @@ impl InferenceContext {
             
             _ => {
                 if let Some(span) = span {
-                    self.report_error(
-                        TypeErrorKind::TypeMismatch { 
-                            expected: t1.clone(), 
-                            actual: t2.clone(),
-                        },
-                        span
-                    );
+                    self.report_error(TypeError::TypeMismatch {
+                        expected: t1.clone(),
+                        found: t2.clone(),
+                        span,
+                    });
                 }
-                Err(Error::Type {
-                    message: format!("Cannot unify {} with {}", t1, t2),
-                })
+                Err(format!("Cannot unify {} with {}", t1, t2))
             },
         }
     }
     
-    fn unify_effects(&mut self, _e1: &EffectSet, _e2: &EffectSet) -> Result<()> {
+    fn unify_effects(&mut self, _e1: &EffectSet, _e2: &EffectSet) -> StdResult<(), String> {
         // TODO: Implement proper effect unification
         Ok(())
     }
     
-    fn combine_effects(&mut self, e1: EffectSet, e2: EffectSet) -> Result<EffectSet> {
+    fn combine_effects(&mut self, e1: EffectSet, e2: EffectSet) -> StdResult<EffectSet, String> {
         match (e1, e2) {
             (EffectSet::Empty, e) | (e, EffectSet::Empty) => Ok(e),
             
@@ -821,7 +758,7 @@ fn extract_effects(typ: &Type) -> EffectSet {
 }
 
 /// Public interface for type inference
-pub fn infer_module(module: &Module) -> Result<TypeEnv> {
+pub fn infer_module(module: &Module) -> StdResult<TypeEnv, String> {
     let mut ctx = InferenceContext::new();
     
     // Process items in dependency order
@@ -842,7 +779,7 @@ pub fn infer_module(module: &Module) -> Result<TypeEnv> {
     Ok(ctx.env)
 }
 
-fn infer_value_def(ctx: &mut InferenceContext, value_def: &ValueDef) -> Result<()> {
+fn infer_value_def(ctx: &mut InferenceContext, value_def: &ValueDef) -> StdResult<(), String> {
     let result = ctx.infer_expr(&value_def.body)?;
     
     // Check against annotation if present
@@ -858,7 +795,7 @@ fn infer_value_def(ctx: &mut InferenceContext, value_def: &ValueDef) -> Result<(
     Ok(())
 }
 
-fn infer_type_def(_ctx: &mut InferenceContext, _type_def: &TypeDef) -> Result<()> {
+fn infer_type_def(_ctx: &mut InferenceContext, _type_def: &TypeDef) -> StdResult<(), String> {
     // TODO: Process type definitions
     Ok(())
 }
@@ -866,14 +803,10 @@ fn infer_type_def(_ctx: &mut InferenceContext, _type_def: &TypeDef) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::{ast::Parameter, span::Span, symbol::Symbol};
+    use x_parser::{ast::Parameter, span::Span, symbol::Symbol};
     
     fn test_span() -> Span {
-        Span::new(
-            crate::core::span::FileId::new(0),
-            crate::core::span::ByteOffset::new(0),
-            crate::core::span::ByteOffset::new(10),
-        )
+        Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0))
     }
     
     #[test]

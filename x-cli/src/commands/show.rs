@@ -5,6 +5,11 @@ use std::path::Path;
 use colored::*;
 use serde_json;
 use x_parser::persistent_ast::{PersistentAstNode, AstNodeKind, Purity};
+use x_parser::syntax::{SyntaxConfig, SyntaxStyle};
+use x_parser::syntax::ocaml::OCamlPrinter;
+use x_parser::syntax::haskell::HaskellPrinter;
+use x_parser::syntax::sexp::SExpPrinter;
+use x_parser::syntax::SyntaxPrinter;
 use crate::format::{detect_format, load_ast};
 use crate::utils::ProgressIndicator;
 
@@ -35,9 +40,12 @@ pub async fn show_command(
         "json" => show_json(&ast, depth)?,
         "summary" => show_summary(&ast)?,
         "compact" => show_compact(&ast, depth)?,
+        "ocaml" => show_ocaml(&ast, depth)?,
+        "haskell" => show_haskell(&ast, depth)?,
+        "sexp" => show_sexp(&ast, depth)?,
         _ => {
             eprintln!("{} Unknown display format: {}", "Error:".red().bold(), format);
-            eprintln!("Available formats: tree, json, summary, compact");
+            eprintln!("Available formats: tree, json, summary, compact, ocaml, haskell, sexp");
             std::process::exit(1);
         }
     }
@@ -314,4 +322,95 @@ fn collect_stats_recursive(node: &PersistentAstNode, depth: usize, stats: &mut A
     for child in node.children() {
         collect_stats_recursive(child, depth + 1, stats);
     }
+}
+
+/// Display AST in OCaml-style syntax
+fn show_ocaml(ast: &PersistentAstNode, _max_depth: Option<usize>) -> Result<()> {
+    println!("{}", "OCaml-style representation:".bold().underline());
+    
+    // Convert PersistentAstNode to regular AST for printing
+    let compilation_unit = convert_persistent_to_ast(ast)?;
+    
+    let config = SyntaxConfig {
+        style: SyntaxStyle::OCaml,
+        indent_size: 2,
+        use_tabs: false,
+        max_line_length: 80,
+        preserve_comments: true,
+    };
+    
+    let printer = OCamlPrinter::new();
+    let output = printer.print(&compilation_unit, &config)?;
+    
+    println!("{}", output);
+    Ok(())
+}
+
+/// Display AST in Haskell-style syntax
+fn show_haskell(ast: &PersistentAstNode, _max_depth: Option<usize>) -> Result<()> {
+    println!("{}", "Haskell-style representation:".bold().underline());
+    
+    // Convert PersistentAstNode to regular AST for printing
+    let compilation_unit = convert_persistent_to_ast(ast)?;
+    
+    let config = SyntaxConfig {
+        style: SyntaxStyle::Haskell,
+        indent_size: 2,
+        use_tabs: false,
+        max_line_length: 80,
+        preserve_comments: true,
+    };
+    
+    let printer = HaskellPrinter::new();
+    let output = printer.print(&compilation_unit, &config)?;
+    
+    println!("{}", output);
+    Ok(())
+}
+
+/// Display AST in S-expression syntax
+fn show_sexp(ast: &PersistentAstNode, _max_depth: Option<usize>) -> Result<()> {
+    println!("{}", "S-expression representation:".bold().underline());
+    
+    // Convert PersistentAstNode to regular AST for printing
+    let compilation_unit = convert_persistent_to_ast(ast)?;
+    
+    let config = SyntaxConfig {
+        style: SyntaxStyle::SExp,
+        indent_size: 2,
+        use_tabs: false,
+        max_line_length: 80,
+        preserve_comments: true,
+    };
+    
+    let printer = SExpPrinter::new();
+    let output = printer.print(&compilation_unit, &config)?;
+    
+    println!("{}", output);
+    Ok(())
+}
+
+/// Convert PersistentAstNode to regular CompilationUnit
+/// This is a simplified conversion - a full implementation would reconstruct the entire AST
+fn convert_persistent_to_ast(ast: &PersistentAstNode) -> Result<x_parser::ast::CompilationUnit> {
+    use x_parser::ast::*;
+    use x_parser::symbol::Symbol;
+    use x_parser::span::{Span, FileId, ByteOffset};
+    
+    // Create a minimal placeholder compilation unit
+    // In a real implementation, this would traverse the persistent AST and reconstruct the full AST
+    let span = Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0));
+    
+    let module = Module {
+        name: ModulePath::single(Symbol::intern("Main"), span),
+        exports: None,
+        imports: Vec::new(),
+        items: Vec::new(),
+        span,
+    };
+    
+    Ok(CompilationUnit {
+        module,
+        span,
+    })
 }

@@ -1,10 +1,10 @@
 //! Constraint generation and solving for type inference
 
 use crate::{
-    types::{Type, TypeVar, TypeScheme},
-    effects::{Effect, EffectSet},
+    types::{Type, TypeVar, TypeScheme, Effect, EffectSet},
 };
-use x_parser::{Symbol, Span};
+use x_parser::{Symbol, Span, FileId};
+use x_parser::span::ByteOffset;
 use std::collections::{HashMap, HashSet};
 
 /// Type constraint for constraint-based type inference
@@ -168,7 +168,7 @@ impl ConstraintSolver {
 
     /// Unify two types
     fn unify_types(&mut self, t1: &Type, t2: &Type, span: Span) -> Result<(), ConstraintError> {
-        use crate::unification::{Unify, Unifier};
+        use crate::unification::Unifier;
         
         let mut unifier = Unifier::new();
         unifier.unify(t1, t2).map_err(|e| ConstraintError::UnificationFailed {
@@ -179,7 +179,8 @@ impl ConstraintSolver {
         })?;
 
         // Apply unifier substitutions
-        for (var, typ) in unifier.substitution() {
+        let subst = unifier.get_substitution();
+        for (var, typ) in subst.type_subst.iter() {
             self.substitution.insert(*var, typ.clone());
         }
 
@@ -189,7 +190,7 @@ impl ConstraintSolver {
     /// Instantiate a type scheme with fresh variables
     fn instantiate_scheme(&self, scheme: &TypeScheme) -> Type {
         // TODO: Implement proper scheme instantiation
-        scheme.typ.clone()
+        scheme.body.clone()
     }
 
     /// Solve field access constraint
@@ -251,7 +252,7 @@ impl ConstraintSolver {
                 let function_type = Type::Fun {
                     params: arg_types.to_vec(),
                     return_type: Box::new(return_type.clone()),
-                    effects: EffectSet::empty(),
+                    effects: EffectSet::Empty,
                 };
                 self.unify_types(func_type, &function_type, span)?;
             }
@@ -267,7 +268,8 @@ impl ConstraintSolver {
 
     /// Check if one effect set is a subset of another
     fn is_effect_subset(&self, subset: &EffectSet, superset: &EffectSet) -> bool {
-        subset.effects().all(|effect| superset.contains(effect))
+        // TODO: Implement proper effect subset checking
+        subset.is_subset_of(superset)
     }
 
     /// Verify handler capability
@@ -441,8 +443,8 @@ mod tests {
         let mut constraints = ConstraintSet::new();
         assert!(constraints.is_empty());
 
-        let span = Span::default();
-        constraints.equal(Type::Int, Type::Int, span);
+        let span = Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0));
+        constraints.equal(Type::Con(Symbol::new("Int")), Type::Con(Symbol::new("Int")), span);
         assert!(!constraints.is_empty());
         assert_eq!(constraints.type_constraints.len(), 1);
     }
@@ -469,7 +471,7 @@ mod tests {
     #[test]
     fn test_type_substitution() {
         let mut type_sub = HashMap::new();
-        type_sub.insert(TypeVar(0), Type::Int);
+        type_sub.insert(TypeVar(0), Type::Con(Symbol::new("Int")));
         
         let substitution = Substitution {
             type_substitution: type_sub,
@@ -479,6 +481,6 @@ mod tests {
         let var_type = Type::Var(TypeVar(0));
         let applied = substitution.apply_to_type(&var_type);
         
-        assert_eq!(applied, Type::Int);
+        assert_eq!(applied, Type::Con(Symbol::new("Int")));
     }
 }

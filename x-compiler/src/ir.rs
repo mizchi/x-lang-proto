@@ -3,10 +3,9 @@
 //! This IR provides a common abstraction layer between the x Language AST
 //! and the target-specific code generators.
 
-use crate::{
-    core::{ast::*, symbol::Symbol, span::Span},
-    analysis::types::{Type, EffectSet},
-};
+use x_parser::{CompilationUnit, Module, Expr, Item, Pattern, Literal, Symbol, Span, ValueDef, TypeDef, Visibility};
+use x_checker::{Type, EffectSet};
+use crate::Result;
 use std::collections::HashMap;
 
 /// Intermediate representation for code generation
@@ -252,7 +251,7 @@ impl IRBuilder {
     }
     
     /// Build IR from a compilation unit
-    pub fn build_ir(&mut self, cu: &CompilationUnit) -> crate::Result<IR> {
+    pub fn build_ir(&mut self, cu: &CompilationUnit) -> Result<IR> {
         let ir_module = self.build_module(&cu.module)?;
         
         Ok(IR {
@@ -263,12 +262,12 @@ impl IRBuilder {
     }
     
     /// Build IR module from AST module (public method)
-    pub fn build_module(&mut self, module: &Module) -> crate::Result<IRModule> {
+    pub fn build_module(&mut self, module: &Module) -> Result<IRModule> {
         self.build_module_internal(module)
     }
     
     /// Build IR module from AST module (internal implementation)
-    fn build_module_internal(&mut self, module: &Module) -> crate::Result<IRModule> {
+    fn build_module_internal(&mut self, module: &Module) -> Result<IRModule> {
         self.current_module = Some(module.name.segments[0]); // Simplified
         
         let mut ir_functions = Vec::new();
@@ -291,7 +290,7 @@ impl IRBuilder {
                             name: value_def.name,
                             parameters: value_def.parameters.iter()
                                 .map(|p| self.build_parameter(p))
-                                .collect::<crate::Result<Vec<_>>>()?,
+                                .collect::<Result<Vec<_>>>()?,
                             return_type: IRType::Primitive(IRPrimitiveType::Unit), // Simplified
                             body: self.build_expression(&value_def.body)?,
                             effects: IREffectSet::Empty,
@@ -320,7 +319,7 @@ impl IRBuilder {
     }
     
     /// Build IR expression from AST expression
-    fn build_expression(&mut self, expr: &Expr) -> crate::Result<IRExpression> {
+    fn build_expression(&mut self, expr: &Expr) -> Result<IRExpression> {
         match expr {
             Expr::Literal(lit, _) => Ok(IRExpression::Literal(self.build_literal(lit))),
             Expr::Var(symbol, _) => Ok(IRExpression::Variable(*symbol)),
@@ -374,7 +373,7 @@ impl IRBuilder {
     }
     
     /// Build IR parameter from AST pattern
-    fn build_parameter(&self, pattern: &Pattern) -> crate::Result<IRParameter> {
+    fn build_parameter(&self, pattern: &Pattern) -> Result<IRParameter> {
         match pattern {
             Pattern::Variable(symbol, _) => {
                 Ok(IRParameter {
@@ -393,7 +392,7 @@ impl IRBuilder {
     }
     
     /// Build IR binding from let pattern and value
-    fn build_let_binding(&mut self, pattern: &Pattern, value: &Expr) -> crate::Result<IRBinding> {
+    fn build_let_binding(&mut self, pattern: &Pattern, value: &Expr) -> Result<IRBinding> {
         match pattern {
             Pattern::Variable(symbol, _) => {
                 Ok(IRBinding {
@@ -414,7 +413,7 @@ impl IRBuilder {
     }
     
     /// Build IR type definition
-    fn build_type_definition(&self, _type_def: &TypeDef) -> crate::Result<IRTypeDefinition> {
+    fn build_type_definition(&self, _type_def: &TypeDef) -> Result<IRTypeDefinition> {
         // Simplified implementation
         Ok(IRTypeDefinition {
             name: Symbol::intern("PlaceholderType"),

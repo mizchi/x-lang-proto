@@ -35,7 +35,7 @@ pub fn parse_source(source: &str, file_id: FileId, _syntax_style: SyntaxStyle) -
 }
 
 /// Syntax styles supported by the parser
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SyntaxStyle {
     OCaml,
     SExpression,

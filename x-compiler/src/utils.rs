@@ -1,6 +1,6 @@
 //! Utility functions for code generation
 
-use crate::core::symbol::Symbol;
+use x_parser::Symbol;
 
 /// Sanitize an identifier for target language compatibility
 pub fn sanitize_identifier(symbol: Symbol, target: &str) -> String {
@@ -99,7 +99,7 @@ fn escape_wasm_string(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::symbol::Symbol;
+    use x_parser::Symbol;
     
     #[test]
     fn test_sanitize_typescript_identifier() {

@@ -1,9 +1,8 @@
-use super::backend::*;
-use super::wit::WitGenerator;
-use crate::core::ast::CompilationUnit;
-use crate::core::symbol::Symbol;
-use crate::analysis::types::TypeScheme;
-use crate::{Error, Result};
+use crate::backend::*;
+use crate::wit::WitGenerator;
+use x_parser::{CompilationUnit, Module, Symbol};
+use x_checker::TypeScheme;
+use crate::{CompilerError, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -60,9 +59,7 @@ impl CodegenBackend for WitBackend {
             Ok(wit_content) => {
                 let mut output_path = options.output_dir.clone();
                 output_path.push(format!("{}.wit", 
-                    cu.package_name.as_ref()
-                        .map(|s| s.as_str())
-                        .unwrap_or("main")));
+                    cu.module.name.to_string()));
                 
                 files.insert(output_path, wit_content);
             }
@@ -83,6 +80,7 @@ impl CodegenBackend for WitBackend {
 
         // Calculate total size
         let total_size = files.values().map(|content| content.len()).sum();
+        let file_count = files.len();
 
         Ok(CodegenResult {
             files,
@@ -90,7 +88,7 @@ impl CodegenBackend for WitBackend {
             diagnostics,
             metadata: CodegenMetadata {
                 target_info: self.target_info(),
-                generated_files: files.len(),
+                generated_files: file_count,
                 total_size,
                 compilation_time: start_time.elapsed(),
             },
@@ -99,20 +97,18 @@ impl CodegenBackend for WitBackend {
 
     fn generate_module(
         &mut self,
-        module: &crate::core::ast::Module,
+        module: &Module,
         _type_info: &HashMap<Symbol, TypeScheme>,
         _options: &CodegenOptions,
     ) -> Result<String> {
         // Create a minimal compilation unit for this module
         let cu = CompilationUnit {
-            package_name: Some(Symbol::new("module")),
-            modules: vec![module.clone()],
-            imports: vec![],
-            exports: vec![],
+            module: module.clone(),
+            span: module.span.clone(),
         };
 
         self.generator.generate(&cu)
-            .map_err(|e| Error::Type { message: e })
+            .map_err(|e| CompilerError::CodeGen { message: e })
     }
 
     fn generate_runtime(&self, _options: &CodegenOptions) -> Result<String> {
@@ -155,9 +151,12 @@ impl CodegenBackend for WitBackend {
 
 impl WitBackend {
     fn generate_cargo_toml(&self, cu: &CompilationUnit) -> Result<String> {
-        let package_name = cu.package_name.as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or("effect-lang-component");
+        let package_name = cu.module.name.to_string();
+        let package_name = if package_name.is_empty() {
+            "x-lang-component"
+        } else {
+            &package_name
+        };
 
         let cargo_toml = format!(r#"[package]
 name = "{}"
@@ -190,8 +189,6 @@ package = "{}"
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::ast::Module;
-    use crate::core::symbol::Symbol;
 
     #[test]
     fn test_wit_backend_creation() {

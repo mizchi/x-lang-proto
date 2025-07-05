@@ -123,7 +123,7 @@ pub enum QueryTransform {
 }
 
 /// Query execution result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct QueryResult {
     /// Matched node IDs
     pub nodes: Vector<NodeId>,
@@ -209,7 +209,7 @@ impl QueryResult {
         let mut combined_nodes = self.nodes.clone();
         for node in &other.nodes {
             if !combined_nodes.contains(node) {
-                combined_nodes = combined_nodes.push_back(*node);
+                combined_nodes.push_back(*node);
             }
         }
         

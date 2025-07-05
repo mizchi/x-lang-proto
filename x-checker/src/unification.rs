@@ -6,10 +6,12 @@
 //! - Constraint solving for type classes
 //! - Substitution composition and application
 
-use crate::analysis::types::*;
-use crate::analysis::effects::*;
-use crate::core::symbol::Symbol;
-use crate::{Error, Result};
+use crate::types::*;
+use crate::effects::*;
+use x_parser::{Symbol, Span, FileId};
+use x_parser::span::ByteOffset;
+use crate::error_reporting::TypeError;
+use std::result::Result;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -52,19 +54,24 @@ impl Unifier {
     }
     
     /// Add a type unification constraint
-    pub fn unify_types(&mut self, t1: Type, t2: Type) -> Result<()> {
+    pub fn unify_types(&mut self, t1: Type, t2: Type) -> Result<(), String> {
         self.constraints.push_back(UnificationConstraint::Unify(t1, t2));
         self.solve_constraints()
     }
     
+    /// Alias for unify_types for compatibility
+    pub fn unify(&mut self, t1: &Type, t2: &Type) -> std::result::Result<(), String> {
+        self.unify_types(t1.clone(), t2.clone())
+    }
+    
     /// Add an effect unification constraint
-    pub fn unify_effects(&mut self, e1: EffectSet, e2: EffectSet) -> Result<()> {
+    pub fn unify_effects(&mut self, e1: EffectSet, e2: EffectSet) -> Result<(), String> {
         self.constraints.push_back(UnificationConstraint::UnifyEffect(e1, e2));
         self.solve_constraints()
     }
     
     /// Add a row constraint
-    pub fn add_row_constraint(&mut self, row: EffectSet, lacks: Symbol) -> Result<()> {
+    pub fn add_row_constraint(&mut self, row: EffectSet, lacks: Symbol) -> Result<(), String> {
         self.constraints.push_back(UnificationConstraint::RowLacks(row, lacks));
         self.solve_constraints()
     }
@@ -75,7 +82,7 @@ impl Unifier {
     }
     
     /// Solve all pending constraints
-    fn solve_constraints(&mut self) -> Result<()> {
+    fn solve_constraints(&mut self) -> Result<(), String> {
         while let Some(constraint) = self.constraints.pop_front() {
             self.solve_constraint(constraint)?;
         }
@@ -83,7 +90,7 @@ impl Unifier {
     }
     
     /// Solve a single constraint
-    fn solve_constraint(&mut self, constraint: UnificationConstraint) -> Result<()> {
+    fn solve_constraint(&mut self, constraint: UnificationConstraint) -> Result<(), String> {
         match constraint {
             UnificationConstraint::Unify(t1, t2) => self.unify_types_impl(t1, t2),
             UnificationConstraint::UnifyEffect(e1, e2) => self.unify_effects_impl(e1, e2),
@@ -93,7 +100,7 @@ impl Unifier {
     }
     
     /// Core type unification implementation
-    fn unify_types_impl(&mut self, t1: Type, t2: Type) -> Result<()> {
+    fn unify_types_impl(&mut self, t1: Type, t2: Type) -> Result<(), String> {
         let t1 = t1.apply_subst(&self.substitution);
         let t2 = t2.apply_subst(&self.substitution);
         
@@ -112,13 +119,11 @@ impl Unifier {
             (Type::App(c1, args1), Type::App(c2, args2)) => {
                 self.unify_types_impl(*c1, *c2)?;
                 if args1.len() != args2.len() {
-                    return Err(Error::Type {
-                        message: format!(
-                            "Type application arity mismatch: {} vs {}",
-                            args1.len(),
-                            args2.len()
-                        ),
-                    });
+                    return Err(format!(
+                        "Type application arity mismatch: {} vs {}",
+                        args1.len(),
+                        args2.len()
+                    ));
                 }
                 for (a1, a2) in args1.into_iter().zip(args2.into_iter()) {
                     self.unify_types_impl(a1, a2)?;
@@ -130,13 +135,11 @@ impl Unifier {
             (Type::Fun { params: p1, return_type: r1, effects: e1 },
              Type::Fun { params: p2, return_type: r2, effects: e2 }) => {
                 if p1.len() != p2.len() {
-                    return Err(Error::Type {
-                        message: format!(
-                            "Function arity mismatch: {} vs {}",
-                            p1.len(),
-                            p2.len()
-                        ),
-                    });
+                    return Err(format!(
+                        "Function arity mismatch: {} vs {}",
+                        p1.len(),
+                        p2.len()
+                    ));
                 }
                 
                 for (param1, param2) in p1.into_iter().zip(p2.into_iter()) {
@@ -151,13 +154,11 @@ impl Unifier {
             // Record type unification
             (Type::Record(fields1), Type::Record(fields2)) => {
                 if fields1.len() != fields2.len() {
-                    return Err(Error::Type {
-                        message: format!(
-                            "Record field count mismatch: {} vs {}",
-                            fields1.len(),
-                            fields2.len()
-                        ),
-                    });
+                    return Err(format!(
+                        "Record field count mismatch: {} vs {}",
+                        fields1.len(),
+                        fields2.len()
+                    ));
                 }
                 
                 // Sort fields for comparison
@@ -168,9 +169,7 @@ impl Unifier {
                 
                 for ((name1, type1), (name2, type2)) in sorted1.into_iter().zip(sorted2.into_iter()) {
                     if name1 != name2 {
-                        return Err(Error::Type {
-                            message: format!("Record field mismatch: {} vs {}", name1, name2),
-                        });
+                        return Err(format!("Record field mismatch: {} vs {}", name1, name2));
                     }
                     self.unify_types_impl(type1, type2)?;
                 }
@@ -180,13 +179,11 @@ impl Unifier {
             // Tuple unification
             (Type::Tuple(types1), Type::Tuple(types2)) => {
                 if types1.len() != types2.len() {
-                    return Err(Error::Type {
-                        message: format!(
-                            "Tuple length mismatch: {} vs {}",
-                            types1.len(),
-                            types2.len()
-                        ),
-                    });
+                    return Err(format!(
+                        "Tuple length mismatch: {} vs {}",
+                        types1.len(),
+                        types2.len()
+                    ));
                 }
                 
                 for (t1, t2) in types1.into_iter().zip(types2.into_iter()) {
@@ -199,9 +196,7 @@ impl Unifier {
             (Type::Forall { type_vars: vars1, body: body1, .. },
              Type::Forall { type_vars: vars2, body: body2, .. }) => {
                 if vars1.len() != vars2.len() {
-                    return Err(Error::Type {
-                        message: "Forall variable count mismatch".to_string(),
-                    });
+                    return Err("Forall variable count mismatch".to_string());
                 }
                 
                 // Rename variables in body2 to match body1
@@ -227,19 +222,15 @@ impl Unifier {
             }
             
             // Mismatch
-            (t1, t2) => Err(Error::Type {
-                message: format!("Cannot unify {} with {}", t1, t2),
-            }),
+            (t1, t2) => Err(format!("Cannot unify {} with {}", t1, t2)),
         }
     }
     
     /// Unify a variable with a type
-    fn unify_var(&mut self, var: TypeVar, typ: Type) -> Result<()> {
+    fn unify_var(&mut self, var: TypeVar, typ: Type) -> Result<(), String> {
         // Occurs check
         if typ.free_vars().contains(&var) {
-            return Err(Error::Type {
-                message: format!("Occurs check failed: {} occurs in {}", Type::Var(var), typ),
-            });
+            return Err(format!("Occurs check failed: {} occurs in {}", Type::Var(var), typ));
         }
         
         // Add to substitution
@@ -248,7 +239,7 @@ impl Unifier {
     }
     
     /// Core effect unification implementation
-    fn unify_effects_impl(&mut self, e1: EffectSet, e2: EffectSet) -> Result<()> {
+    fn unify_effects_impl(&mut self, e1: EffectSet, e2: EffectSet) -> Result<(), String> {
         let e1 = e1.apply_subst(&self.substitution);
         let e2 = e2.apply_subst(&self.substitution);
         
@@ -272,19 +263,15 @@ impl Unifier {
             (EffectSet::Row { effects, .. }, EffectSet::Empty) if effects.is_empty() => Ok(()),
             
             // Mismatch
-            (e1, e2) => Err(Error::Effect {
-                message: format!("Cannot unify effect sets {} with {}", e1, e2),
-            }),
+            (e1, e2) => Err(format!("Cannot unify effect sets {} with {}", e1, e2)),
         }
     }
     
     /// Unify an effect variable with an effect set
-    fn unify_effect_var(&mut self, var: EffectVar, effects: EffectSet) -> Result<()> {
+    fn unify_effect_var(&mut self, var: EffectVar, effects: EffectSet) -> Result<(), String> {
         // Check for occurs check in effects
         if self.effect_var_occurs_in(var, &effects) {
-            return Err(Error::Effect {
-                message: format!("Occurs check failed in effects: {:?} occurs in {:?}", var, effects),
-            });
+            return Err(format!("Occurs check failed in effects: {:?} occurs in {:?}", var, effects));
         }
         
         self.substitution.insert_effect(var, effects);
@@ -308,7 +295,7 @@ impl Unifier {
         tail1: Option<Box<EffectSet>>,
         effects2: Vec<Effect>,
         tail2: Option<Box<EffectSet>>,
-    ) -> Result<()> {
+    ) -> Result<(), String> {
         // Find common effects
         let mut remaining1 = effects1;
         let mut remaining2 = effects2;
@@ -346,14 +333,12 @@ impl Unifier {
                 self.unify_effects_impl(*t1.clone(), remaining_set)
             }
             
-            _ => Err(Error::Effect {
-                message: "Effect row unification failed".to_string(),
-            }),
+            _ => Err("Effect row unification failed".to_string()),
         }
     }
     
     /// Solve row lacks constraint
-    fn solve_row_lacks(&mut self, row: EffectSet, lacks: Symbol) -> Result<()> {
+    fn solve_row_lacks(&mut self, row: EffectSet, lacks: Symbol) -> Result<(), String> {
         let row = row.apply_subst(&self.substitution);
         
         match row {
@@ -366,9 +351,7 @@ impl Unifier {
             EffectSet::Row { effects, tail } => {
                 // Check that the effect is not present
                 if effects.iter().any(|e| e.name == lacks) {
-                    return Err(Error::Effect {
-                        message: format!("Row constraint violation: row contains {}", lacks),
-                    });
+                    return Err(format!("Row constraint violation: row contains {}", lacks));
                 }
                 
                 // Recursively check tail
@@ -382,7 +365,7 @@ impl Unifier {
     }
     
     /// Solve type class constraint
-    fn solve_class_constraint(&mut self, class: Symbol, types: Vec<Type>) -> Result<()> {
+    fn solve_class_constraint(&mut self, class: Symbol, types: Vec<Type>) -> Result<(), String> {
         // Apply current substitution to types
         let types: Vec<Type> = types.into_iter()
             .map(|t| t.apply_subst(&self.substitution))
@@ -404,14 +387,14 @@ impl Default for Unifier {
 /// Advanced unification utilities
 impl Unifier {
     /// Most general unifier for two types
-    pub fn mgu(t1: &Type, t2: &Type) -> Result<Substitution> {
+    pub fn mgu(t1: &Type, t2: &Type) -> Result<Substitution, String> {
         let mut unifier = Unifier::new();
         unifier.unify_types(t1.clone(), t2.clone())?;
         Ok(unifier.substitution)
     }
     
     /// Most general unifier for effect sets
-    pub fn mgu_effects(e1: &EffectSet, e2: &EffectSet) -> Result<Substitution> {
+    pub fn mgu_effects(e1: &EffectSet, e2: &EffectSet) -> Result<Substitution, String> {
         let mut unifier = Unifier::new();
         unifier.unify_effects(e1.clone(), e2.clone())?;
         Ok(unifier.substitution)
@@ -423,13 +406,13 @@ impl Unifier {
     }
     
     /// Match a type against a pattern (one-way unification)
-    pub fn match_type(pattern: &Type, target: &Type) -> Result<Substitution> {
+    pub fn match_type(pattern: &Type, target: &Type) -> Result<Substitution, String> {
         let mut unifier = Unifier::new();
         unifier.match_type_impl(pattern.clone(), target.clone())?;
         Ok(unifier.substitution)
     }
     
-    fn match_type_impl(&mut self, pattern: Type, target: Type) -> Result<()> {
+    fn match_type_impl(&mut self, pattern: Type, target: Type) -> Result<(), String> {
         match pattern {
             Type::Var(var) => {
                 self.substitution.insert_type(var, target);
@@ -437,26 +420,20 @@ impl Unifier {
             }
             Type::Con(name1) => match target {
                 Type::Con(name2) if name1 == name2 => Ok(()),
-                _ => Err(Error::Type {
-                    message: format!("Cannot match {} with {}", pattern, target),
-                }),
+                _ => Err(format!("Type mismatch: expected {}, found {:?}", name1, target)),
             },
             Type::App(ref con1, ref args1) => match target {
                 Type::App(con2, args2) => {
                     self.match_type_impl((**con1).clone(), (*con2).clone())?;
                     if args1.len() != args2.len() {
-                        return Err(Error::Type {
-                            message: "Arity mismatch in type application".to_string(),
-                        });
+                        return Err("Arity mismatch in type application".to_string());
                     }
                     for (arg1, arg2) in args1.into_iter().zip(args2.into_iter()) {
                         self.match_type_impl(arg1.clone(), arg2.clone())?;
                     }
                     Ok(())
                 }
-                _ => Err(Error::Type {
-                    message: format!("Cannot match {} with {}", pattern, target),
-                }),
+                _ => Err(format!("Type mismatch: expected {:?}, found {:?}", pattern, target)),
             },
             _ => {
                 // For other patterns, fall back to regular unification
@@ -494,7 +471,7 @@ impl ConstraintSolver {
     }
     
     /// Solve all constraints
-    pub fn solve(&mut self) -> Result<Substitution> {
+    pub fn solve(&mut self) -> Result<Substitution, String> {
         while !self.constraints.is_empty() {
             let constraint = self.constraints.remove(0);
             self.solve_constraint(constraint)?;
@@ -502,7 +479,7 @@ impl ConstraintSolver {
         Ok(self.substitution.clone())
     }
     
-    fn solve_constraint(&mut self, constraint: Constraint) -> Result<()> {
+    fn solve_constraint(&mut self, constraint: Constraint) -> Result<(), String> {
         match constraint {
             Constraint::Class { class, types } => {
                 self.solve_class_instance(class, types)
@@ -516,38 +493,23 @@ impl ConstraintSolver {
         }
     }
     
-    fn solve_class_instance(&mut self, class: Symbol, types: Vec<Type>) -> Result<()> {
+    fn solve_class_instance(&mut self, class: Symbol, types: Vec<Type>) -> Result<(), String> {
         // Apply current substitution
         let types: Vec<Type> = types.into_iter()
             .map(|t| t.apply_subst(&self.substitution))
             .collect();
         
-        // Look up instances in environment
-        if let Some(instances) = self.type_env.instances.get(&class) {
-            for instance in instances {
-                if let Ok(subst) = self.match_instance(&instance.head, &types) {
-                    // Found matching instance, add its constraints
-                    self.substitution = self.substitution.compose(&subst);
-                    for constraint in &instance.constraints {
-                        self.constraints.push(constraint.clone());
-                    }
-                    return Ok(());
-                }
-            }
-        }
+        // TODO: Look up instances in environment
+        // For now, we don't have access to type_env, so we can't resolve type class instances
         
-        Err(Error::Type {
-            message: format!("No instance found for {} {:?}", class, types),
-        })
+        Err(format!("No instance found for {} {:?}", class, types))
     }
     
-    fn match_instance(&self, instance_head: &Constraint, types: &[Type]) -> Result<Substitution> {
+    fn match_instance(&self, instance_head: &Constraint, types: &[Type]) -> Result<Substitution, String> {
         match instance_head {
             Constraint::Class { class: _, types: instance_types } => {
                 if instance_types.len() != types.len() {
-                    return Err(Error::Type {
-                        message: "Instance arity mismatch".to_string(),
-                    });
+                    return Err("Instance arity mismatch".to_string());
                 }
                 
                 let mut unifier = Unifier::new();
@@ -556,26 +518,22 @@ impl ConstraintSolver {
                 }
                 Ok(unifier.substitution)
             }
-            _ => Err(Error::Type {
-                message: "Invalid instance head".to_string(),
-            }),
+            _ => Err("Invalid instance head".to_string()),
         }
     }
     
-    fn solve_effect_constraint(&mut self, _effect: Effect, _type_: Type) -> Result<()> {
+    fn solve_effect_constraint(&mut self, _effect: Effect, _type_: Type) -> Result<(), String> {
         // Check that the type supports the effect
         // This is a simplified implementation
         Ok(())
     }
     
-    fn solve_row_constraint(&mut self, lacks: Symbol, row: EffectSet) -> Result<()> {
+    fn solve_row_constraint(&mut self, lacks: Symbol, row: EffectSet) -> Result<(), String> {
         let row = row.apply_subst(&self.substitution);
         
         // Check that the row doesn't contain the lacks label
         if row.contains_effect(lacks) {
-            Err(Error::Effect {
-                message: format!("Row constraint violation: {} present in row", lacks),
-            })
+            Err(format!("Row constraint violation: {} present in row", lacks))
         } else {
             Ok(())
         }

@@ -3,10 +3,12 @@
 //! This module provides high-performance incremental type checking that only
 //! recomputes types for nodes that have changed or depend on changed nodes.
 
-use crate::types::{Type, TypeScheme, TypeConstraint, Substitution};
-use crate::effects::{Effect, EffectRow, EffectConstraint};
+use crate::types::{Type, TypeScheme, TypeVar, Substitution};
+use crate::constraints::TypeConstraint;
+use crate::types::{Effect, EffectSet};
+use crate::checker::EffectConstraint;
 use x_parser::{
-    persistent_ast::{PersistentAstNode, NodeId, TypeInfo, TypeId, EffectSet},
+    persistent_ast::{PersistentAstNode, NodeId, TypeInfo, TypeId, EffectSet as AstEffectSet},
     symbol::Symbol,
 };
 use salsa::{Database, Cancelled};
@@ -40,7 +42,7 @@ pub trait IncrementalTypeCheckDb: Database {
     fn node_scope(&self, node_id: NodeId) -> ScopeId;
     
     /// Check effect constraints for a node
-    fn check_effects(&self, node_id: NodeId) -> Result<EffectRow, EffectError>;
+    fn check_effects(&self, node_id: NodeId) -> Result<EffectSet, EffectError>;
     
     /// Solve type constraints
     fn solve_constraints(&self, constraints: Arc<Vec<TypeConstraint>>) -> Result<Substitution, TypeError>;
@@ -60,7 +62,7 @@ pub struct IncrementalTypeCheckDbImpl {
     /// Cache for computed types
     type_cache: DashMap<NodeId, TypeScheme>,
     /// Cache for effect information
-    effect_cache: DashMap<NodeId, EffectRow>,
+    effect_cache: DashMap<NodeId, EffectSet>,
     /// Symbol resolution cache
     symbol_cache: DashMap<(Symbol, ScopeId), Option<SymbolInfo>>,
     /// Constraint solving cache
@@ -96,8 +98,8 @@ pub enum TypeError {
         location: NodeId 
     },
     EffectMismatch { 
-        expected: EffectRow, 
-        found: EffectRow, 
+        expected: EffectSet, 
+        found: EffectSet, 
         location: NodeId 
     },
     ConstraintUnsatisfiable {
@@ -118,8 +120,8 @@ pub enum EffectError {
         location: NodeId,
     },
     HandlerMismatch {
-        expected: EffectRow,
-        found: EffectRow,
+        expected: EffectSet,
+        found: EffectSet,
         location: NodeId,
     },
 }
@@ -312,7 +314,7 @@ fn infer_type(db: &dyn IncrementalTypeCheckDb, node_id: NodeId) -> Result<TypeSc
         },
         _ => {
             // TODO: Implement other node types
-            Ok(TypeScheme::monotype(Type::Unit))
+            Ok(TypeScheme::monotype(Type::Con(Symbol::new("Unit"))))
         }
     }
 }
@@ -322,12 +324,12 @@ fn infer_literal_type(value: &x_parser::persistent_ast::LiteralValue) -> Result<
     use x_parser::persistent_ast::LiteralValue;
     
     let ty = match value {
-        LiteralValue::Unit => Type::Unit,
-        LiteralValue::Boolean(_) => Type::Bool,
-        LiteralValue::Integer(_) => Type::Int,
-        LiteralValue::Float(_) => Type::Float,
-        LiteralValue::String(_) => Type::String,
-        LiteralValue::Char(_) => Type::Char,
+        LiteralValue::Unit => Type::Con(Symbol::new("Unit")),
+        LiteralValue::Boolean(_) => Type::Con(Symbol::new("Bool")),
+        LiteralValue::Integer(_) => Type::Con(Symbol::new("Int")),
+        LiteralValue::Float(_) => Type::Con(Symbol::new("Float")),
+        LiteralValue::String(_) => Type::Con(Symbol::new("String")),
+        LiteralValue::Char(_) => Type::Con(Symbol::new("Char")),
     };
     
     Ok(TypeScheme::monotype(ty))
@@ -350,7 +352,7 @@ fn infer_application_type(
     
     // Unify function type with argument types
     match function_type.body {
-        Type::Function { parameters, return_type, effects: _ } => {
+        Type::Fun { params: parameters, return_type, effects: _ } => {
             if parameters.len() != arg_types.len() {
                 return Err(TypeError::InvalidApplication {
                     function_type: function_type.body,
@@ -378,7 +380,7 @@ fn infer_lambda_type(
     _effect_annotation: Option<&PersistentAstNode>,
 ) -> Result<TypeScheme, TypeError> {
     // TODO: Implement lambda type inference
-    Ok(TypeScheme::monotype(Type::Unit))
+    Ok(TypeScheme::monotype(Type::Con(Symbol::new("Unit"))))
 }
 
 fn infer_let_type(
@@ -388,7 +390,7 @@ fn infer_let_type(
     _body: &PersistentAstNode,
 ) -> Result<TypeScheme, TypeError> {
     // TODO: Implement let type inference
-    Ok(TypeScheme::monotype(Type::Unit))
+    Ok(TypeScheme::monotype(Type::Con(Symbol::new("Unit"))))
 }
 
 fn infer_if_type(
@@ -399,7 +401,7 @@ fn infer_if_type(
     _else_branch: Option<&PersistentAstNode>,
 ) -> Result<TypeScheme, TypeError> {
     // TODO: Implement if type inference
-    Ok(TypeScheme::monotype(Type::Unit))
+    Ok(TypeScheme::monotype(Type::Con(Symbol::new("Unit"))))
 }
 
 /// Additional helper structures
@@ -419,8 +421,8 @@ impl TypeContext {
         }
     }
     
-    pub fn fresh_type_var(&mut self) -> TypeId {
-        let var = TypeId(self.next_type_var);
+    pub fn fresh_type_var(&mut self) -> TypeVar {
+        let var = TypeVar(self.next_type_var as u32);
         self.next_type_var += 1;
         var
     }

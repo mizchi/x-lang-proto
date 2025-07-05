@@ -21,6 +21,7 @@ tracing = { workspace = true }
 # Additional dependencies
 dashmap = { workspace = true }
 uuid = { workspace = true }
+im = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

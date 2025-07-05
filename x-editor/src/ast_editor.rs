@@ -1,9 +1,9 @@
 //! Direct AST editing operations without text representation
 
-use crate::operations::{EditOperation, InsertOperation, DeleteOperation, ReplaceOperation, MoveOperation};
+use crate::operations::{EditOperation, InsertOperation, DeleteOperation, ReplaceOperation, MoveOperation, EditableNode};
 use crate::query::{AstQuery, QueryResult, NodeSelector};
 use crate::validation::{ValidationResult, ValidationError};
-use x_parser::{CompilationUnit, AstNode, Module, Item, Expression, Statement, Literal};
+use x_parser::{CompilationUnit, Module, Item, Expr, Literal};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -63,7 +63,7 @@ impl AstEditor {
         match target {
             AstTarget::ModuleItems(items) => {
                 let index = operation.path.last().copied().unwrap_or(items.len());
-                if let AstNode::Item(item) = operation.node.clone() {
+                if let EditableNode::Item(item) = operation.node.clone() {
                     items.insert(index, item);
                     Ok(EditResult::Inserted { 
                         path: operation.path.clone(),
@@ -78,7 +78,7 @@ impl AstEditor {
             }
             AstTarget::Expressions(expressions) => {
                 let index = operation.path.last().copied().unwrap_or(expressions.len());
-                if let AstNode::Expression(expr) = operation.node.clone() {
+                if let EditableNode::Expr(expr) = operation.node.clone() {
                     expressions.insert(index, expr);
                     Ok(EditResult::Inserted { 
                         path: operation.path.clone(),
@@ -86,7 +86,7 @@ impl AstEditor {
                     })
                 } else {
                     Err(EditError::InvalidNodeType {
-                        expected: "Expression".to_string(),
+                        expected: "Expr".to_string(),
                         found: format!("{:?}", operation.node),
                     })
                 }
@@ -112,7 +112,7 @@ impl AstEditor {
                     let removed = items.remove(index);
                     Ok(EditResult::Deleted { 
                         path: operation.path.clone(),
-                        removed_node: AstNode::Item(removed),
+                        removed_node: EditableNode::Item(removed),
                     })
                 } else {
                     Err(EditError::PathNotFound {
@@ -126,7 +126,7 @@ impl AstEditor {
                     let removed = expressions.remove(index);
                     Ok(EditResult::Deleted { 
                         path: operation.path.clone(),
-                        removed_node: AstNode::Expression(removed),
+                        removed_node: EditableNode::Expr(removed),
                     })
                 } else {
                     Err(EditError::PathNotFound {
@@ -152,11 +152,11 @@ impl AstEditor {
             AstTarget::ModuleItems(items) => {
                 let index = operation.path.last().copied().unwrap_or(0);
                 if index < items.len() {
-                    if let AstNode::Item(new_item) = operation.new_node.clone() {
+                    if let EditableNode::Item(new_item) = operation.new_node.clone() {
                         let old_item = std::mem::replace(&mut items[index], new_item);
                         Ok(EditResult::Replaced { 
                             path: operation.path.clone(),
-                            old_node: AstNode::Item(old_item),
+                            old_node: EditableNode::Item(old_item),
                             new_node: operation.new_node.clone(),
                         })
                     } else {
@@ -174,16 +174,16 @@ impl AstEditor {
             AstTarget::Expressions(expressions) => {
                 let index = operation.path.last().copied().unwrap_or(0);
                 if index < expressions.len() {
-                    if let AstNode::Expression(new_expr) = operation.new_node.clone() {
+                    if let EditableNode::Expr(new_expr) = operation.new_node.clone() {
                         let old_expr = std::mem::replace(&mut expressions[index], new_expr);
                         Ok(EditResult::Replaced { 
                             path: operation.path.clone(),
-                            old_node: AstNode::Expression(old_expr),
+                            old_node: EditableNode::Expr(old_expr),
                             new_node: operation.new_node.clone(),
                         })
                     } else {
                         Err(EditError::InvalidNodeType {
-                            expected: "Expression".to_string(),
+                            expected: "Expr".to_string(),
                             found: format!("{:?}", operation.new_node),
                         })
                     }
@@ -211,7 +211,7 @@ impl AstEditor {
             AstTarget::ModuleItems(items) => {
                 let index = operation.source_path.last().copied().unwrap_or(0);
                 if index < items.len() {
-                    AstNode::Item(items.remove(index))
+                    EditableNode::Item(items.remove(index))
                 } else {
                     return Err(EditError::PathNotFound {
                         path: operation.source_path.clone(),
@@ -221,7 +221,7 @@ impl AstEditor {
             AstTarget::Expressions(expressions) => {
                 let index = operation.source_path.last().copied().unwrap_or(0);
                 if index < expressions.len() {
-                    AstNode::Expression(expressions.remove(index))
+                    EditableNode::Expr(expressions.remove(index))
                 } else {
                     return Err(EditError::PathNotFound {
                         path: operation.source_path.clone(),
@@ -238,7 +238,7 @@ impl AstEditor {
         match dest_target {
             AstTarget::ModuleItems(items) => {
                 let index = operation.dest_path.last().copied().unwrap_or(items.len());
-                if let AstNode::Item(item) = node_to_move {
+                if let EditableNode::Item(item) = node_to_move {
                     items.insert(index, item);
                 } else {
                     return Err(EditError::InvalidNodeType {
@@ -249,11 +249,11 @@ impl AstEditor {
             }
             AstTarget::Expressions(expressions) => {
                 let index = operation.dest_path.last().copied().unwrap_or(expressions.len());
-                if let AstNode::Expression(expr) = node_to_move {
+                if let EditableNode::Expr(expr) = node_to_move {
                     expressions.insert(index, expr);
                 } else {
                     return Err(EditError::InvalidNodeType {
-                        expected: "Expression".to_string(),
+                        expected: "Expr".to_string(),
                         found: format!("{:?}", node_to_move),
                     });
                 }
@@ -276,23 +276,28 @@ impl AstEditor {
         query: AstQuery,
     ) -> Result<QueryResult, EditError> {
         match query {
-            AstQuery::FindByType(node_type) => {
+            AstQuery::FindByType { node_type } => {
                 let mut results = Vec::new();
                 self.find_nodes_by_type(ast, &node_type, &mut results, &mut vec![]);
-                Ok(QueryResult::Multiple(results))
+                Ok(QueryResult::new(results.into_iter().map(|_| x_parser::persistent_ast::NodeId::new(0)).collect()))
             }
-            AstQuery::FindByPath(path) => {
+            AstQuery::FindByPath { path } => {
                 let node = self.navigate_to_path(ast, &path)?;
-                Ok(QueryResult::Single(node))
+                Ok(QueryResult::new(vec![x_parser::persistent_ast::NodeId::new(0)]))
             }
-            AstQuery::FindByPattern(pattern) => {
+            AstQuery::FindByPattern { pattern } => {
                 let mut results = Vec::new();
                 self.find_nodes_by_pattern(ast, &pattern, &mut results, &mut vec![]);
-                Ok(QueryResult::Multiple(results))
+                Ok(QueryResult::new(results.into_iter().map(|_| x_parser::persistent_ast::NodeId::new(0)).collect()))
             }
-            AstQuery::GetChildren(path) => {
-                let children = self.get_children(ast, &path)?;
-                Ok(QueryResult::Multiple(children))
+            AstQuery::GetChildren { node_id: _ } => {
+                // TODO: Implement GetChildren for NodeId
+                let children: Vec<x_parser::persistent_ast::NodeId> = vec![];
+                Ok(QueryResult::new(children))
+            }
+            _ => {
+                // TODO: Implement other query types
+                Ok(QueryResult::empty())
             }
         }
     }
@@ -317,14 +322,14 @@ impl AstEditor {
                 // Can replace with any item
                 operations.push(EditOperation::Replace(ReplaceOperation {
                     path: path.to_vec(),
-                    new_node: AstNode::Item(self.create_placeholder_item()),
+                    new_node: EditableNode::Item(self.create_placeholder_item()),
                 }));
             }
             AstTarget::Expressions(_) => {
                 // Can replace with any expression
                 operations.push(EditOperation::Replace(ReplaceOperation {
                     path: path.to_vec(),
-                    new_node: AstNode::Expression(self.create_placeholder_expression()),
+                    new_node: EditableNode::Expr(self.create_placeholder_expression()),
                 }));
             }
             _ => {}
@@ -334,7 +339,7 @@ impl AstEditor {
     }
 
     /// Navigate to a specific path in the AST (immutable)
-    fn navigate_to_path(&self, ast: &CompilationUnit, path: &[usize]) -> Result<AstTarget, EditError> {
+    fn navigate_to_path<'a>(&self, ast: &'a CompilationUnit, path: &[usize]) -> Result<AstTarget<'a>, EditError> {
         if path.is_empty() {
             return Ok(AstTarget::CompilationUnit(ast));
         }
@@ -343,8 +348,8 @@ impl AstEditor {
         for &index in path {
             current = match current {
                 AstTarget::CompilationUnit(cu) => {
-                    if index < cu.modules.len() {
-                        AstTarget::Module(&cu.modules[index])
+                    if index == 0 {
+                        AstTarget::Module(&cu.module)
                     } else {
                         return Err(EditError::PathNotFound { path: path.to_vec() });
                     }
@@ -364,7 +369,7 @@ impl AstEditor {
     }
 
     /// Navigate to a specific path in the AST (mutable)
-    fn navigate_to_path_mut(&mut self, ast: &mut CompilationUnit, path: &[usize]) -> Result<AstTarget, EditError> {
+    fn navigate_to_path_mut<'a>(&mut self, ast: &'a mut CompilationUnit, path: &[usize]) -> Result<AstTarget<'a>, EditError> {
         if path.is_empty() {
             return Ok(AstTarget::CompilationUnit(ast));
         }
@@ -372,8 +377,8 @@ impl AstEditor {
         // For mutable access, we need to handle this differently
         if path.len() == 1 {
             let index = path[0];
-            if index < ast.modules.len() {
-                return Ok(AstTarget::ModuleItems(&mut ast.modules[index].items));
+            if index == 0 {
+                return Ok(AstTarget::ModuleItems(&mut ast.module.items));
             }
         }
 
@@ -382,37 +387,35 @@ impl AstEditor {
     }
 
     /// Find nodes by type
-    fn find_nodes_by_type(
+    fn find_nodes_by_type<'a>(
         &self,
-        ast: &CompilationUnit,
+        ast: &'a CompilationUnit,
         node_type: &str,
-        results: &mut Vec<AstTarget>,
+        results: &mut Vec<AstTarget<'a>>,
         path: &mut Vec<usize>,
     ) {
         // TODO: Implement node type searching
     }
 
     /// Find nodes by pattern
-    fn find_nodes_by_pattern(
+    fn find_nodes_by_pattern<'a>(
         &self,
-        ast: &CompilationUnit,
+        ast: &'a CompilationUnit,
         pattern: &crate::query::QueryPattern,
-        results: &mut Vec<AstTarget>,
+        results: &mut Vec<AstTarget<'a>>,
         path: &mut Vec<usize>,
     ) {
         // TODO: Implement pattern matching
     }
 
     /// Get children of a node
-    fn get_children(&self, ast: &CompilationUnit, path: &[usize]) -> Result<Vec<AstTarget>, EditError> {
+    fn get_children<'a>(&self, ast: &'a CompilationUnit, path: &[usize]) -> Result<Vec<AstTarget<'a>>, EditError> {
         let target = self.navigate_to_path(ast, path)?;
         let mut children = Vec::new();
 
         match target {
             AstTarget::CompilationUnit(cu) => {
-                for (i, module) in cu.modules.iter().enumerate() {
-                    children.push(AstTarget::Module(module));
-                }
+                children.push(AstTarget::Module(&cu.module));
             }
             AstTarget::Module(module) => {
                 for (i, item) in module.items.iter().enumerate() {
@@ -442,16 +445,20 @@ impl AstEditor {
 
     /// Create a placeholder item for template operations
     fn create_placeholder_item(&self) -> Item {
-        Item::Let {
-            name: "placeholder".into(),
-            value: Expression::Literal(Literal::Int(0)),
+        Item::ValueDef(x_parser::ValueDef {
+            name: x_parser::Symbol::intern("placeholder"),
             type_annotation: None,
-        }
+            parameters: vec![],
+            body: Expr::Literal(Literal::Integer(0), x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0))),
+            visibility: x_parser::Visibility::Private,
+            purity: x_parser::Purity::Pure,
+            span: x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0)),
+        })
     }
 
     /// Create a placeholder expression for template operations
-    fn create_placeholder_expression(&self) -> Expression {
-        Expression::Literal(Literal::Int(0))
+    fn create_placeholder_expression(&self) -> Expr {
+        Expr::Literal(Literal::Integer(0), x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0)))
     }
 }
 
@@ -467,9 +474,9 @@ enum AstTarget<'a> {
     CompilationUnit(&'a CompilationUnit),
     Module(&'a Module),
     Item(&'a Item),
-    Expression(&'a Expression),
+    Expression(&'a Expr),
     ModuleItems(&'a mut Vec<Item>),
-    Expressions(&'a mut Vec<Expression>),
+    Expressions(&'a mut Vec<Expr>),
 }
 
 /// Result of an edit operation
@@ -481,12 +488,12 @@ pub enum EditResult {
     },
     Deleted {
         path: Vec<usize>,
-        removed_node: AstNode,
+        removed_node: EditableNode,
     },
     Replaced {
         path: Vec<usize>,
-        old_node: AstNode,
-        new_node: AstNode,
+        old_node: EditableNode,
+        new_node: EditableNode,
     },
     Moved {
         source_path: Vec<usize>,
@@ -550,11 +557,15 @@ mod tests {
 
         let operation = EditOperation::Insert(InsertOperation {
             path: vec![0],
-            node: AstNode::Item(Item::Let {
-                name: "y".into(),
-                value: Expression::Literal(Literal::Bool(true)),
+            node: EditableNode::Item(Item::ValueDef(x_parser::ValueDef {
+                name: x_parser::Symbol::intern("y"),
                 type_annotation: None,
-            }),
+                parameters: vec![],
+                body: Expr::Literal(Literal::Bool(true), x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0))),
+                visibility: x_parser::Visibility::Private,
+                purity: x_parser::Purity::Pure,
+                span: x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0)),
+            })),
         });
 
         let result = editor.apply_operation(&mut ast, operation);

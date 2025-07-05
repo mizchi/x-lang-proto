@@ -1,10 +1,8 @@
 //! Abstract backend interface for code generation
 
-use crate::{
-    core::ast::CompilationUnit,
-    analysis::types::{Type, TypeScheme},
-    Error, Result,
-};
+use x_parser::{CompilationUnit, Module, Span, Symbol};
+use x_checker::{Type, TypeScheme};
+use crate::{CompilerError, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -43,7 +41,7 @@ pub struct CodegenResult {
 pub struct CodegenDiagnostic {
     pub severity: DiagnosticSeverity,
     pub message: String,
-    pub location: Option<crate::core::span::Span>,
+    pub location: Option<Span>,
 }
 
 #[derive(Debug, Clone)]
@@ -74,15 +72,15 @@ pub trait CodegenBackend {
     fn generate_code(
         &mut self,
         cu: &CompilationUnit,
-        type_info: &HashMap<crate::core::symbol::Symbol, TypeScheme>,
+        type_info: &HashMap<Symbol, TypeScheme>,
         options: &CodegenOptions,
     ) -> Result<CodegenResult>;
     
     /// Generate code for a module
     fn generate_module(
         &mut self,
-        module: &crate::core::ast::Module,
-        type_info: &HashMap<crate::core::symbol::Symbol, TypeScheme>,
+        module: &Module,
+        type_info: &HashMap<Symbol, TypeScheme>,
         options: &CodegenOptions,
     ) -> Result<String>;
     
@@ -110,19 +108,19 @@ impl BackendFactory {
     pub fn create_backend(target: &str) -> Result<Box<dyn CodegenBackend>> {
         match target {
             "typescript" | "ts" => {
-                Ok(Box::new(crate::codegen::typescript::TypeScriptBackend::new()))
+                Ok(Box::new(crate::typescript::TypeScriptBackend::new()))
             }
             "wasm-gc" | "wasm" => {
-                Ok(Box::new(crate::codegen::wasm_gc::WasmGCBackend::new()))
+                Ok(Box::new(crate::wasm_gc::WasmGCBackend::new()))
             }
             "wasm-component" | "component" => {
-                Ok(Box::new(crate::codegen::wasm_component::WasmComponentBackend::new()))
+                Ok(Box::new(crate::wasm_component::WasmComponentBackend::new()))
             }
             "wit" => {
-                Ok(Box::new(crate::codegen::wit_backend::WitBackend::new()))
+                Ok(Box::new(crate::wit_backend::WitBackend::new()))
             }
-            _ => Err(Error::Type {
-                message: format!("Unknown compilation target: {}", target),
+            _ => Err(CompilerError::InvalidTarget {
+                target: target.to_string(),
             }),
         }
     }
@@ -135,7 +133,7 @@ impl BackendFactory {
 
 /// Utility functions for code generation
 pub mod utils {
-    use crate::core::symbol::Symbol;
+    use x_parser::Symbol;
     
     /// Sanitize a symbol name for the target language
     pub fn sanitize_identifier(symbol: Symbol, target: &str) -> String {

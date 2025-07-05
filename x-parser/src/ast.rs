@@ -679,7 +679,7 @@ pub struct MatchCase {
 
 
 /// Visibility modifiers inspired by Rust's pub system and WebAssembly Component Model
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Visibility {
     /// Private to current scope (default)
     Private,

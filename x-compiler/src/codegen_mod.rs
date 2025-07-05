@@ -3,17 +3,6 @@
 //! This module provides a unified interface for generating code
 //! targeting different platforms and languages.
 
-pub mod backend;
-pub mod typescript;
-pub mod wasm_gc;
-pub mod wasm_component;
-pub mod wit;
-pub mod wit_backend;
-pub mod ir;
-pub mod utils;
-
-pub use backend::{CodegenBackend, CompilationTarget, CodegenOptions, CodegenResult};
-pub use ir::{IR, IRBuilder};
 
 /// Supported compilation targets
 #[derive(Debug, Clone, PartialEq)]

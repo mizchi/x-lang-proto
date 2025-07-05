@@ -1,7 +1,7 @@
 //! x Language compiler CLI
 
 use clap::{Args, Parser, Subcommand};
-use effect_lang_compiler::{
+use x_compiler::{
     CompilerBuilder, CompilerConfig, TargetConfig, config::presets, convenience,
 };
 use x_parser::SyntaxStyle;
@@ -199,13 +199,13 @@ async fn handle_compile(args: CompileArgs, config_path: Option<PathBuf>) -> Resu
         // Show diagnostics
         for diagnostic in &result.diagnostics {
             match diagnostic.severity {
-                effect_lang_compiler::backend::DiagnosticSeverity::Error => {
+                x_compiler::backend::DiagnosticSeverity::Error => {
                     error!("{}", diagnostic.message);
                 }
-                effect_lang_compiler::backend::DiagnosticSeverity::Warning => {
+                x_compiler::backend::DiagnosticSeverity::Warning => {
                     warn!("{}", diagnostic.message);
                 }
-                effect_lang_compiler::backend::DiagnosticSeverity::Info => {
+                x_compiler::backend::DiagnosticSeverity::Info => {
                     info!("{}", diagnostic.message);
                 }
             }
@@ -271,9 +271,10 @@ async fn handle_parse(args: ParseArgs) -> Result<(), Box<dyn std::error::Error>>
         }
         "pretty" => {
             println!("Parse successful!");
-            println!("Modules: {}", ast.modules.len());
-            println!("Imports: {}", ast.imports.len());
-            println!("Exports: {}", ast.exports.len());
+            println!("Module: {}", ast.module.name.to_string());
+            println!("Imports: {}", ast.module.imports.len());
+            println!("Exports: {}", ast.module.exports.as_ref().map(|e| e.items.len()).unwrap_or(0));
+            println!("Items: {}", ast.module.items.len());
         }
         _ => {
             return Err(format!("Unknown format: {}", args.format).into());
@@ -328,7 +329,7 @@ fn parse_syntax_style(style: &str) -> Result<SyntaxStyle, Box<dyn std::error::Er
         "ocaml" => Ok(SyntaxStyle::OCaml),
         "sexp" | "s-expression" => Ok(SyntaxStyle::SExpression),
         "haskell" => Ok(SyntaxStyle::Haskell),
-        "rust" => Ok(SyntaxStyle::Rust),
+        "rust" => Ok(SyntaxStyle::RustLike),
         _ => Err(format!("Unknown syntax style: {}", style).into()),
     }
 }
@@ -352,7 +353,7 @@ mod tests {
         assert_eq!(parse_syntax_style("ocaml").unwrap(), SyntaxStyle::OCaml);
         assert_eq!(parse_syntax_style("sexp").unwrap(), SyntaxStyle::SExpression);
         assert_eq!(parse_syntax_style("haskell").unwrap(), SyntaxStyle::Haskell);
-        assert_eq!(parse_syntax_style("rust").unwrap(), SyntaxStyle::Rust);
+        assert_eq!(parse_syntax_style("rust").unwrap(), SyntaxStyle::RustLike);
         
         assert!(parse_syntax_style("invalid").is_err());
     }
