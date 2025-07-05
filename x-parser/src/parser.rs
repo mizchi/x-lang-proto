@@ -892,8 +892,6 @@ impl Parser {
             self.parse_parenthesized()
         } else if self.check(&TokenKind::If) {
             self.parse_if()
-        } else if self.check(&TokenKind::Let) {
-            self.parse_let()
         } else if self.check(&TokenKind::Fun) {
             self.parse_lambda()
         } else if self.check(&TokenKind::Match) {
@@ -910,8 +908,9 @@ impl Parser {
         matches!(self.current_token().kind,
             TokenKind::LeftParen | TokenKind::Integer(_) | TokenKind::Float(_) |
             TokenKind::String(_) | TokenKind::Bool(_) | TokenKind::Ident(_) |
-            TokenKind::Number(_) | TokenKind::If | TokenKind::Let | TokenKind::Fun | 
+            TokenKind::Number(_) | TokenKind::If | TokenKind::Fun | 
             TokenKind::Match | TokenKind::Do
+            // Note: Removed Let - let expressions should be handled carefully to avoid confusion with top-level let definitions
         )
     }
     
@@ -924,7 +923,12 @@ impl Parser {
             // Unit literal
             Ok(Expr::Literal(Literal::Unit, start_span))
         } else {
-            let expr = self.parse_expression()?;
+            // Inside parentheses, we can have let expressions
+            let expr = if self.check(&TokenKind::Let) {
+                self.parse_let()
+            } else {
+                self.parse_expression()
+            }?;
             self.expect(TokenKind::RightParen)?;
             Ok(expr)
         }
@@ -1015,6 +1019,9 @@ impl Parser {
         let mut arms = Vec::new();
         
         while !self.is_at_end() && !self.check(&TokenKind::RightBrace) {
+            // Skip optional leading pipe
+            self.match_token(&TokenKind::Pipe);
+            
             let pattern = self.parse_pattern()?;
             
             let guard = if self.match_token(&TokenKind::If) {
@@ -1418,16 +1425,50 @@ mod tests {
     }
     
     #[test]
-    fn test_parse_lambda_expression() {
-        let input = r#"
-            module Test
-            
-            let identity = fun x -> x
-            let add = fun x y -> x + y
-        "#;
+    fn test_parse_simple_lambda() {
+        let input = r#"module Test
+
+let identity = fun x -> x"#;
         
         let result = parse(input, FileId::new(0));
-        assert!(result.is_ok());
+        match &result {
+            Ok(_) => {},
+            Err(e) => panic!("Parse failed: {:?}", e),
+        }
+        
+        let cu = result.unwrap();
+        assert_eq!(cu.module.items.len(), 1);
+    }
+    
+    #[test]
+    fn test_parse_two_lambdas() {
+        let input = r#"module Test
+
+let identity = fun x -> x
+let add = fun x y -> y"#;
+        
+        let result = parse(input, FileId::new(0));
+        match &result {
+            Ok(_) => {},
+            Err(e) => panic!("Parse failed: {:?}", e),
+        }
+        
+        let cu = result.unwrap();
+        assert_eq!(cu.module.items.len(), 2);
+    }
+    
+    #[test]
+    fn test_parse_lambda_expression() {
+        let input = r#"module Test
+
+let identity = fun x -> x
+let add = fun x y -> x + y"#;
+        
+        let result = parse(input, FileId::new(0));
+        match &result {
+            Ok(_) => {},
+            Err(e) => panic!("Parse failed: {:?}", e),
+        }
         
         let cu = result.unwrap();
         assert_eq!(cu.module.items.len(), 2);
@@ -1453,11 +1494,14 @@ mod tests {
         let input = r#"
             module Test
             
-            let result = f x y
+            let res = f x y
         "#;
         
         let result = parse(input, FileId::new(0));
-        assert!(result.is_ok());
+        match &result {
+            Ok(_) => {},
+            Err(e) => panic!("Parse failed: {:?}", e),
+        }
         
         let cu = result.unwrap();
         assert_eq!(cu.module.items.len(), 1);
@@ -1479,7 +1523,10 @@ mod tests {
         "#;
         
         let result = parse(input, FileId::new(0));
-        assert!(result.is_ok());
+        match &result {
+            Ok(_) => {},
+            Err(e) => panic!("Parse failed: {:?}", e),
+        }
         
         let cu = result.unwrap();
         assert_eq!(cu.module.items.len(), 1);
