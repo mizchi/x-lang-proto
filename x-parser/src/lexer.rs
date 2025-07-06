@@ -108,7 +108,7 @@ impl Lexer {
                 self.advance();
                 if self.current_char() == Some(':') {
                     self.advance();
-                    Ok(Token::new(TokenKind::ColonColon, self.make_span(start_pos, self.position)))
+                    Ok(Token::new(TokenKind::Cons, self.make_span(start_pos, self.position)))
                 } else {
                     Ok(Token::new(TokenKind::Colon, self.make_span(start_pos, self.position)))
                 }
@@ -215,6 +215,28 @@ impl Lexer {
                     Ok(Token::new(TokenKind::AndAnd, self.make_span(start_pos, self.position)))
                 } else {
                     Ok(Token::new(TokenKind::Ampersand, self.make_span(start_pos, self.position)))
+                }
+            }
+            Some('^') => {
+                self.advance();
+                Ok(Token::new(TokenKind::Caret, self.make_span(start_pos, self.position)))
+            }
+            
+            // Backtick for doc comments
+            Some('`') => {
+                if self.peek_ahead(1) == Some('`') && self.peek_ahead(2) == Some('`') {
+                    // Triple backtick at start of line = doc comment
+                    if self.position == 0 || self.chars.get(self.position.saturating_sub(1)) == Some(&'\n') {
+                        self.read_doc_comment()
+                    } else {
+                        Err(Error::Parse { 
+                            message: "Triple backticks only allowed at start of line for doc comments".to_string() 
+                        })
+                    }
+                } else {
+                    Err(Error::Parse { 
+                        message: "Unexpected character: '`'".to_string() 
+                    })
                 }
             }
             
@@ -338,6 +360,51 @@ impl Lexer {
             ByteOffset::new(start as u32),
             ByteOffset::new(end as u32),
         )
+    }
+    
+    /// Peek ahead n characters without advancing
+    fn peek_ahead(&self, n: usize) -> Option<char> {
+        self.chars.get(self.position + n).copied()
+    }
+    
+    /// Read a documentation comment
+    fn read_doc_comment(&mut self) -> Result<Token> {
+        let start_pos = self.position;
+        
+        // Skip the opening ```
+        self.advance(); // `
+        self.advance(); // `
+        self.advance(); // `
+        
+        let mut content = String::new();
+        
+        // Read until closing ```
+        while self.position + 2 < self.chars.len() {
+            if self.current_char() == Some('`') 
+                && self.peek_char() == Some('`') 
+                && self.peek_ahead(2) == Some('`') {
+                // Found closing ```
+                self.advance(); // `
+                self.advance(); // `
+                self.advance(); // `
+                
+                return Ok(Token::new(
+                    TokenKind::DocComment(content.trim().to_string()),
+                    self.make_span(start_pos, self.position)
+                ));
+            }
+            
+            if let Some(ch) = self.current_char() {
+                content.push(ch);
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        
+        Err(Error::Parse {
+            message: "Unterminated documentation comment".to_string()
+        })
     }
 }
 

@@ -73,6 +73,12 @@ impl Parser {
         // Parse module items
         let mut items = Vec::new();
         while !self.is_at_end() {
+            // Skip standalone doc comments at module level
+            if matches!(self.current_token().kind, TokenKind::DocComment(_)) {
+                self.advance();
+                continue;
+            }
+            
             items.push(self.parse_item()?);
         }
         
@@ -80,6 +86,7 @@ impl Parser {
         
         Ok(Module {
             name: module_path,
+            documentation: None, // TODO: Parse module doc comments
             exports,
             imports,
             items,
@@ -199,7 +206,7 @@ impl Parser {
             ImportKind::Qualified
         };
         
-        let alias = if self.match_token(&TokenKind::Ident("as".to_string())) {
+        let alias = if self.match_ident("as") {
             Some(self.parse_identifier()?)
         } else {
             None
@@ -228,7 +235,7 @@ impl Parser {
         };
         
         let name = self.parse_identifier()?;
-        let alias = if self.match_token(&TokenKind::Ident("as".to_string())) {
+        let alias = if self.match_ident("as") {
             Some(self.parse_identifier()?)
         } else {
             None
@@ -249,7 +256,9 @@ impl Parser {
         // Parse visibility modifier first
         let visibility = self.parse_visibility()?;
         
-        if self.check(&TokenKind::Interface) {
+        if self.check(&TokenKind::Test) {
+            Ok(Item::TestDef(self.parse_test_def_with_visibility(visibility)?))
+        } else if self.check(&TokenKind::Interface) {
             Ok(Item::InterfaceDef(self.parse_interface_def(visibility)?))
         } else if self.check(&TokenKind::Data) {
             Ok(Item::TypeDef(self.parse_data_type_with_visibility(visibility)?))
@@ -302,6 +311,7 @@ impl Parser {
     
     /// Parse data type definition with visibility
     fn parse_data_type_with_visibility(&mut self, visibility: Visibility) -> Result<TypeDef> {
+        let documentation = self.collect_doc_comments();
         let start_span = self.current_span();
         self.expect(TokenKind::Data)?;
         
@@ -321,6 +331,7 @@ impl Parser {
         
         Ok(TypeDef {
             name,
+            documentation,
             type_params,
             kind: TypeDefKind::Data(constructors),
             visibility,
@@ -336,6 +347,7 @@ impl Parser {
     
     /// Parse type alias with visibility
     fn parse_type_alias_with_visibility(&mut self, visibility: Visibility) -> Result<TypeDef> {
+        let documentation = self.collect_doc_comments();
         let start_span = self.current_span();
         self.expect(TokenKind::Type)?;
         
@@ -349,6 +361,7 @@ impl Parser {
         
         Ok(TypeDef {
             name,
+            documentation,
             type_params,
             kind: TypeDefKind::Alias(aliased_type),
             visibility,
@@ -384,6 +397,7 @@ impl Parser {
     
     /// Parse effect definition with visibility
     fn parse_effect_def_with_visibility(&mut self, visibility: Visibility) -> Result<EffectDef> {
+        let documentation = self.collect_doc_comments();
         let start_span = self.current_span();
         self.expect(TokenKind::Effect)?;
         
@@ -402,6 +416,7 @@ impl Parser {
         
         Ok(EffectDef {
             name,
+            documentation,
             type_params,
             operations,
             visibility,
@@ -497,6 +512,7 @@ impl Parser {
     
     /// Parse value definition with visibility
     fn parse_value_def_with_visibility(&mut self, visibility: Visibility) -> Result<ValueDef> {
+        let documentation = self.collect_doc_comments();
         let start_span = self.current_span();
         self.expect(TokenKind::Let)?;
         
@@ -516,6 +532,7 @@ impl Parser {
         
         Ok(ValueDef {
             name,
+            documentation,
             type_annotation,
             parameters: Vec::new(), // Simplified for now
             body,
@@ -529,6 +546,133 @@ impl Parser {
     #[allow(dead_code)]
     fn parse_value_def(&mut self) -> Result<ValueDef> {
         self.parse_value_def_with_visibility(Visibility::Private)
+    }
+    
+    /// Parse test definition with visibility
+    fn parse_test_def_with_visibility(&mut self, visibility: Visibility) -> Result<TestDef> {
+        let documentation = self.collect_doc_comments();
+        let start_span = self.current_span();
+        self.expect(TokenKind::Test)?;
+        
+        // Parse test name (string literal)
+        let (name, description) = match &self.current_token().kind {
+            TokenKind::String(s) => {
+                let desc = s.clone();
+                self.advance();
+                // Use the string as the test name (convert to identifier)
+                let name = Symbol::intern(&desc.replace(' ', "_"));
+                (name, Some(desc))
+            }
+            TokenKind::Ident(s) => {
+                // Alternative: test identifier { ... }
+                let name = Symbol::intern(s);
+                self.advance();
+                (name, None)
+            }
+            _ => return Err(Error::Parse {
+                message: "Expected test name (string or identifier)".to_string(),
+            }),
+        };
+        
+        // Parse optional tags and attributes
+        let mut tags = Vec::new();
+        let mut timeout = None;
+        let mut expected_failure = false;
+        
+        // Parse 'with' clause for attributes
+        if self.match_token(&TokenKind::With) {
+            // Parse attributes like: with tags ["tag1", "tag2"], timeout = 5000
+            loop {
+                if self.match_ident("tags") {
+                    self.expect(TokenKind::LeftBracket)?;
+                    while !self.check(&TokenKind::RightBracket) {
+                        if let TokenKind::String(tag) = &self.current_token().kind {
+                            tags.push(tag.clone());
+                            self.advance();
+                        }
+                        if !self.check(&TokenKind::RightBracket) {
+                            self.expect(TokenKind::Comma)?;
+                        }
+                    }
+                    self.expect(TokenKind::RightBracket)?;
+                } else if self.match_ident("timeout") {
+                    self.expect(TokenKind::Equal)?;
+                    if let TokenKind::Integer(t) = self.current_token().kind {
+                        timeout = Some(t as u64);
+                        self.advance();
+                    }
+                } else if self.match_ident("expected_failure") {
+                    self.expect(TokenKind::Equal)?;
+                    if let TokenKind::Bool(b) = self.current_token().kind {
+                        expected_failure = b;
+                        self.advance();
+                    }
+                } else {
+                    break;
+                }
+                
+                if !self.match_token(&TokenKind::Comma) {
+                    break;
+                }
+            }
+        }
+        
+        // Parse test body block
+        self.expect(TokenKind::LeftBrace)?;
+        
+        let mut setup = None;
+        let mut teardown = None;
+        let mut body_expr = None;
+        
+        // Parse setup, body, teardown blocks
+        while !self.check(&TokenKind::RightBrace) && !self.is_at_end() {
+            if self.match_ident("setup") {
+                self.expect(TokenKind::LeftBrace)?;
+                let setup_expr = self.parse_expression()?;
+                self.expect(TokenKind::RightBrace)?;
+                setup = Some(Box::new(setup_expr));
+            } else if self.match_ident("teardown") {
+                self.expect(TokenKind::LeftBrace)?;
+                let teardown_expr = self.parse_expression()?;
+                self.expect(TokenKind::RightBrace)?;
+                teardown = Some(Box::new(teardown_expr));
+            } else if self.match_ident("body") {
+                self.expect(TokenKind::LeftBrace)?;
+                body_expr = Some(self.parse_expression()?);
+                self.expect(TokenKind::RightBrace)?;
+            } else {
+                // If no explicit "body" block, treat the content as the body
+                if body_expr.is_none() {
+                    body_expr = Some(self.parse_expression()?);
+                } else {
+                    return Err(Error::Parse {
+                        message: "Unexpected content in test definition".to_string(),
+                    });
+                }
+            }
+        }
+        
+        self.expect(TokenKind::RightBrace)?;
+        
+        let body = body_expr.ok_or_else(|| Error::Parse {
+            message: "Test body is required".to_string(),
+        })?;
+        
+        let end_span = self.current_span();
+        
+        Ok(TestDef {
+            name,
+            documentation,
+            description,
+            tags,
+            setup,
+            teardown,
+            body,
+            timeout,
+            expected_failure,
+            visibility,
+            span: start_span.merge(end_span),
+        })
     }
     
     /// Parse component interface definition
@@ -697,8 +841,8 @@ impl Parser {
         let start_span = self.current_span();
         
         // Check for constructor or static modifiers
-        let is_constructor = self.match_token(&TokenKind::Ident("constructor".to_string()));
-        let is_static = self.match_token(&TokenKind::Ident("static".to_string()));
+        let is_constructor = self.match_ident("constructor");
+        let is_static = self.match_ident("static");
         
         let name = self.parse_identifier()?;
         let signature = self.parse_function_signature()?;
@@ -866,8 +1010,10 @@ impl Parser {
             TokenKind::LessEqual => Symbol::intern("<="),
             TokenKind::Greater => Symbol::intern(">"),
             TokenKind::GreaterEqual => Symbol::intern(">="),
-            TokenKind::And => Symbol::intern("&&"),
-            TokenKind::Or => Symbol::intern("||"),
+            TokenKind::AndAnd | TokenKind::And => Symbol::intern("&&"),
+            TokenKind::OrOr | TokenKind::Or => Symbol::intern("||"),
+            TokenKind::Cons => Symbol::intern("::"),
+            TokenKind::Caret => Symbol::intern("^"),
             _ => Symbol::intern("unknown_op"),
         }
     }
@@ -909,7 +1055,7 @@ impl Parser {
             TokenKind::LeftParen | TokenKind::Integer(_) | TokenKind::Float(_) |
             TokenKind::String(_) | TokenKind::Bool(_) | TokenKind::Ident(_) |
             TokenKind::Number(_) | TokenKind::If | TokenKind::Fun | 
-            TokenKind::Match | TokenKind::Do
+            TokenKind::Match | TokenKind::Do | TokenKind::LeftBracket
             // Note: Removed Let - let expressions should be handled carefully to avoid confusion with top-level let definitions
         )
     }
@@ -1168,6 +1314,17 @@ impl Parser {
                     Ok(pattern)
                 }
             }
+            TokenKind::LeftBracket => {
+                self.advance();
+                if self.match_token(&TokenKind::RightBracket) {
+                    // Empty list pattern []
+                    Ok(Pattern::Variable(Symbol::intern("[]"), start_span))
+                } else {
+                    Err(Error::Parse {
+                        message: "List patterns not yet supported".to_string(),
+                    })
+                }
+            }
             _ => Err(Error::Parse {
                 message: format!("Expected pattern, found {:?}", self.current_token().kind),
             }),
@@ -1179,7 +1336,7 @@ impl Parser {
         matches!(self.current_token().kind,
             TokenKind::Underscore | TokenKind::Integer(_) | TokenKind::Float(_) |
             TokenKind::String(_) | TokenKind::Bool(_) | TokenKind::Ident(_) |
-            TokenKind::LeftParen
+            TokenKind::LeftParen | TokenKind::LeftBracket
         )
     }
     
@@ -1244,6 +1401,50 @@ impl Parser {
                     self.expect(TokenKind::RightParen)?;
                     Ok(expr)
                 }
+            }
+            TokenKind::LeftBracket => {
+                self.advance();
+                
+                // Empty list []
+                if self.match_token(&TokenKind::RightBracket) {
+                    let end_span = self.current_span();
+                    // Empty list is represented as a constructor
+                    return Ok(Expr::Var(Symbol::intern("[]"), start_span.merge(end_span)));
+                }
+                
+                // Parse first element
+                let first = self.parse_expression()?;
+                
+                // Check if it's a list literal [1; 2; 3] or [1, 2, 3]
+                let separator = if self.check(&TokenKind::Semicolon) {
+                    TokenKind::Semicolon
+                } else {
+                    TokenKind::Comma
+                };
+                
+                let mut elements = vec![first];
+                
+                while self.match_token(&separator) {
+                    if self.check(&TokenKind::RightBracket) {
+                        break; // Allow trailing separator
+                    }
+                    elements.push(self.parse_expression()?);
+                }
+                
+                self.expect(TokenKind::RightBracket)?;
+                let end_span = self.current_span();
+                
+                // Build list using :: and []
+                let mut list_expr = Expr::Var(Symbol::intern("[]"), end_span);
+                
+                // Build from right to left: [1; 2; 3] becomes 1 :: 2 :: 3 :: []
+                for elem in elements.into_iter().rev() {
+                    let cons_span = elem.span().merge(list_expr.span());
+                    let cons_op = Expr::Var(Symbol::intern("::"), cons_span);
+                    list_expr = Expr::App(Box::new(cons_op), vec![elem, list_expr], cons_span);
+                }
+                
+                Ok(list_expr)
             }
             _ => Err(Error::Parse {
                 message: format!("Unexpected token: {:?}", self.current_token().kind),
@@ -1313,6 +1514,169 @@ impl Parser {
             true
         } else {
             false
+        }
+    }
+    
+    /// Match an identifier with a specific value
+    fn match_ident(&mut self, name: &str) -> bool {
+        if let TokenKind::Ident(current_name) = &self.current_token().kind {
+            if current_name == name {
+                self.advance();
+                return true;
+            }
+        }
+        false
+    }
+    
+    /// Collect documentation comments before the current position
+    fn collect_doc_comments(&mut self) -> Option<Documentation> {
+        let mut doc_tokens = Vec::new();
+        let mut current = self.current;
+        
+        // Look backwards for doc comments
+        while current > 0 {
+            current -= 1;
+            match &self.tokens[current].kind {
+                TokenKind::DocComment(content) => {
+                    doc_tokens.push((content.clone(), self.tokens[current].span));
+                }
+                TokenKind::Whitespace | TokenKind::Newline => {
+                    // Continue looking
+                }
+                _ => {
+                    // Stop at first non-whitespace, non-doc token
+                    break;
+                }
+            }
+        }
+        
+        if doc_tokens.is_empty() {
+            return None;
+        }
+        
+        // Reverse to get chronological order
+        doc_tokens.reverse();
+        
+        // Merge all doc comments
+        let mut full_content = String::new();
+        let mut first_span = doc_tokens[0].1;
+        let last_span = doc_tokens[doc_tokens.len() - 1].1;
+        
+        for (content, _) in doc_tokens {
+            if !full_content.is_empty() {
+                full_content.push('\n');
+            }
+            full_content.push_str(&content);
+        }
+        
+        // Parse the documentation
+        let doc_comment = self.parse_doc_comment_content(&full_content, first_span.merge(last_span));
+        
+        Some(Documentation {
+            doc_comment,
+            inline_comments: Vec::new(),
+            is_module_doc: false,
+        })
+    }
+    
+    /// Parse documentation comment content
+    fn parse_doc_comment_content(&self, content: &str, span: Span) -> DocComment {
+        use std::collections::HashMap;
+        
+        let mut attributes = HashMap::new();
+        let mut code_blocks = Vec::new();
+        let mut main_content = String::new();
+        
+        // Simple parsing - in real implementation, use a proper markdown parser
+        let lines: Vec<&str> = content.lines().collect();
+        let mut i = 0;
+        
+        // Check for frontmatter
+        if lines.get(0) == Some(&"---") {
+            i = 1;
+            while i < lines.len() && lines[i] != "---" {
+                if let Some((key, value)) = lines[i].split_once(':') {
+                    let key = key.trim();
+                    let value = value.trim();
+                    
+                    // Handle JSDoc-style attributes (e.g., @param, @returns)
+                    let key = if key.starts_with('@') {
+                        key.trim_start_matches('@')
+                    } else {
+                        key
+                    };
+                    
+                    // Parse attribute value
+                    if let Ok(num) = value.parse::<f64>() {
+                        attributes.insert(key.to_string(), DocAttributeValue::Number(num));
+                    } else if value == "true" || value == "false" {
+                        attributes.insert(key.to_string(), DocAttributeValue::Boolean(value == "true"));
+                    } else if value.starts_with('[') && value.ends_with(']') {
+                        // Simple list parsing
+                        let items: Vec<String> = value[1..value.len()-1]
+                            .split(',')
+                            .map(|s| s.trim().trim_matches('"').to_string())
+                            .collect();
+                        attributes.insert(key.to_string(), DocAttributeValue::List(items));
+                    } else if value.starts_with('{') && value.contains('}') {
+                        // Parse typed parameters like {a: Int} or {Type}
+                        if let Some(end) = value.find('}') {
+                            let type_part = &value[1..end];
+                            let desc_part = value[end+1..].trim();
+                            attributes.insert(key.to_string(), DocAttributeValue::TypedParam {
+                                type_info: type_part.to_string(),
+                                description: desc_part.to_string(),
+                            });
+                        } else {
+                            attributes.insert(key.to_string(), DocAttributeValue::String(value.to_string()));
+                        }
+                    } else {
+                        attributes.insert(key.to_string(), DocAttributeValue::String(value.to_string()));
+                    }
+                }
+                i += 1;
+            }
+            i += 1; // Skip closing ---
+        }
+        
+        // Parse remaining content
+        while i < lines.len() {
+            if lines[i].starts_with("```") {
+                // Code block
+                let lang = lines[i][3..].trim();
+                let lang = if lang.is_empty() { None } else { Some(lang.to_string()) };
+                let mut code_content = String::new();
+                i += 1;
+                
+                while i < lines.len() && !lines[i].starts_with("```") {
+                    if !code_content.is_empty() {
+                        code_content.push('\n');
+                    }
+                    code_content.push_str(lines[i]);
+                    i += 1;
+                }
+                
+                code_blocks.push(CodeBlock {
+                    language: lang,
+                    content: code_content,
+                    metadata: None,
+                    span,
+                });
+                i += 1; // Skip closing ```
+            } else {
+                if !main_content.is_empty() {
+                    main_content.push('\n');
+                }
+                main_content.push_str(lines[i]);
+                i += 1;
+            }
+        }
+        
+        DocComment {
+            content: main_content.trim().to_string(),
+            attributes,
+            code_blocks,
+            span,
         }
     }
     

@@ -34,6 +34,7 @@ pub enum TokenKind {
     Do,
     Pure,
     Forall,
+    Test,
     
     // Module keywords
     Module,
@@ -87,6 +88,7 @@ pub enum TokenKind {
     Pipe,          // |
     PipeForward,   // |>
     Cons,          // ::
+    Caret,         // ^
     
     // Delimiters
     LeftParen,     // (
@@ -112,6 +114,7 @@ pub enum TokenKind {
     Newline,
     Whitespace,
     Comment(String),
+    DocComment(String),  // Structured documentation comment
     
     // Error recovery
     Error(String),
@@ -126,6 +129,11 @@ impl TokenKind {
         matches!(self, TokenKind::Whitespace | TokenKind::Comment(_) | TokenKind::Newline)
     }
     
+    /// Returns true if this is a documentation comment
+    pub fn is_doc_comment(&self) -> bool {
+        matches!(self, TokenKind::DocComment(_))
+    }
+    
     /// Returns true if this token is a keyword
     pub fn is_keyword(&self) -> bool {
         matches!(self, 
@@ -133,10 +141,10 @@ impl TokenKind {
             TokenKind::Then | TokenKind::Else | TokenKind::Match | TokenKind::With |
             TokenKind::Data | TokenKind::Type | TokenKind::Effect | TokenKind::Handler |
             TokenKind::Handle | TokenKind::Do | TokenKind::Pure | TokenKind::Forall |
-            TokenKind::Module | TokenKind::Import | TokenKind::Export | TokenKind::Pub |
-            TokenKind::Crate | TokenKind::Package | TokenKind::Super | TokenKind::Self_ |
-            TokenKind::Interface | TokenKind::Component | TokenKind::Core | TokenKind::Func |
-            TokenKind::Param | TokenKind::Result | TokenKind::Resource |
+            TokenKind::Test | TokenKind::Module | TokenKind::Import | TokenKind::Export | 
+            TokenKind::Pub | TokenKind::Crate | TokenKind::Package | TokenKind::Super | 
+            TokenKind::Self_ | TokenKind::Interface | TokenKind::Component | TokenKind::Core | 
+            TokenKind::Func | TokenKind::Param | TokenKind::Result | TokenKind::Resource |
             TokenKind::Resume | TokenKind::Return | TokenKind::Perform
         )
     }
@@ -149,7 +157,7 @@ impl TokenKind {
             TokenKind::NotEqual | TokenKind::Less | TokenKind::LessEqual |
             TokenKind::Greater | TokenKind::GreaterEqual | TokenKind::And |
             TokenKind::Or | TokenKind::Not | TokenKind::Arrow | TokenKind::FatArrow |
-            TokenKind::Pipe | TokenKind::PipeForward | TokenKind::Cons
+            TokenKind::Pipe | TokenKind::PipeForward | TokenKind::Cons | TokenKind::Caret
         )
     }
     
@@ -165,14 +173,16 @@ impl TokenKind {
     pub fn precedence(&self) -> Option<u8> {
         match self {
             TokenKind::PipeForward => Some(0), // Lowest precedence, right-associative
-            TokenKind::Or => Some(1),
-            TokenKind::And => Some(2),
+            TokenKind::OrOr | TokenKind::Or => Some(1),
+            TokenKind::AndAnd | TokenKind::And => Some(2),
             TokenKind::EqualEqual | TokenKind::NotEqual => Some(3),
             TokenKind::Less | TokenKind::LessEqual | 
             TokenKind::Greater | TokenKind::GreaterEqual => Some(4),
-            TokenKind::Plus | TokenKind::Minus => Some(5),
-            TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Some(6),
-            TokenKind::Not => Some(7),
+            TokenKind::Cons => Some(5), // Right-associative list construction
+            TokenKind::Caret => Some(6), // String concatenation
+            TokenKind::Plus | TokenKind::Minus => Some(7),
+            TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Some(8),
+            TokenKind::Not => Some(9),
             _ => None,
         }
     }
@@ -181,6 +191,7 @@ impl TokenKind {
     pub fn is_left_associative(&self) -> bool {
         match self {
             TokenKind::Arrow => false, // Right-associative
+            TokenKind::Cons => false, // Right-associative
             TokenKind::PipeForward => true, // Left-associative
             _ if self.is_operator() => true,
             _ => false,
@@ -215,6 +226,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Do => write!(f, "do"),
             TokenKind::Pure => write!(f, "pure"),
             TokenKind::Forall => write!(f, "forall"),
+            TokenKind::Test => write!(f, "test"),
             TokenKind::Module => write!(f, "module"),
             TokenKind::Import => write!(f, "import"),
             TokenKind::Export => write!(f, "export"),
@@ -260,6 +272,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Pipe => write!(f, "|"),
             TokenKind::PipeForward => write!(f, "|>"),
             TokenKind::Cons => write!(f, "::"),
+            TokenKind::Caret => write!(f, "^"),
             
             // Delimiters
             TokenKind::LeftParen => write!(f, "("),
@@ -285,6 +298,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Newline => write!(f, "\\n"),
             TokenKind::Whitespace => write!(f, " "),
             TokenKind::Comment(text) => write!(f, "--{}", text),
+            TokenKind::DocComment(text) => write!(f, "```{}```", text),
             TokenKind::Error(msg) => write!(f, "ERROR({})", msg),
             TokenKind::Eof => write!(f, "EOF"),
         }
@@ -342,6 +356,7 @@ pub fn keyword_to_token(s: &str) -> Option<TokenKind> {
         "do" => Some(TokenKind::Do),
         "pure" => Some(TokenKind::Pure),
         "forall" => Some(TokenKind::Forall),
+        "test" => Some(TokenKind::Test),
         "module" => Some(TokenKind::Module),
         "import" => Some(TokenKind::Import),
         "export" => Some(TokenKind::Export),

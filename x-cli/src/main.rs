@@ -33,10 +33,6 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     config: Option<PathBuf>,
     
-    /// Output format
-    #[arg(short, long, global = true, default_value = "auto")]
-    format: String,
-    
     #[command(subcommand)]
     command: Commands,
 }
@@ -191,6 +187,35 @@ pub enum Commands {
         #[arg(short, long, default_value = "table")]
         format: String,
     },
+    
+    /// Run tests with content-addressed caching
+    Test {
+        /// Test directory or file (defaults to current directory)
+        #[arg(default_value = ".")]
+        path: PathBuf,
+        /// Test filter pattern
+        #[arg(long)]
+        filter: Option<String>,
+        /// Force re-run of cached tests
+        #[arg(long)]
+        force: bool,
+        /// Number of parallel test threads
+        #[arg(short = 'j', long)]
+        threads: Option<usize>,
+        /// Show verbose output
+        #[arg(short, long)]
+        verbose: bool,
+        /// Output format (console, json, junit)
+        #[arg(long, default_value = "console")]
+        reporter: String,
+        /// Test timeout in seconds
+        #[arg(long, default_value = "60")]
+        timeout: u64,
+    },
+    
+    /// Generate documentation and semantic summaries
+    #[command(name = "doc")]
+    Doc(DocCommand),
 }
 
 #[tokio::main]
@@ -244,6 +269,12 @@ async fn main() -> Result<()> {
         },
         Commands::Stats { input, format } => {
             stats_command(&input, &format).await
+        },
+        Commands::Test { path, filter, force, threads, verbose, reporter, timeout } => {
+            test_command(&path, filter.as_deref(), force, threads, verbose, &reporter, timeout).await
+        },
+        Commands::Doc(cmd) => {
+            cmd.run().map_err(Into::into)
         },
     };
     

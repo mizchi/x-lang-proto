@@ -13,6 +13,9 @@ pub mod compile;
 pub mod repl;
 pub mod lsp;
 pub mod stats;
+pub mod test;
+pub mod test_helpers;
+pub mod doc;
 
 // Re-export command functions
 pub use new::new_command;
@@ -27,3 +30,5 @@ pub use compile::compile_command;
 pub use repl::repl_command;
 pub use lsp::lsp_command;
 pub use stats::stats_command;
+pub use test::test_command;
+pub use doc::DocCommand;

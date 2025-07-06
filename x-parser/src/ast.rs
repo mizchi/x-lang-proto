@@ -18,6 +18,7 @@ pub struct CompilationUnit {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Module {
     pub name: ModulePath,
+    pub documentation: Option<Documentation>,
     pub exports: Option<ExportList>,
     pub imports: Vec<Import>,
     pub items: Vec<Item>,
@@ -166,6 +167,8 @@ pub enum Item {
     ModuleTypeDef(ModuleTypeDef),
     /// Component interface definition
     InterfaceDef(ComponentInterface),
+    /// Test definition
+    TestDef(TestDef),
 }
 
 impl Item {
@@ -177,6 +180,7 @@ impl Item {
             Item::HandlerDef(def) => def.span,
             Item::ModuleTypeDef(def) => def.span,
             Item::InterfaceDef(def) => def.span,
+            Item::TestDef(def) => def.span,
         }
     }
 }
@@ -185,6 +189,7 @@ impl Item {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TypeDef {
     pub name: Symbol,
+    pub documentation: Option<Documentation>,
     pub type_params: Vec<TypeParam>,
     pub kind: TypeDefKind,
     pub visibility: Visibility,
@@ -212,6 +217,7 @@ pub struct Constructor {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ValueDef {
     pub name: Symbol,
+    pub documentation: Option<Documentation>,
     pub type_annotation: Option<Type>,
     pub parameters: Vec<Pattern>,
     pub body: Expr,
@@ -220,10 +226,27 @@ pub struct ValueDef {
     pub span: Span,
 }
 
+/// Test definition
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TestDef {
+    pub name: Symbol,
+    pub documentation: Option<Documentation>,
+    pub description: Option<String>,
+    pub tags: Vec<String>,
+    pub setup: Option<Box<Expr>>,
+    pub teardown: Option<Box<Expr>>,
+    pub body: Expr,
+    pub timeout: Option<u64>,
+    pub expected_failure: bool,
+    pub visibility: Visibility,
+    pub span: Span,
+}
+
 /// Effect definition
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EffectDef {
     pub name: Symbol,
+    pub documentation: Option<Documentation>,
     pub type_params: Vec<TypeParam>,
     pub operations: Vec<EffectOperation>,
     pub visibility: Visibility,
@@ -780,6 +803,57 @@ pub enum InterfaceItem {
         methods: Vec<ResourceMethod>,
         span: Span,
     },
+}
+
+/// Structured documentation comment (JSDoc-style)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DocComment {
+    /// The raw markdown content
+    pub content: String,
+    /// Parsed frontmatter attributes
+    pub attributes: HashMap<String, DocAttributeValue>,
+    /// Code blocks with language tags
+    pub code_blocks: Vec<CodeBlock>,
+    /// The span of the entire comment
+    pub span: Span,
+}
+
+/// Value types for documentation attributes
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum DocAttributeValue {
+    String(String),
+    Number(f64),
+    Boolean(bool),
+    List(Vec<String>),
+    Object(HashMap<String, DocAttributeValue>),
+    TypedParam {
+        type_info: String,
+        description: String,
+    },
+}
+
+/// A code block within documentation
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CodeBlock {
+    /// Language identifier (e.g., "x", "typescript", "json")
+    pub language: Option<String>,
+    /// The code content
+    pub content: String,
+    /// Optional metadata after the language tag
+    pub metadata: Option<String>,
+    /// Position within the comment
+    pub span: Span,
+}
+
+/// Documentation attachment to items
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Documentation {
+    /// The main documentation comment
+    pub doc_comment: DocComment,
+    /// Additional inline comments
+    pub inline_comments: Vec<String>,
+    /// Whether this is a module-level doc
+    pub is_module_doc: bool,
 }
 
 /// Method on a resource
