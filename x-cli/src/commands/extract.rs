@@ -76,7 +76,7 @@ pub async fn run(args: ExtractArgs) -> Result<()> {
     for item in &typed_ast.module.items {
         match item {
             x_parser::ast::Item::ValueDef(def) => {
-                let deps = DependencyManager::extract_dependencies(&def.body);
+                let deps = DependencyManager::extract_dependencies_from_def(def);
                 dep_manager.add_definition(def.name, deps);
             }
             x_parser::ast::Item::TypeDef(def) => {

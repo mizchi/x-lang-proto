@@ -84,6 +84,46 @@ pub struct DependencyManager {
 }
 
 impl DependencyManager {
+    fn collect_pattern_vars(pattern: &crate::ast::Pattern, vars: &mut HashSet<Symbol>) {
+        use crate::ast::Pattern;
+        match pattern {
+            Pattern::Variable(name, _) => {
+                vars.insert(*name);
+            }
+            Pattern::Wildcard(_) => {}
+            Pattern::Literal(_, _) => {}
+            Pattern::Constructor { args, .. } => {
+                for p in args {
+                    Self::collect_pattern_vars(p, vars);
+                }
+            }
+            Pattern::Tuple { patterns, .. } => {
+                for p in patterns {
+                    Self::collect_pattern_vars(p, vars);
+                }
+            }
+            Pattern::Record { fields, rest, .. } => {
+                for (_, p) in fields {
+                    Self::collect_pattern_vars(p, vars);
+                }
+                if let Some(rest_pattern) = rest {
+                    Self::collect_pattern_vars(rest_pattern, vars);
+                }
+            }
+            Pattern::Or { left, right, .. } => {
+                // Or patterns bind the same variables in each branch
+                Self::collect_pattern_vars(left, vars);
+                Self::collect_pattern_vars(right, vars);
+            }
+            Pattern::As { pattern, name, .. } => {
+                vars.insert(*name);
+                Self::collect_pattern_vars(pattern, vars);
+            }
+            Pattern::Ann { pattern, .. } => {
+                Self::collect_pattern_vars(pattern, vars);
+            }
+        }
+    }
     pub fn new() -> Self {
         Self {
             definitions: HashMap::new(),
@@ -95,75 +135,120 @@ impl DependencyManager {
     /// Extract dependencies from an expression
     pub fn extract_dependencies(expr: &Expr) -> HashSet<Symbol> {
         let mut deps = HashSet::new();
-        Self::collect_expr_deps(expr, &mut deps);
+        let mut bound_vars = HashSet::new();
+        Self::collect_expr_deps(expr, &mut deps, &mut bound_vars);
+        deps
+    }
+    
+    /// Extract dependencies from a value definition  
+    pub fn extract_dependencies_from_def(def: &crate::ast::ValueDef) -> HashSet<Symbol> {
+        let mut deps = HashSet::new();
+        let mut bound_vars = HashSet::new();
+        
+        // Add parameters to bound variables
+        for param in &def.parameters {
+            Self::collect_pattern_vars(param, &mut bound_vars);
+        }
+        
+        // If the body is a lambda, don't extract dependencies from the lambda itself,
+        // since its parameters are already bound
+        match &def.body {
+            Expr::Lambda { .. } => {
+                // For lambdas, we handle parameters internally in collect_expr_deps
+                Self::collect_expr_deps(&def.body, &mut deps, &mut bound_vars);
+            }
+            _ => {
+                Self::collect_expr_deps(&def.body, &mut deps, &mut bound_vars);
+            }
+        }
+        
         deps
     }
 
-    fn collect_expr_deps(expr: &Expr, deps: &mut HashSet<Symbol>) {
+    fn collect_expr_deps(expr: &Expr, deps: &mut HashSet<Symbol>, bound_vars: &mut HashSet<Symbol>) {
         match expr {
             Expr::Var(name, _) => {
-                // Skip builtin functions
-                if !is_builtin(name) {
+                // Skip builtin functions and bound variables
+                if !is_builtin(name) && !bound_vars.contains(name) {
                     deps.insert(*name);
                 }
             }
             Expr::App(f, args, _) => {
-                Self::collect_expr_deps(f, deps);
+                Self::collect_expr_deps(f, deps, bound_vars);
                 for arg in args {
-                    Self::collect_expr_deps(arg, deps);
+                    Self::collect_expr_deps(arg, deps, bound_vars);
                 }
             }
-            Expr::Lambda { body, .. } => {
-                Self::collect_expr_deps(body, deps);
+            Expr::Lambda { parameters, body, .. } => {
+                // Add parameters to bound variables
+                let mut new_bound = bound_vars.clone();
+                for param in parameters {
+                    Self::collect_pattern_vars(param, &mut new_bound);
+                }
+                Self::collect_expr_deps(body, deps, &mut new_bound);
             }
-            Expr::Let { value, body, .. } => {
-                Self::collect_expr_deps(value, deps);
-                Self::collect_expr_deps(body, deps);
+            Expr::Let { pattern, value, body, .. } => {
+                Self::collect_expr_deps(value, deps, bound_vars);
+                // Add pattern variables to bound variables for body
+                let mut new_bound = bound_vars.clone();
+                Self::collect_pattern_vars(pattern, &mut new_bound);
+                Self::collect_expr_deps(body, deps, &mut new_bound);
             }
             Expr::Match { scrutinee, arms, .. } => {
-                Self::collect_expr_deps(scrutinee, deps);
+                Self::collect_expr_deps(scrutinee, deps, bound_vars);
                 for arm in arms {
-                    Self::collect_expr_deps(&arm.body, deps);
+                    // Add pattern variables to bound variables for arm body
+                    let mut new_bound = bound_vars.clone();
+                    Self::collect_pattern_vars(&arm.pattern, &mut new_bound);
+                    Self::collect_expr_deps(&arm.body, deps, &mut new_bound);
                 }
             }
             Expr::If { condition, then_branch, else_branch, .. } => {
-                Self::collect_expr_deps(condition, deps);
-                Self::collect_expr_deps(then_branch, deps);
-                Self::collect_expr_deps(else_branch, deps);
+                Self::collect_expr_deps(condition, deps, bound_vars);
+                Self::collect_expr_deps(then_branch, deps, bound_vars);
+                Self::collect_expr_deps(else_branch, deps, bound_vars);
             }
             Expr::Handle { expr, handlers, .. } => {
-                Self::collect_expr_deps(expr, deps);
+                Self::collect_expr_deps(expr, deps, bound_vars);
                 for handler in handlers {
-                    Self::collect_expr_deps(&handler.body, deps);
+                    // Add handler parameters to bound variables
+                    let mut new_bound = bound_vars.clone();
+                    for param in &handler.parameters {
+                        Self::collect_pattern_vars(param, &mut new_bound);
+                    }
+                    Self::collect_expr_deps(&handler.body, deps, &mut new_bound);
                 }
             }
             Expr::Do { statements, .. } => {
+                let mut do_bound = bound_vars.clone();
                 for stmt in statements {
                     match stmt {
-                        crate::ast::DoStatement::Let { expr, .. } => {
-                            Self::collect_expr_deps(expr, deps);
+                        crate::ast::DoStatement::Let { pattern, expr, .. } => {
+                            Self::collect_expr_deps(expr, deps, &mut do_bound);
+                            Self::collect_pattern_vars(pattern, &mut do_bound);
                         }
-                        crate::ast::DoStatement::Bind { expr, .. } => {
-                            Self::collect_expr_deps(expr, deps);
+                        crate::ast::DoStatement::Bind { pattern, expr, .. } => {
+                            Self::collect_expr_deps(expr, deps, &mut do_bound);
+                            Self::collect_pattern_vars(pattern, &mut do_bound);
                         }
                         crate::ast::DoStatement::Expr(expr) => {
-                            Self::collect_expr_deps(expr, deps);
+                            Self::collect_expr_deps(expr, deps, &mut do_bound);
                         }
                     }
                 }
             }
             Expr::Resume { value, .. } => {
-                Self::collect_expr_deps(value, deps);
+                Self::collect_expr_deps(value, deps, bound_vars);
             }
             Expr::Perform { effect, args, .. } => {
                 // Effect is a symbol
                 deps.insert(*effect);
                 for arg in args {
-                    Self::collect_expr_deps(arg, deps);
+                    Self::collect_expr_deps(arg, deps, bound_vars);
                 }
             }
             Expr::Ann { expr, .. } => {
-                Self::collect_expr_deps(expr, deps);
+                Self::collect_expr_deps(expr, deps, bound_vars);
             }
             Expr::Literal(_, _) => {
                 // No dependencies

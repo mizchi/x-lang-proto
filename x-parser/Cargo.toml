@@ -20,6 +20,7 @@ once_cell = { workspace = true }
 lsp-types = { workspace = true }
 sha2 = { workspace = true }
 im = { workspace = true }
+hex = "0.4"
 
 [dev-dependencies]
 tempfile = { workspace = true }
