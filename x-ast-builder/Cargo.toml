@@ -1,0 +1,17 @@
+[package]
+name = "x-ast-builder"
+version = "0.1.0"
+edition = "2021"
+authors = ["mizchi"]
+description = "AST builder API for x Language - programmatic AST construction"
+license = "MIT"
+
+[dependencies]
+# Local dependencies
+x-parser = { path = "../x-parser" }
+
+# Workspace dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }

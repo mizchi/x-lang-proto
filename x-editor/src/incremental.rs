@@ -121,7 +121,7 @@ impl IncrementalAnalyzer {
         &self,
         ast: &CompilationUnit,
         changed_paths: &[Vec<usize>],
-        previous_result: &AnalysisResult,
+        _previous_result: &AnalysisResult,
     ) -> AnalysisResult {
         let start_time = SystemTime::now();
         let analysis_id = Uuid::new_v4().to_string();
@@ -187,7 +187,7 @@ impl IncrementalAnalyzer {
     }
 
     /// Get result from cache
-    fn get_from_cache(&self, key: &str) -> Option<AnalysisResult> {
+    fn get_from_cache(&self, _key: &str) -> Option<AnalysisResult> {
         // Note: We cannot return the cached CheckResult due to ownership issues
         // This is a limitation of the current design
         None

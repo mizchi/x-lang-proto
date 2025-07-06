@@ -21,6 +21,7 @@ impl SyntaxParser for RustLikeParser {
         // Stub implementation - full parser would be needed
         let module = Module {
             name: ModulePath::single(Symbol::intern("main"), dummy_span()),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: Vec::new(),
@@ -175,6 +176,7 @@ impl RustLikePrinter {
             Item::HandlerDef(def) => self.print_handler_def(def, config, level),
             Item::ModuleTypeDef(_) => Ok("// Module type definitions not supported in Rust syntax".to_string()),
             Item::InterfaceDef(def) => Ok(format!("// Interface '{}' not supported in Rust syntax", def.name)),
+            Item::TestDef(def) => Ok(format!("// Test '{}' - tests not yet supported in pretty printer", def.name.as_str())),
         }
     }
     

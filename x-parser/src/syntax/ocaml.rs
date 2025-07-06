@@ -164,6 +164,7 @@ impl OCamlPrinter {
             Item::HandlerDef(def) => self.print_handler_def(def, config, level),
             Item::ModuleTypeDef(def) => self.print_module_type_def(def, config, level),
             Item::InterfaceDef(def) => self.print_interface_def(def, config, level),
+            Item::TestDef(def) => Ok(format!("(* Test '{}' - tests not yet supported in pretty printer *)", def.name.as_str())),
         }
     }
     

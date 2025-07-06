@@ -269,8 +269,22 @@ impl CompilationPipeline {
         let mut written_files = HashMap::new();
         let mut diagnostics = Vec::new();
 
+        // Create output directory if it doesn't exist
+        if let Err(e) = std::fs::create_dir_all(output_dir) {
+            diagnostics.push(CompilerDiagnostic {
+                severity: crate::backend::DiagnosticSeverity::Error,
+                message: format!("Failed to create output directory {}: {}", output_dir.display(), e),
+                source: DiagnosticSource::Linker,
+                span: None,
+            });
+        }
+
         for (relative_path, content) in files {
-            let full_path = output_dir.join(&relative_path);
+            let full_path = if relative_path.is_absolute() {
+                relative_path
+            } else {
+                output_dir.join(&relative_path)
+            };
             
             if let Some(parent) = full_path.parent() {
                 if let Err(e) = std::fs::create_dir_all(parent) {

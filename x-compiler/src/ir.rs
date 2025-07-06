@@ -278,7 +278,21 @@ impl IRBuilder {
         for item in &module.items {
             match item {
                 Item::ValueDef(value_def) => {
-                    if value_def.parameters.is_empty() {
+                    // Check if the body is a lambda expression
+                    if let Expr::Lambda { parameters, body, .. } = &value_def.body {
+                        // Function defined with `let f = fun x -> ...`
+                        ir_functions.push(IRFunction {
+                            name: value_def.name,
+                            parameters: parameters.iter()
+                                .map(|p| self.build_parameter(p))
+                                .collect::<Result<Vec<_>>>()?,
+                            return_type: IRType::Primitive(IRPrimitiveType::Unit), // Simplified
+                            body: self.build_expression(body)?,
+                            effects: IREffectSet::Empty,
+                            visibility: value_def.visibility.clone(),
+                            attributes: Vec::new(),
+                        });
+                    } else if value_def.parameters.is_empty() {
                         // Constant
                         ir_constants.push(IRConstant {
                             name: value_def.name,
@@ -286,7 +300,7 @@ impl IRBuilder {
                             type_hint: IRType::Primitive(IRPrimitiveType::Unit), // Simplified
                         });
                     } else {
-                        // Function
+                        // Function with parameters in the definition
                         ir_functions.push(IRFunction {
                             name: value_def.name,
                             parameters: value_def.parameters.iter()

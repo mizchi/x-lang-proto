@@ -13,9 +13,10 @@ path = "src/main.rs"
 [dependencies]
 # Local dependencies
 x-parser = { path = "../x-parser" }
-# x-checker = { path = "../x-checker" }
-# x-compiler = { path = "../x-compiler" }
-# x-editor = { path = "../x-editor" }
+x-checker = { path = "../x-checker" }
+x-compiler = { path = "../x-compiler" }
+x-editor = { path = "../x-editor" }
+x-testing = { path = "../x-testing" }
 
 # Workspace dependencies
 serde = { workspace = true }

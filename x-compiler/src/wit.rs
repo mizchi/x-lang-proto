@@ -57,6 +57,7 @@ impl WitGenerator {
             Item::EffectDef(_) => Ok(()), // Skip effect definitions for now
             Item::HandlerDef(_) => Ok(()), // Skip handler definitions for now
             Item::ModuleTypeDef(_) => Ok(()), // Skip module type definitions for now
+            Item::TestDef(_) => Ok(()), // Skip test definitions for now
         }
     }
 

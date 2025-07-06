@@ -1,0 +1,27 @@
+[package]
+name = "x-ai-codegen"
+version = "0.1.0"
+edition = "2021"
+authors = ["mizchi"]
+description = "AI-powered code generation for x Language"
+license = "MIT"
+
+[dependencies]
+# Local dependencies
+x-parser = { path = "../x-parser" }
+x-checker = { path = "../x-checker" }
+x-ast-builder = { path = "../x-ast-builder" }
+
+# Workspace dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+# AI-specific dependencies
+regex = "1.10"
+lazy_static = "1.4"
+indexmap = "2.0"
+uuid = { version = "1.6", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }

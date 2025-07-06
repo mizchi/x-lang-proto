@@ -1559,7 +1559,7 @@ impl Parser {
         
         // Merge all doc comments
         let mut full_content = String::new();
-        let mut first_span = doc_tokens[0].1;
+        let first_span = doc_tokens[0].1;
         let last_span = doc_tokens[doc_tokens.len() - 1].1;
         
         for (content, _) in doc_tokens {

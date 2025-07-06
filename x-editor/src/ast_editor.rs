@@ -282,7 +282,7 @@ impl AstEditor {
                 Ok(QueryResult::new(results.into_iter().map(|_| x_parser::persistent_ast::NodeId::new(0)).collect()))
             }
             AstQuery::FindByPath { path } => {
-                let node = self.navigate_to_path(ast, &path)?;
+                let _node = self.navigate_to_path(ast, &path)?;
                 Ok(QueryResult::new(vec![x_parser::persistent_ast::NodeId::new(0)]))
             }
             AstQuery::FindByPattern { pattern } => {
@@ -389,10 +389,10 @@ impl AstEditor {
     /// Find nodes by type
     fn find_nodes_by_type<'a>(
         &self,
-        ast: &'a CompilationUnit,
-        node_type: &str,
-        results: &mut Vec<AstTarget<'a>>,
-        path: &mut Vec<usize>,
+        _ast: &'a CompilationUnit,
+        _node_type: &str,
+        _results: &mut Vec<AstTarget<'a>>,
+        _path: &mut Vec<usize>,
     ) {
         // TODO: Implement node type searching
     }
@@ -400,10 +400,10 @@ impl AstEditor {
     /// Find nodes by pattern
     fn find_nodes_by_pattern<'a>(
         &self,
-        ast: &'a CompilationUnit,
-        pattern: &crate::query::QueryPattern,
-        results: &mut Vec<AstTarget<'a>>,
-        path: &mut Vec<usize>,
+        _ast: &'a CompilationUnit,
+        _pattern: &crate::query::QueryPattern,
+        _results: &mut Vec<AstTarget<'a>>,
+        _path: &mut Vec<usize>,
     ) {
         // TODO: Implement pattern matching
     }
@@ -419,7 +419,7 @@ impl AstEditor {
                 children.push(AstTarget::Module(&cu.module));
             }
             AstTarget::Module(module) => {
-                for (i, item) in module.items.iter().enumerate() {
+                for (_i, item) in module.items.iter().enumerate() {
                     children.push(AstTarget::Item(item));
                 }
             }
@@ -432,8 +432,8 @@ impl AstEditor {
     /// Validate an operation before applying
     fn validate_operation(
         &self,
-        ast: &CompilationUnit,
-        operation: &EditOperation,
+        _ast: &CompilationUnit,
+        _operation: &EditOperation,
     ) -> Result<(), EditError> {
         // TODO: Implement operation validation
         Ok(())
@@ -448,6 +448,7 @@ impl AstEditor {
     fn create_placeholder_item(&self) -> Item {
         Item::ValueDef(x_parser::ValueDef {
             name: x_parser::Symbol::intern("placeholder"),
+            documentation: None,
             type_annotation: None,
             parameters: vec![],
             body: Expr::Literal(Literal::Integer(0), x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0))),

@@ -11,6 +11,12 @@ pub mod session;
 pub mod incremental;
 pub mod validation;
 pub mod index_system;
+pub mod content_addressing;
+pub mod tree_similarity;
+pub mod annotated_ast;
+pub mod namespace;
+pub mod namespace_storage;
+pub mod namespace_resolver;
 
 // Re-export main types
 pub use ast_editor::{AstEditor, EditResult, EditError};

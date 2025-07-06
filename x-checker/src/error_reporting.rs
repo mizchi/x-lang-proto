@@ -40,6 +40,12 @@ pub enum TypeError {
         symbol: Symbol,
         span: Span,
     },
+    TestTypeMismatch {
+        test_name: Symbol,
+        expected: Type,
+        found: Type,
+        span: Span,
+    },
 }
 
 
@@ -63,6 +69,9 @@ impl TypeError {
             }
             TypeError::InferenceError { message, symbol: _, span: _ } => {
                 format!("Inference error: {}", message)
+            }
+            TypeError::TestTypeMismatch { test_name, expected, found, span: _ } => {
+                format!("Test '{}' type mismatch: expected {}, found {}", test_name, expected, found)
             }
         }
     }

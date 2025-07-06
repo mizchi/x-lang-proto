@@ -92,6 +92,7 @@ impl TypeChecker {
             Item::HandlerDef(handler_def) => self.check_handler_def(handler_def),
             Item::InterfaceDef(interface_def) => self.check_interface_def(interface_def),
             Item::ModuleTypeDef(module_type_def) => self.check_module_type_def(module_type_def),
+            Item::TestDef(test_def) => self.check_test_def(test_def),
         }
     }
 
@@ -168,6 +169,66 @@ impl TypeChecker {
 
     fn check_import(&mut self, _import: &x_parser::Import) {
         // TODO: Implement import checking
+    }
+    
+    /// Type check a test definition
+    fn check_test_def(&mut self, test_def: &x_parser::TestDef) {
+        // Check test body - should return Bool
+        match self.inference_ctx.infer_expr(&test_def.body) {
+            Ok(inference_result) => {
+                // Tests should return Bool
+                let bool_type = Type::Con(x_parser::symbol::Symbol::intern("Bool"));
+                let bool_parser_type = x_parser::Type::Con(
+                    x_parser::symbol::Symbol::intern("Bool"), 
+                    Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0))
+                );
+                
+                if let Err(_) = self.check_type_annotation(&inference_result.typ, &bool_parser_type) {
+                    self.error_reporter.report_error(TypeError::TestTypeMismatch {
+                        test_name: test_def.name,
+                        expected: bool_type.clone(),
+                        found: inference_result.typ.clone(),
+                        span: test_def.span,
+                    });
+                }
+                
+                // Add test to environment with Bool -> Bool type
+                let test_type = TypeScheme::monotype(Type::Fun {
+                    params: vec![],
+                    return_type: Box::new(bool_type),
+                    effects: EffectSet::Empty
+                });
+                self.env.bind(test_def.name, test_type);
+            }
+            Err(error) => {
+                self.error_reporter.report_error(TypeError::InferenceError {
+                    message: error,
+                    symbol: test_def.name,
+                    span: test_def.span,
+                });
+            }
+        }
+        
+        // Check setup and teardown if present
+        if let Some(setup) = &test_def.setup {
+            if let Err(error) = self.inference_ctx.infer_expr(setup) {
+                self.error_reporter.report_error(TypeError::InferenceError {
+                    message: error,
+                    symbol: test_def.name,
+                    span: test_def.span,
+                });
+            }
+        }
+        
+        if let Some(teardown) = &test_def.teardown {
+            if let Err(error) = self.inference_ctx.infer_expr(teardown) {
+                self.error_reporter.report_error(TypeError::InferenceError {
+                    message: error,
+                    symbol: test_def.name,
+                    span: test_def.span,
+                });
+            }
+        }
     }
 
     #[allow(dead_code)]

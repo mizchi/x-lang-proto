@@ -4,9 +4,63 @@ members = [
     "x-checker", 
     "x-compiler",
     "x-editor",
-    "x-cli", "test-project",
+    "x-cli",
+    "x-ast-builder",
+    "x-ai-codegen",
+    "x-testing",
+    "test-project",
 ]
 resolver = "2"
+
+[package]
+name = "x-lang"
+version = "0.1.0"
+edition = "2021"
+
+# [[bin]]
+# name = "test-incremental-type-check"
+# path = "test-incremental-type-check.rs"
+
+# [[bin]]
+# name = "test-content-addressing"
+# path = "test-content-addressing.rs"
+
+# [[bin]]
+# name = "test-tree-similarity"
+# path = "test-tree-similarity.rs"
+
+# [[bin]]
+# name = "test-annotated-ast"
+# path = "test-annotated-ast.rs"
+
+# [[bin]]
+# name = "test-namespace"
+# path = "test-namespace.rs"
+
+# [[bin]]
+# name = "test-namespace-v2"
+# path = "test-namespace-v2.rs"
+
+# [[bin]]
+# name = "test-runner-demo"
+# path = "test-runner-demo.rs"
+
+# [[bin]]
+# name = "dijkstra-demo"
+# path = "dijkstra-demo.rs"
+
+# [[bin]]
+# name = "test-discovery-debug"
+# path = "test-discovery-debug.rs"
+
+[dependencies]
+x-parser = { path = "x-parser" }
+x-checker = { path = "x-checker" }
+x-editor = { path = "x-editor" }
+x-testing = { path = "x-testing" }
+x-cli = { path = "x-cli" }
+anyhow = { workspace = true }
+tempfile = { workspace = true }
 
 [workspace.dependencies]
 # Core language dependencies

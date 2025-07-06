@@ -293,6 +293,11 @@ impl TypeEnv {
         self.vars.insert(name, scheme);
     }
     
+    /// Bind a variable to a type scheme (alias for insert_var)
+    pub fn bind(&mut self, name: Symbol, scheme: TypeScheme) {
+        self.insert_var(name, scheme);
+    }
+    
     pub fn lookup_type_con(&self, name: Symbol) -> Option<&(Kind, Vec<TypeVar>)> {
         self.type_cons.get(&name)
     }

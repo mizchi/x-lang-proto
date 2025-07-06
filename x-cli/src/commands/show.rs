@@ -403,6 +403,7 @@ fn convert_persistent_to_ast(_ast: &PersistentAstNode) -> Result<x_parser::ast::
     
     let module = Module {
         name: ModulePath::single(Symbol::intern("Main"), span),
+        documentation: None,
         exports: None,
         imports: Vec::new(),
         items: Vec::new(),

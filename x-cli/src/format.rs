@@ -307,6 +307,7 @@ fn convert_persistent_module_to_ast(module_ast: &PersistentAstNode) -> Result<x_
                     vec![*name],
                     convert_persistent_span_to_ast(&module_ast.span())
                 ),
+                documentation: None,
                 exports: None,
                 imports: Vec::new(),
                 items: ast_items,
@@ -332,6 +333,7 @@ fn convert_persistent_item_to_ast(item_ast: &PersistentAstNode) -> Result<x_pars
             
             Ok(Item::ValueDef(ValueDef {
                 name: name.clone(),
+                documentation: None,
                 type_annotation: ast_type_annotation.map(|t| *t),
                 parameters: Vec::new(), // TODO: Extract from lambda if needed
                 body: ast_body,

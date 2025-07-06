@@ -1,0 +1,12 @@
+{
+  "test_hash": "34458aa29632cd80c5eee9641f4668bfe2181327ea0dfa6c7d1409eab3a7e96b",
+  "result": {
+    "Pass": {
+      "duration_ms": 0,
+      "output": "Bool(true)"
+    }
+  },
+  "dependencies": {},
+  "executed_at": "2025-07-05T22:40:22.557232375Z",
+  "x_version": "0.1.0"
+}

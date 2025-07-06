@@ -1,0 +1,30 @@
+[package]
+name = "x-testing"
+version = "0.1.0"
+edition = "2021"
+authors = ["mizchi"]
+description = "Test framework for x Language with content-addressed caching"
+license = "MIT"
+
+[dependencies]
+# Local dependencies
+x-parser = { path = "../x-parser" }
+x-checker = { path = "../x-checker" }
+x-compiler = { path = "../x-compiler" }
+x-editor = { path = "../x-editor" }
+
+# Workspace dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# Additional dependencies
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+colored = "2.0"
+indicatif = "0.17"
+
+[dev-dependencies]
+tempfile = { workspace = true }

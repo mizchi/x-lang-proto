@@ -166,6 +166,7 @@ impl HaskellPrinter {
             Item::HandlerDef(def) => self.print_handler_def(def, config, level),
             Item::ModuleTypeDef(_) => Ok("-- Module type definitions not supported in Haskell syntax".to_string()),
             Item::InterfaceDef(def) => Ok(format!("-- Interface '{}' not supported in Haskell syntax", def.name)),
+            Item::TestDef(def) => Ok(format!("-- Test '{}' - tests not yet supported in pretty printer", def.name.as_str())),
         }
     }
     
@@ -848,6 +849,7 @@ impl HaskellTokenParser {
         // Stub implementation
         let module = Module {
             name: ModulePath::single(Symbol::intern("Main"), dummy_span()),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: Vec::new(),

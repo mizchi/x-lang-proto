@@ -455,6 +455,11 @@ fn item_to_sexp(item: &Item) -> SExp {
         Item::HandlerDef(def) => handler_def_to_sexp(def),
         Item::ModuleTypeDef(def) => module_type_def_to_sexp(def),
         Item::InterfaceDef(def) => interface_def_to_sexp(def),
+        Item::TestDef(def) => SExp::List(vec![
+            SExp::Atom("test-def".to_string()),
+            SExp::Atom(def.name.as_str().to_string()),
+            SExp::List(vec![SExp::Atom("body".to_string()), expr_to_sexp(&def.body)]),
+        ]),
     }
 }
 
@@ -995,6 +1000,7 @@ fn sexp_to_module(sexp: &SExp) -> Result<Module> {
                     let module_path = ModulePath::single(Symbol::intern(name), dummy_span());
                     return Ok(Module {
                         name: module_path,
+                        documentation: None,
                         exports: None,
                         imports: Vec::new(),
                         items: Vec::new(),

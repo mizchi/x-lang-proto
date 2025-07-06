@@ -291,8 +291,9 @@ impl TypeScriptBackend {
                params, return_type)?;
         
         // Function body
+        writeln!(code, "")?;
         let body = self.generate_ir_expression(&function.body, 1)?;
-        writeln!(code, "{}", body)?;
+        writeln!(code, "  return {};", body)?;
         write!(code, "}}")?;
         
         Ok(code)

@@ -636,6 +636,10 @@ impl BinarySerializer {
                 self.write_u8(TypeCode::ItemTypeDef as u8)?;
                 // TODO: Implement interface definition serialization 
             }
+            Item::TestDef(_) => {
+                self.write_u8(TypeCode::ItemValueDef as u8)?; // Treat as value def for now
+                // TODO: Implement test definition serialization
+            }
         }
         Ok(())
     }
@@ -891,6 +895,7 @@ impl BinaryDeserializer {
         
         Ok(Module {
             name,
+            documentation: None,
             exports,
             imports,
             items,
@@ -976,6 +981,7 @@ impl BinaryDeserializer {
                 
                 Ok(Item::ValueDef(ValueDef {
                     name,
+                    documentation: None,
                     type_annotation,
                     parameters,
                     body,
@@ -988,6 +994,7 @@ impl BinaryDeserializer {
                 // TODO: Implement type definition deserialization
                 Ok(Item::ValueDef(ValueDef {
                     name: Symbol::intern("placeholder"),
+                    documentation: None,
                     type_annotation: None,
                     parameters: Vec::new(),
                     body: Expr::Literal(Literal::Unit, Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0))),
