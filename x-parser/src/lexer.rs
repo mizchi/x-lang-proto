@@ -442,10 +442,12 @@ mod tests {
     
     #[test]
     fn test_keyword() {
-        let tokens = lex_string("let module");
+        let tokens = lex_string("let module fun fn");
         assert_eq!(tokens, vec![
             TokenKind::Let,
             TokenKind::Module,
+            TokenKind::Fun,
+            TokenKind::Fn,
             TokenKind::Eof,
         ]);
     }

@@ -58,8 +58,13 @@ pub async fn run(args: ExtractArgs) -> Result<()> {
     // Parse the file
     let file_id = FileId::new(0);
     let mut parser = Parser::new(&source, file_id)?;
-    let ast = parser.parse()
-        .with_context(|| "Failed to parse input file")?;
+    let ast = match parser.parse() {
+        Ok(ast) => ast,
+        Err(e) => {
+            eprintln!("Parse error details: {}", e);
+            return Err(e).with_context(|| "Failed to parse input file");
+        }
+    };
     
     // Skip type checking for now
     let typed_ast = ast;

@@ -1040,7 +1040,7 @@ impl Parser {
             self.parse_parenthesized()
         } else if self.check(&TokenKind::If) {
             self.parse_if()
-        } else if self.check(&TokenKind::Fun) {
+        } else if self.check(&TokenKind::Fun) || self.check(&TokenKind::Fn) {
             self.parse_lambda()
         } else if self.check(&TokenKind::Match) {
             self.parse_match()
@@ -1056,7 +1056,7 @@ impl Parser {
         matches!(self.current_token().kind,
             TokenKind::LeftParen | TokenKind::Integer(_) | TokenKind::Float(_) |
             TokenKind::String(_) | TokenKind::Bool(_) | TokenKind::Ident(_) |
-            TokenKind::Number(_) | TokenKind::If | TokenKind::Fun | 
+            TokenKind::Number(_) | TokenKind::If | TokenKind::Fun | TokenKind::Fn |
             TokenKind::Match | TokenKind::Do | TokenKind::LeftBracket
             // Note: Removed Let - let expressions should be handled carefully to avoid confusion with top-level let definitions
         )
@@ -1135,7 +1135,12 @@ impl Parser {
     /// Parse lambda expressions
     fn parse_lambda(&mut self) -> Result<Expr> {
         let start_span = self.current_span();
-        self.expect(TokenKind::Fun)?;
+        // Accept either 'fun' or 'fn'
+        if !self.match_token(&TokenKind::Fun) && !self.match_token(&TokenKind::Fn) {
+            return Err(Error::Parse {
+                message: "Expected 'fun' or 'fn'".to_string(),
+            });
+        }
         
         let mut parameters = Vec::new();
         
@@ -1838,6 +1843,25 @@ let add = fun x y -> x + y"#;
         
         let cu = result.unwrap();
         assert_eq!(cu.module.items.len(), 2);
+    }
+    
+    #[test]
+    fn test_parse_fn_lambda() {
+        let input = r#"module Test
+
+let identity = fn x -> x
+let add = fn x y -> x + y
+let mixed1 = fun x -> fn y -> x + y
+let mixed2 = fn x -> fun y -> x + y"#;
+        
+        let result = parse(input, FileId::new(0));
+        match &result {
+            Ok(_) => {},
+            Err(e) => panic!("Parse failed: {:?}", e),
+        }
+        
+        let cu = result.unwrap();
+        assert_eq!(cu.module.items.len(), 4);
     }
     
     #[test]

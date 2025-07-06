@@ -20,6 +20,7 @@ pub enum TokenKind {
     // Keywords
     Let,
     Fun,
+    Fn,  // Alternative to Fun
     In,
     If,
     Then,
@@ -137,7 +138,7 @@ impl TokenKind {
     /// Returns true if this token is a keyword
     pub fn is_keyword(&self) -> bool {
         matches!(self, 
-            TokenKind::Let | TokenKind::Fun | TokenKind::In | TokenKind::If |
+            TokenKind::Let | TokenKind::Fun | TokenKind::Fn | TokenKind::In | TokenKind::If |
             TokenKind::Then | TokenKind::Else | TokenKind::Match | TokenKind::With |
             TokenKind::Data | TokenKind::Type | TokenKind::Effect | TokenKind::Handler |
             TokenKind::Handle | TokenKind::Do | TokenKind::Pure | TokenKind::Forall |
@@ -212,6 +213,7 @@ impl fmt::Display for TokenKind {
             // Keywords
             TokenKind::Let => write!(f, "let"),
             TokenKind::Fun => write!(f, "fun"),
+            TokenKind::Fn => write!(f, "fn"),
             TokenKind::In => write!(f, "in"),
             TokenKind::If => write!(f, "if"),
             TokenKind::Then => write!(f, "then"),
@@ -342,6 +344,7 @@ pub fn keyword_to_token(s: &str) -> Option<TokenKind> {
     match s {
         "let" => Some(TokenKind::Let),
         "fun" => Some(TokenKind::Fun),
+        "fn" => Some(TokenKind::Fn),
         "in" => Some(TokenKind::In),
         "if" => Some(TokenKind::If),
         "then" => Some(TokenKind::Then),
