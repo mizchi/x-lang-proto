@@ -66,11 +66,13 @@ impl<'a> ModuleBuilder<'a> {
         let body_expr = body(self.builder);
         let value_def = ValueDef {
             name: Symbol::intern(name),
+            documentation: None,
             type_annotation: None,
             parameters: Vec::new(),
             body: body_expr,
             visibility: Visibility::Public,
             purity: Purity::Inferred,
+            imports: Vec::new(),
             span: self.builder.span(),
         };
         self.items.push(Item::ValueDef(value_def));
@@ -98,11 +100,13 @@ impl<'a> ModuleBuilder<'a> {
         
         let value_def = ValueDef {
             name: Symbol::intern(name),
+            documentation: None,
             type_annotation: None,
             parameters: Vec::new(),
             body: lambda,
             visibility: Visibility::Public,
             purity: Purity::Inferred,
+            imports: Vec::new(),
             span: self.builder.span(),
         };
         self.items.push(Item::ValueDef(value_def));

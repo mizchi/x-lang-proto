@@ -216,6 +216,9 @@ pub enum Commands {
     /// Generate documentation and semantic summaries
     #[command(name = "doc")]
     Doc(DocCommand),
+    
+    /// Extract dependencies and generate focused code
+    Deps(ExtractArgs),
 }
 
 #[tokio::main]
@@ -275,6 +278,9 @@ async fn main() -> Result<()> {
         },
         Commands::Doc(cmd) => {
             cmd.run().map_err(Into::into)
+        },
+        Commands::Deps(args) => {
+            extract::run(args).await
         },
     };
     

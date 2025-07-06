@@ -22,7 +22,7 @@ pub struct LanguageServiceConfig {
 impl Default for LanguageServiceConfig {
     fn default() -> Self {
         Self {
-            default_syntax: SyntaxStyle::OCaml,
+            default_syntax: SyntaxStyle::Haskell,
             enable_caching: true,
             cache_dir: None,
             max_cache_size: 1000,

@@ -144,6 +144,18 @@ pub enum ImportKind {
     },
 }
 
+/// Function-level import declaration (inspired by Unison)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionImport {
+    /// The name being imported
+    pub name: Symbol,
+    /// Optional alias for the import
+    pub alias: Option<Symbol>,
+    /// Whether this is explicitly declared or inferred
+    pub is_explicit: bool,
+    pub span: Span,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ImportItem {
     pub kind: ExportKind,
@@ -223,6 +235,7 @@ pub struct ValueDef {
     pub body: Expr,
     pub visibility: Visibility,
     pub purity: Purity,
+    pub imports: Vec<FunctionImport>,
     pub span: Span,
 }
 
@@ -239,6 +252,7 @@ pub struct TestDef {
     pub timeout: Option<u64>,
     pub expected_failure: bool,
     pub visibility: Visibility,
+    pub imports: Vec<FunctionImport>,
     pub span: Span,
 }
 

@@ -184,7 +184,7 @@ impl DocCommand {
                 .with_context(|| format!("Failed to read {}", file_path.display()))?;
             
             let file_id = FileId(0);
-            let compilation_unit = parse_source(&content, file_id, SyntaxStyle::RustLike)?;
+            let compilation_unit = parse_source(&content, file_id, SyntaxStyle::Haskell)?;
             
             // Type check for better semantic information
             let mut type_checker = TypeChecker::new();

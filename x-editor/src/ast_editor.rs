@@ -454,6 +454,7 @@ impl AstEditor {
             body: Expr::Literal(Literal::Integer(0), x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0))),
             visibility: x_parser::Visibility::Private,
             purity: x_parser::Purity::Pure,
+            imports: Vec::new(),
             span: x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0)),
         })
     }
@@ -562,11 +563,13 @@ mod tests {
             path: vec![0],
             node: EditableNode::Item(Item::ValueDef(x_parser::ValueDef {
                 name: x_parser::Symbol::intern("y"),
+                documentation: None,
                 type_annotation: None,
                 parameters: vec![],
                 body: Expr::Literal(Literal::Bool(true), x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0))),
                 visibility: x_parser::Visibility::Private,
                 purity: x_parser::Purity::Pure,
+                imports: Vec::new(),
                 span: x_parser::Span::single(x_parser::FileId::new(0), x_parser::span::ByteOffset::new(0)),
             })),
         });

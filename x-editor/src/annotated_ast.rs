@@ -352,6 +352,7 @@ impl AnnotatedValueDef {
             body: self.body.expr.clone(),
             visibility: self.visibility.clone(),
             purity: self.purity.clone(),
+            imports: Vec::new(),
             span: self.span,
         }
     }

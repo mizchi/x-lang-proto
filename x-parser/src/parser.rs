@@ -538,6 +538,7 @@ impl Parser {
             body,
             visibility,
             purity: Purity::Inferred,
+            imports: Vec::new(),
             span: start_span.merge(end_span),
         })
     }
@@ -671,6 +672,7 @@ impl Parser {
             timeout,
             expected_failure,
             visibility,
+            imports: Vec::new(),
             span: start_span.merge(end_span),
         })
     }

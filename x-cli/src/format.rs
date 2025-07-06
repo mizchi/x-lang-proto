@@ -314,6 +314,7 @@ fn convert_persistent_item_to_ast(item_ast: &PersistentAstNode) -> Result<x_pars
                 body: ast_body,
                 visibility: convert_persistent_visibility_to_ast(&visibility),
                 purity: convert_persistent_purity_to_ast(&purity),
+                imports: Vec::new(),
                 span: convert_persistent_span_to_ast(&item_ast.span()),
             }))
         }

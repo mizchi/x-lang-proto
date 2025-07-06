@@ -987,6 +987,7 @@ impl BinaryDeserializer {
                     body,
                     visibility,
                     purity,
+                    imports: Vec::new(),
                     span,
                 }))
             }
@@ -1000,6 +1001,7 @@ impl BinaryDeserializer {
                     body: Expr::Literal(Literal::Unit, Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0))),
                     visibility: Visibility::Public,
                     purity: Purity::Inferred,
+                    imports: Vec::new(),
                     span: Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0)),
                 }))
             }

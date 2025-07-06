@@ -14,6 +14,7 @@ pub mod symbol;
 pub mod token;
 pub mod binary;
 pub mod error;
+pub mod dependency;
 
 #[cfg(test)]
 mod binary_tests;

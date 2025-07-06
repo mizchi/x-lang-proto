@@ -6,7 +6,6 @@ use colored::*;
 use serde_json;
 use x_parser::persistent_ast::{PersistentAstNode, AstNodeKind, Purity};
 use x_parser::syntax::{SyntaxConfig, SyntaxStyle};
-use x_parser::syntax::ocaml::OCamlPrinter;
 use x_parser::syntax::haskell::HaskellPrinter;
 use x_parser::syntax::sexp::SExpPrinter;
 use x_parser::syntax::SyntaxPrinter;
@@ -332,14 +331,14 @@ fn show_ocaml(ast: &PersistentAstNode, _max_depth: Option<usize>) -> Result<()> 
     let compilation_unit = convert_persistent_to_ast(ast)?;
     
     let config = SyntaxConfig {
-        style: SyntaxStyle::OCaml,
+        style: SyntaxStyle::Haskell,
         indent_size: 2,
         use_tabs: false,
         max_line_length: 80,
         preserve_comments: true,
     };
     
-    let printer = OCamlPrinter::new();
+    let printer = HaskellPrinter::new();
     let output = printer.print(&compilation_unit, &config)?;
     
     println!("{}", output);
