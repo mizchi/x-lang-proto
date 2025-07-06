@@ -1,7 +1,7 @@
 //! x Language Parser
 //! 
 //! This crate provides parsing and lexical analysis functionality for x Language.
-//! It supports multiple syntax styles (OCaml, S-expression, Haskell, Rust-like)
+//! It supports multiple syntax styles (Haskell, S-expression)
 //! and handles conversion from text to AST representation.
 
 pub mod ast;
@@ -37,15 +37,13 @@ pub fn parse_source(source: &str, file_id: FileId, _syntax_style: SyntaxStyle) -
 /// Syntax styles supported by the parser
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SyntaxStyle {
-    OCaml,
-    SExpression,
     Haskell,
-    RustLike,
+    SExpression,
 }
 
 impl Default for SyntaxStyle {
     fn default() -> Self {
-        SyntaxStyle::OCaml
+        SyntaxStyle::Haskell
     }
 }
 

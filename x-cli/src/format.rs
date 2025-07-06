@@ -15,14 +15,10 @@ use x_parser::{
 pub enum Format {
     /// Binary AST format (.x)
     Binary,
-    /// Rust-like syntax (.rustic.x)
-    Rustic,
-    /// OCaml-like syntax (.ocaml.x)
-    OCaml,
-    /// S-expression syntax (.lisp.x)
-    SExpression,
     /// Haskell-like syntax (.haskell.x)
     Haskell,
+    /// S-expression syntax (.lisp.x)
+    SExpression,
     /// JSON representation (.json)
     Json,
 }
@@ -32,10 +28,8 @@ impl Format {
     pub fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "binary" | "bin" | "x" => Ok(Format::Binary),
-            "rustic" | "rust" => Ok(Format::Rustic),
-            "ocaml" | "ml" => Ok(Format::OCaml),
-            "sexp" | "lisp" | "s-expression" => Ok(Format::SExpression),
             "haskell" | "hs" => Ok(Format::Haskell),
+            "sexp" | "lisp" | "s-expression" => Ok(Format::SExpression),
             "json" => Ok(Format::Json),
             _ => bail!("Unknown format: {}", s),
         }
@@ -45,10 +39,8 @@ impl Format {
     pub fn default_extension(&self) -> &'static str {
         match self {
             Format::Binary => "x",
-            Format::Rustic => "rustic.x",
-            Format::OCaml => "ocaml.x",
-            Format::SExpression => "lisp.x",
             Format::Haskell => "haskell.x",
+            Format::SExpression => "lisp.x",
             Format::Json => "json",
         }
     }
@@ -56,10 +48,8 @@ impl Format {
     /// Get syntax style for text formats
     pub fn syntax_style(&self) -> Option<SyntaxStyle> {
         match self {
-            Format::Rustic => Some(SyntaxStyle::RustLike),
-            Format::OCaml => Some(SyntaxStyle::OCaml),
-            Format::SExpression => Some(SyntaxStyle::SExpression),
             Format::Haskell => Some(SyntaxStyle::Haskell),
+            Format::SExpression => Some(SyntaxStyle::SExpression),
             Format::Binary | Format::Json => None,
         }
     }
@@ -71,10 +61,6 @@ pub fn detect_format(path: &Path) -> Result<Format> {
     
     if path_str.ends_with(".x") && path_str.matches('.').count() == 1 {
         Ok(Format::Binary)
-    } else if path_str.ends_with(".rustic.x") {
-        Ok(Format::Rustic)
-    } else if path_str.ends_with(".ocaml.x") || path_str.ends_with(".ml.x") {
-        Ok(Format::OCaml)
     } else if path_str.ends_with(".lisp.x") || path_str.ends_with(".sexp.x") {
         Ok(Format::SExpression)
     } else if path_str.ends_with(".haskell.x") || path_str.ends_with(".hs.x") {
@@ -94,7 +80,7 @@ pub async fn load_ast(path: &Path, format: Format) -> Result<PersistentAstNode> 
     match format {
         Format::Binary => load_binary_ast(&content),
         Format::Json => load_json_ast(&content),
-        Format::Rustic | Format::OCaml | Format::SExpression | Format::Haskell => {
+        Format::SExpression | Format::Haskell => {
             load_text_ast(&content, format)
         }
     }
@@ -105,7 +91,7 @@ pub async fn save_ast(path: &Path, ast: &PersistentAstNode, format: Format) -> R
     let content = match format {
         Format::Binary => save_binary_ast(ast)?,
         Format::Json => save_json_ast(&ast)?,
-        Format::Rustic | Format::OCaml | Format::SExpression | Format::Haskell => {
+        Format::SExpression | Format::Haskell => {
             save_text_ast(&ast, format)?
         }
     };
@@ -212,24 +198,13 @@ fn save_text_ast(ast: &PersistentAstNode, format: Format) -> Result<Vec<u8>> {
     // TODO: Implement actual AST to text conversion
     // For now, generate a simple placeholder
     let text = match syntax_style {
-        SyntaxStyle::RustLike => generate_rust_like_text(ast),
-        SyntaxStyle::OCaml => generate_ocaml_text(ast),
-        SyntaxStyle::SExpression => generate_sexp_text(ast),
         SyntaxStyle::Haskell => generate_haskell_text(ast),
+        SyntaxStyle::SExpression => generate_sexp_text(ast),
     };
     
     Ok(text.into_bytes())
 }
 
-/// Generate Rust-like syntax text (placeholder)
-fn generate_rust_like_text(ast: &PersistentAstNode) -> String {
-    format!("// Generated from AST node: {:?}\n// TODO: Implement text generation\npub fn main() {{\n    println!(\"Hello from x Language!\");\n}}\n", ast.id())
-}
-
-/// Generate OCaml syntax text (placeholder)
-fn generate_ocaml_text(ast: &PersistentAstNode) -> String {
-    format!("(* Generated from AST node: {:?} *)\n(* TODO: Implement text generation *)\nlet main () = print_endline \"Hello from x Language!\"\n", ast.id())
-}
 
 /// Generate S-expression text (placeholder)
 fn generate_sexp_text(ast: &PersistentAstNode) -> String {
@@ -536,8 +511,6 @@ mod tests {
     #[test]
     fn test_format_detection() {
         assert_eq!(detect_format(Path::new("test.x")).unwrap(), Format::Binary);
-        assert_eq!(detect_format(Path::new("test.rustic.x")).unwrap(), Format::Rustic);
-        assert_eq!(detect_format(Path::new("test.ocaml.x")).unwrap(), Format::OCaml);
         assert_eq!(detect_format(Path::new("test.lisp.x")).unwrap(), Format::SExpression);
         assert_eq!(detect_format(Path::new("test.haskell.x")).unwrap(), Format::Haskell);
         assert_eq!(detect_format(Path::new("test.json")).unwrap(), Format::Json);
@@ -546,8 +519,6 @@ mod tests {
     #[test]
     fn test_format_from_str() {
         assert_eq!(Format::from_str("binary").unwrap(), Format::Binary);
-        assert_eq!(Format::from_str("rustic").unwrap(), Format::Rustic);
-        assert_eq!(Format::from_str("ocaml").unwrap(), Format::OCaml);
         assert_eq!(Format::from_str("lisp").unwrap(), Format::SExpression);
         assert_eq!(Format::from_str("haskell").unwrap(), Format::Haskell);
         assert_eq!(Format::from_str("json").unwrap(), Format::Json);
@@ -556,8 +527,6 @@ mod tests {
     #[test]
     fn test_default_extension() {
         assert_eq!(Format::Binary.default_extension(), "x");
-        assert_eq!(Format::Rustic.default_extension(), "rustic.x");
-        assert_eq!(Format::OCaml.default_extension(), "ocaml.x");
         assert_eq!(Format::SExpression.default_extension(), "lisp.x");
         assert_eq!(Format::Haskell.default_extension(), "haskell.x");
         assert_eq!(Format::Json.default_extension(), "json");

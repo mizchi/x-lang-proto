@@ -164,7 +164,7 @@ impl CliConfig {
 
 // Default value functions
 fn default_syntax_style() -> String {
-    "rustic".to_string()
+    "haskell".to_string()
 }
 
 fn default_output_format() -> String {
