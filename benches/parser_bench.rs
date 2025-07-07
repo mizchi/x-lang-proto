@@ -14,7 +14,7 @@ let factorial = fun n ->
     c.bench_function("parse_simple", |b| {
         b.iter(|| {
             let file_id = FileId::new(0);
-            parse_source(black_box(source), file_id, SyntaxStyle::OCaml)
+            parse_source(black_box(source), file_id, SyntaxStyle::Haskell)
         })
     });
 }
@@ -57,7 +57,7 @@ let stateful_computation = fun () ->
     c.bench_function("parse_complex", |b| {
         b.iter(|| {
             let file_id = FileId::new(0);
-            parse_source(black_box(source), file_id, SyntaxStyle::OCaml)
+            parse_source(black_box(source), file_id, SyntaxStyle::Haskell)
         })
     });
 }
@@ -68,7 +68,7 @@ fn benchmark_syntax_styles(c: &mut Criterion) {
     c.bench_function("parse_ocaml_style", |b| {
         b.iter(|| {
             let file_id = FileId::new(0);
-            parse_source(black_box(ocaml_source), file_id, SyntaxStyle::OCaml)
+            parse_source(black_box(ocaml_source), file_id, SyntaxStyle::Haskell)
         })
     });
 }

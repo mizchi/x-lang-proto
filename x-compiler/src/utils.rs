@@ -32,13 +32,13 @@ fn sanitize_typescript_identifier(name: &str) -> String {
         .collect();
     
     // Ensure it starts with a letter or underscore
-    if result.chars().next().map_or(false, |c| c.is_numeric()) {
-        result = format!("_{}", result);
+    if result.chars().next().is_some_and(|c| c.is_numeric()) {
+        result = format!("_{result}");
     }
     
     // Avoid reserved words
     if reserved.contains(&result.as_str()) {
-        result = format!("_{}", result);
+        result = format!("_{result}");
     }
     
     result

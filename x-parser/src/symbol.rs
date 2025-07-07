@@ -31,6 +31,11 @@ impl Symbol {
     }
     
     /// Create a symbol from a raw ID (unsafe - only for deserialization)
+    /// 
+    /// # Safety
+    /// 
+    /// The caller must ensure that the provided `id` corresponds to a valid symbol
+    /// that has been previously interned. Using an invalid id will result in undefined behavior.
     pub unsafe fn from_u32(id: u32) -> Self {
         Symbol(id)
     }
@@ -118,7 +123,7 @@ static INTERNER: OnceLock<GlobalInterner> = OnceLock::new();
 
 impl GlobalInterner {
     fn get() -> &'static GlobalInterner {
-        INTERNER.get_or_init(|| GlobalInterner::new())
+        INTERNER.get_or_init(GlobalInterner::new)
     }
 }
 
@@ -430,7 +435,7 @@ mod tests {
         
         // Test scoping
         table.enter_scope();
-        assert!(table.exists_in_current_scope(Symbol::intern("x")) == false);
+        assert!(!table.exists_in_current_scope(Symbol::intern("x")));
         assert!(table.lookup(Symbol::intern("x")).is_some()); // Still visible from outer scope
         
         table.exit_scope();

@@ -1,9 +1,8 @@
 //! Builder implementations for AST construction
 
 use x_parser::ast::*;
-use x_parser::{Symbol, Span, Visibility, Purity};
+use x_parser::{Symbol, Visibility, Purity};
 use super::AstBuilder;
-use std::collections::HashMap;
 
 /// Module builder
 pub struct ModuleBuilder<'a> {
@@ -52,6 +51,7 @@ impl<'a> ModuleBuilder<'a> {
             module_path: ModulePath::single(Symbol::intern(module), self.builder.span()),
             kind: ImportKind::Wildcard,
             alias: None,
+            version_spec: None,
             span: self.builder.span(),
         };
         self.imports.push(import);
@@ -131,6 +131,7 @@ impl<'a> ModuleBuilder<'a> {
         
         let type_def = TypeDef {
             name: Symbol::intern(name),
+            documentation: None,
             type_params: Vec::new(),
             kind: TypeDefKind::Data(ctors),
             visibility: Visibility::Public,
@@ -161,6 +162,7 @@ impl<'a> ModuleBuilder<'a> {
         
         let type_def = TypeDef {
             name: Symbol::intern(name),
+            documentation: None,
             type_params: Vec::new(),
             kind: TypeDefKind::Alias(record_type),
             visibility: Visibility::Public,
@@ -178,6 +180,7 @@ impl<'a> ModuleBuilder<'a> {
         let target_type = target(self.builder);
         let type_def = TypeDef {
             name: Symbol::intern(name),
+            documentation: None,
             type_params: Vec::new(),
             kind: TypeDefKind::Alias(target_type),
             visibility: Visibility::Public,
@@ -206,6 +209,7 @@ impl<'a> ModuleBuilder<'a> {
         
         let effect_def = EffectDef {
             name: Symbol::intern(name),
+            documentation: None,
             type_params: Vec::new(),
             operations: ops,
             visibility: Visibility::Public,
@@ -219,6 +223,7 @@ impl<'a> ModuleBuilder<'a> {
     pub fn build(self) -> Module {
         Module {
             name: self.name,
+            documentation: None,
             exports: self.exports,
             imports: self.imports,
             items: self.items,

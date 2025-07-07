@@ -167,7 +167,7 @@ impl Unifier {
                 
                 for ((name1, type1), (name2, type2)) in sorted1.into_iter().zip(sorted2.into_iter()) {
                     if name1 != name2 {
-                        return Err(format!("Record field mismatch: {} vs {}", name1, name2));
+                        return Err(format!("Record field mismatch: {name1} vs {name2}"));
                     }
                     self.unify_types_impl(type1, type2)?;
                 }
@@ -220,7 +220,7 @@ impl Unifier {
             }
             
             // Mismatch
-            (t1, t2) => Err(format!("Cannot unify {} with {}", t1, t2)),
+            (t1, t2) => Err(format!("Cannot unify {t1} with {t2}")),
         }
     }
     
@@ -261,7 +261,7 @@ impl Unifier {
             (EffectSet::Row { effects, .. }, EffectSet::Empty) if effects.is_empty() => Ok(()),
             
             // Mismatch
-            (e1, e2) => Err(format!("Cannot unify effect sets {} with {}", e1, e2)),
+            (e1, e2) => Err(format!("Cannot unify effect sets {e1} with {e2}")),
         }
     }
     
@@ -269,7 +269,7 @@ impl Unifier {
     fn unify_effect_var(&mut self, var: EffectVar, effects: EffectSet) -> Result<(), String> {
         // Check for occurs check in effects
         if self.effect_var_occurs_in(var, &effects) {
-            return Err(format!("Occurs check failed in effects: {:?} occurs in {:?}", var, effects));
+            return Err(format!("Occurs check failed in effects: {var:?} occurs in {effects:?}"));
         }
         
         self.substitution.insert_effect(var, effects);
@@ -349,7 +349,7 @@ impl Unifier {
             EffectSet::Row { effects, tail } => {
                 // Check that the effect is not present
                 if effects.iter().any(|e| e.name == lacks) {
-                    return Err(format!("Row constraint violation: row contains {}", lacks));
+                    return Err(format!("Row constraint violation: row contains {lacks}"));
                 }
                 
                 // Recursively check tail
@@ -418,7 +418,7 @@ impl Unifier {
             }
             Type::Con(name1) => match target {
                 Type::Con(name2) if name1 == name2 => Ok(()),
-                _ => Err(format!("Type mismatch: expected {}, found {:?}", name1, target)),
+                _ => Err(format!("Type mismatch: expected {name1}, found {target:?}")),
             },
             Type::App(ref con1, ref args1) => match target {
                 Type::App(con2, args2) => {
@@ -426,12 +426,12 @@ impl Unifier {
                     if args1.len() != args2.len() {
                         return Err("Arity mismatch in type application".to_string());
                     }
-                    for (arg1, arg2) in args1.into_iter().zip(args2.into_iter()) {
+                    for (arg1, arg2) in args1.iter().zip(args2.into_iter()) {
                         self.match_type_impl(arg1.clone(), arg2.clone())?;
                     }
                     Ok(())
                 }
-                _ => Err(format!("Type mismatch: expected {:?}, found {:?}", pattern, target)),
+                _ => Err(format!("Type mismatch: expected {pattern:?}, found {target:?}")),
             },
             _ => {
                 // For other patterns, fall back to regular unification
@@ -501,7 +501,7 @@ impl ConstraintSolver {
         // TODO: Look up instances in environment
         // For now, we don't have access to type_env, so we can't resolve type class instances
         
-        Err(format!("No instance found for {} {:?}", class, types))
+        Err(format!("No instance found for {class} {types:?}"))
     }
     
     #[allow(dead_code)]
@@ -533,7 +533,7 @@ impl ConstraintSolver {
         
         // Check that the row doesn't contain the lacks label
         if row.contains_effect(lacks) {
-            Err(format!("Row constraint violation: {} present in row", lacks))
+            Err(format!("Row constraint violation: {lacks} present in row"))
         } else {
             Ok(())
         }

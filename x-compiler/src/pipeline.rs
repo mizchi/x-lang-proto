@@ -153,13 +153,13 @@ impl CompilationPipeline {
         let diagnostics = check_result.errors.iter()
             .map(|error| CompilerDiagnostic {
                 severity: crate::backend::DiagnosticSeverity::Error,
-                message: format!("{}", error),
+                message: format!("{error}"),
                 source: DiagnosticSource::TypeChecker,
                 span: None, // TODO: Extract span from type error
             })
             .chain(check_result.warnings.iter().map(|warning| CompilerDiagnostic {
                 severity: crate::backend::DiagnosticSeverity::Warning,
-                message: format!("{}", warning),
+                message: format!("{warning}"),
                 source: DiagnosticSource::TypeChecker,
                 span: None,
             }))
@@ -218,7 +218,7 @@ impl CompilationPipeline {
         };
 
         let codegen_result = backend.generate_code(ast, &HashMap::new(), &codegen_options)
-            .map_err(|e| CompilerError::CodeGen { message: format!("{:?}", e) })?;
+            .map_err(|e| CompilerError::CodeGen { message: format!("{e:?}") })?;
 
         let duration = start.elapsed();
 

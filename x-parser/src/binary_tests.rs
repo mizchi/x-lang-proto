@@ -35,6 +35,7 @@ mod tests {
             // Create a simple compilation unit with this expression
             let module = Module {
                 name: ModulePath::single(Symbol::intern("test"), test_span()),
+                documentation: None,
                 exports: None,
                 imports: Vec::new(),
                 items: vec![Item::ValueDef(ValueDef {
@@ -70,7 +71,7 @@ mod tests {
             // Verify the literal is preserved
             if let Item::ValueDef(value_def) = &restored_unit.module.items[0] {
                 if let Expr::Literal(restored_literal, _) = &value_def.body {
-                    assert_eq!(restored_literal, &literal, "Literal not preserved: {:?}", literal);
+                    assert_eq!(restored_literal, &literal, "Literal not preserved: {literal:?}");
                 } else {
                     panic!("Expected literal expression");
                 }
@@ -88,6 +89,7 @@ mod tests {
         
         let module = Module {
             name: ModulePath::single(Symbol::intern("test"), test_span()),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: vec![Item::ValueDef(ValueDef {
@@ -144,6 +146,7 @@ mod tests {
         
         let module = Module {
             name: ModulePath::single(Symbol::intern("test"), test_span()),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: vec![Item::ValueDef(ValueDef {
@@ -219,6 +222,7 @@ mod tests {
         
         let module = Module {
             name: ModulePath::single(Symbol::intern("test"), test_span()),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: vec![Item::ValueDef(ValueDef {
@@ -292,6 +296,7 @@ mod tests {
         
         let module = Module {
             name: ModulePath::single(Symbol::intern("test"), test_span()),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: vec![Item::ValueDef(ValueDef {
@@ -368,6 +373,7 @@ mod tests {
         
         let module = Module {
             name: ModulePath::single(Symbol::intern("test"), test_span()),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: vec![Item::ValueDef(ValueDef {
@@ -468,6 +474,7 @@ mod tests {
         
         let module = Module {
             name: ModulePath::single(Symbol::intern("test"), test_span()),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: vec![Item::ValueDef(ValueDef {
@@ -556,6 +563,7 @@ mod tests {
         
         let module = Module {
             name: ModulePath::single(Symbol::intern("test"), test_span()),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: vec![Item::ValueDef(ValueDef {

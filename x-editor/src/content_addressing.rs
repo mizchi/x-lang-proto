@@ -22,7 +22,7 @@ impl ContentHash {
         let mut hasher = Sha256::new();
         hasher.update(data);
         let result = hasher.finalize();
-        ContentHash(format!("{:x}", result))
+        ContentHash(format!("{result:x}"))
     }
     
     pub fn short(&self) -> &str {
@@ -164,6 +164,12 @@ pub struct ContentRepository {
     similarity_calc: CombinedSimilarity,
 }
 
+impl Default for ContentRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContentRepository {
     pub fn new() -> Self {
         Self {
@@ -208,13 +214,13 @@ impl ContentRepository {
         
         self.structure_index
             .entry(fingerprint.structure_hash)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(hash.clone());
             
         if let Some(v) = version {
             self.version_index
                 .entry(name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .insert(v, hash.clone());
         }
         
@@ -254,13 +260,13 @@ impl ContentRepository {
         
         self.structure_index
             .entry(fingerprint.structure_hash)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(hash.clone());
             
         if let Some(v) = version {
             self.version_index
                 .entry(name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .insert(v, hash.clone());
         }
         
@@ -287,7 +293,7 @@ impl ContentRepository {
                 
                 self.structure_index
                     .entry(fingerprint.structure_hash)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(hash.clone());
             }
         }
@@ -305,7 +311,7 @@ impl ContentRepository {
                     effects: HashSet::new(),
                     is_recursive: false,
                 },
-                normalized_form: format!("module:{}", name),
+                normalized_form: format!("module:{name}"),
             },
             version: version.clone(),
             name: name.to_string(),
@@ -322,7 +328,7 @@ impl ContentRepository {
         if let Some(v) = version {
             self.version_index
                 .entry(name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .insert(v, hash.clone());
         }
         
@@ -469,7 +475,7 @@ impl ContentRepository {
         let features = self.extract_features(def);
         
         let type_hash = def.type_annotation.as_ref().map(|ty| {
-            let ty_data = format!("{:?}", ty); // Simple serialization
+            let ty_data = format!("{ty:?}"); // Simple serialization
             ContentHash::new(ty_data.as_bytes())
         });
         
@@ -516,7 +522,7 @@ impl ContentRepository {
             Expr::Lambda { parameters, body, .. } => {
                 format!("λ{}.{}", parameters.len(), self.normalize_expr(body))
             }
-            Expr::Literal(lit, _) => format!("{:?}", lit),
+            Expr::Literal(lit, _) => format!("{lit:?}"),
             _ => "expr".to_string(),
         }
     }
@@ -713,7 +719,7 @@ impl ContentRepository {
     /// Serialize function for hashing
     fn serialize_function(&self, def: &ValueDef) -> Result<Vec<u8>> {
         // Use bincode or similar for consistent serialization
-        Ok(format!("{:?}", def).into_bytes())
+        Ok(format!("{def:?}").into_bytes())
     }
     
     /// Serialize normalized form
@@ -740,29 +746,26 @@ impl ContentRepository {
         
         // Feature constraints
         if let Some(constraints) = &query.feature_constraints {
-            match &entry.content {
-                ContentItem::Function { annotated_ast: _, .. } => {
-                    let features = &entry.fingerprint.features;
-                    
-                    if let Some(min_params) = constraints.min_params {
-                        if features.param_count < min_params {
-                            return false;
-                        }
-                    }
-                    
-                    if let Some(max_params) = constraints.max_params {
-                        if features.param_count > max_params {
-                            return false;
-                        }
-                    }
-                    
-                    if let Some(must_be_recursive) = constraints.is_recursive {
-                        if features.is_recursive != must_be_recursive {
-                            return false;
-                        }
+            if let ContentItem::Function { annotated_ast: _, .. } = &entry.content {
+                let features = &entry.fingerprint.features;
+                
+                if let Some(min_params) = constraints.min_params {
+                    if features.param_count < min_params {
+                        return false;
                     }
                 }
-                _ => {}
+                
+                if let Some(max_params) = constraints.max_params {
+                    if features.param_count > max_params {
+                        return false;
+                    }
+                }
+                
+                if let Some(must_be_recursive) = constraints.is_recursive {
+                    if features.is_recursive != must_be_recursive {
+                        return false;
+                    }
+                }
             }
         }
         

@@ -28,6 +28,12 @@ pub struct BinaryTypeChecker {
     inference_cache: HashMap<u32, InferenceResult>,
 }
 
+impl Default for BinaryTypeChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BinaryTypeChecker {
     pub fn new() -> Self {
         BinaryTypeChecker {
@@ -42,7 +48,7 @@ impl BinaryTypeChecker {
     
     /// Type check a binary compilation unit
     pub fn check_binary_compilation_unit(&mut self, binary_data: &[u8]) -> StdResult<TypeCheckResult, String> {
-        let mut deserializer = BinaryDeserializer::new(binary_data.to_vec()).map_err(|e| format!("Binary deserializer error: {:?}", e))?;
+        let mut deserializer = BinaryDeserializer::new(binary_data.to_vec()).map_err(|e| format!("Binary deserializer error: {e:?}"))?;
         
         // Check if binary contains cached type information
         let has_types = deserializer.has_type_information();
@@ -168,7 +174,7 @@ impl BinaryTypeChecker {
                         constraints: Vec::new(),
                     })
                 } else {
-                    Err(format!("Unbound variable: {}", symbol))
+                    Err(format!("Unbound variable: {symbol}"))
                 }
             }
             TypeCode::ExprApp => {
@@ -193,19 +199,19 @@ impl BinaryTypeChecker {
     /// Load type cache from binary metadata
     fn load_type_cache(&mut self, deserializer: &mut BinaryDeserializer) -> StdResult<(), String> {
         // Read type metadata section
-        let type_count = deserializer.read_u32().map_err(|e| format!("Failed to read type count: {:?}", e))?;
+        let type_count = deserializer.read_u32().map_err(|e| format!("Failed to read type count: {e:?}"))?;
         
         for _i in 0..type_count {
-            let type_id = deserializer.read_u32().map_err(|e| format!("Failed to read type id: {:?}", e))?;
+            let type_id = deserializer.read_u32().map_err(|e| format!("Failed to read type id: {e:?}"))?;
             // TODO: Implement proper type deserialization once API is available
             // For now, store placeholder types
             self.type_cache.insert(type_id, Type::Hole);
         }
         
         // Read effect cache
-        let effect_count = deserializer.read_u32().map_err(|e| format!("Failed to read effect count: {:?}", e))?;
+        let effect_count = deserializer.read_u32().map_err(|e| format!("Failed to read effect count: {e:?}"))?;
         for _i in 0..effect_count {
-            let effect_id = deserializer.read_u32().map_err(|e| format!("Failed to read effect id: {:?}", e))?;
+            let effect_id = deserializer.read_u32().map_err(|e| format!("Failed to read effect id: {e:?}"))?;
             // TODO: Implement proper effect deserialization once API is available
             // For now, store empty effect sets
             self.effect_cache.insert(effect_id, EffectSet::Empty);
@@ -231,7 +237,7 @@ impl BinaryTypeChecker {
         
         let symbol_id = u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]);
         // Look up symbol in table (would need access to deserializer's symbol table)
-        Ok(Symbol::intern(&format!("sym_{}", symbol_id)))
+        Ok(Symbol::intern(&format!("sym_{symbol_id}")))
     }
     
     /// Infer function application from binary payload

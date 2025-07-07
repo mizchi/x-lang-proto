@@ -216,7 +216,7 @@ impl InferenceContext {
                         span,
                     });
                 }
-                Err(format!("Unbound variable: {}", name))
+                Err(format!("Unbound variable: {name}"))
             }
         }
     }
@@ -448,11 +448,11 @@ impl InferenceContext {
     ) -> StdResult<InferenceResult, String> {
         // Look up effect and operation  
         let effect_def = self.env.lookup_effect(effect)
-            .ok_or_else(|| format!("Unknown effect: {}", effect))?.clone();
+            .ok_or_else(|| format!("Unknown effect: {effect}"))?.clone();
         
         let operation_def = effect_def.operations.iter()
             .find(|op| op.name == operation)
-            .ok_or_else(|| format!("Unknown operation: {} in effect {}", operation, effect))?.clone();
+            .ok_or_else(|| format!("Unknown operation: {operation} in effect {effect}"))?.clone();
         
         // Check argument types
         if args.len() != operation_def.params.len() {
@@ -466,7 +466,7 @@ impl InferenceContext {
         
         for (arg, expected_type) in args.iter().zip(&operation_def.params) {
             let arg_result = self.infer_expr(arg)?;
-            self.unify(&arg_result.typ, &expected_type)?;
+            self.unify(&arg_result.typ, expected_type)?;
         }
         
         // Create effect set containing this effect
@@ -515,7 +515,7 @@ impl InferenceContext {
             Pattern::Constructor { name: _, args, .. } => {
                 // TODO: Implement constructor patterns
                 let mut bindings = HashMap::new();
-                for (_i, arg) in args.iter().enumerate() {
+                for arg in args.iter() {
                     let arg_type = self.fresh_type_var();
                     let arg_bindings = self.infer_pattern(arg, &arg_type)?;
                     bindings.extend(arg_bindings);
@@ -568,12 +568,7 @@ impl InferenceContext {
     
     /// Helper function to check if an expression is a value (for let-polymorphism)
     fn is_value(&self, expr: &Expr) -> bool {
-        match expr {
-            Expr::Literal(_, _) => true,
-            Expr::Var(_, _) => true,
-            Expr::Lambda { .. } => true,
-            _ => false,
-        }
+        matches!(expr, Expr::Literal(_, _) | Expr::Var(_, _) | Expr::Lambda { .. })
     }
     
     /// Convert AST type to internal type representation
@@ -729,7 +724,7 @@ impl InferenceContext {
                         span,
                     });
                 }
-                Err(format!("Cannot unify {} with {}", t1, t2))
+                Err(format!("Cannot unify {t1} with {t2}"))
             },
         }
     }
@@ -739,6 +734,7 @@ impl InferenceContext {
         Ok(())
     }
     
+    #[allow(clippy::only_used_in_recursion)]
     fn combine_effects(&mut self, e1: EffectSet, e2: EffectSet) -> StdResult<EffectSet, String> {
         match (e1, e2) {
             (EffectSet::Empty, e) | (e, EffectSet::Empty) => Ok(e),

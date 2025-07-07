@@ -15,8 +15,14 @@ mod config;
 mod format;
 mod interactive;
 mod utils;
+mod version_db;
 
 use commands::*;
+use commands::hash::HashArgs;
+use commands::version::VersionArgs;
+use commands::imports::ImportsArgs;
+use commands::outdated::OutdatedArgs;
+use commands::namespace_cli::NamespaceCommand;
 use config::CliConfig;
 
 /// x Language CLI - Direct AST manipulation and conversion tools
@@ -219,6 +225,21 @@ pub enum Commands {
     
     /// Extract dependencies and generate focused code
     Deps(ExtractArgs),
+    
+    /// Compute content hashes for definitions
+    Hash(HashArgs),
+    
+    /// Manage function versions
+    Version(VersionArgs),
+    
+    /// Extract and display import information
+    Imports(ImportsArgs),
+    
+    /// Check for outdated dependencies
+    Outdated(OutdatedArgs),
+    
+    /// Git-like namespace management
+    Namespace(NamespaceCommand),
 }
 
 #[tokio::main]
@@ -281,6 +302,21 @@ async fn main() -> Result<()> {
         },
         Commands::Deps(args) => {
             extract::run(args).await
+        },
+        Commands::Hash(args) => {
+            hash::run(args).await
+        },
+        Commands::Version(args) => {
+            version::run(args).await
+        },
+        Commands::Imports(args) => {
+            imports::run(args).await
+        },
+        Commands::Outdated(args) => {
+            outdated::run(args).await
+        },
+        Commands::Namespace(cmd) => {
+            namespace_command(cmd)
         },
     };
     

@@ -269,7 +269,7 @@ impl LineMap {
         let start = self.line_starts[line_idx];
         let end = self.line_starts.get(line_idx + 1)
             .copied()
-            .unwrap_or_else(|| ByteOffset(u32::MAX));
+            .unwrap_or(ByteOffset(u32::MAX));
         
         Some(Span::new(FileId::INVALID, start, end))
     }

@@ -103,7 +103,7 @@ impl NamespaceStorage {
         for dep in &deps_strings {
             self.namespace_index.reverse_dependencies
                 .entry(dep.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(namespace.path.to_string());
         }
         
@@ -113,7 +113,7 @@ impl NamespaceStorage {
         
         self.namespace_index.versions
             .entry(namespace.path.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(NamespaceVersion {
                 version,
                 hash: hash.clone(),
@@ -321,7 +321,7 @@ impl NamespaceStorage {
     
     /// Collect all content hashes referenced by a namespace
     fn collect_content_hashes(&self, namespace: &Namespace, hashes: &mut HashSet<ContentHash>) {
-        for (_, binding) in &namespace.bindings {
+        for binding in namespace.bindings.values() {
             match binding {
                 NameBinding::Value { hash, .. } |
                 NameBinding::Type { hash, .. } |

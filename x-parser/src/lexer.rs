@@ -133,6 +133,10 @@ impl Lexer {
                 self.advance();
                 Ok(Token::new(TokenKind::Question, self.make_span(start_pos, self.position)))
             }
+            Some('@') => {
+                self.advance();
+                Ok(Token::new(TokenKind::At, self.make_span(start_pos, self.position)))
+            }
             
             // String literals
             Some('"') => self.read_string(),
@@ -242,7 +246,7 @@ impl Lexer {
             
             Some(ch) => {
                 Err(Error::Parse { 
-                    message: format!("Unexpected character: '{}'", ch) 
+                    message: format!("Unexpected character: '{ch}'") 
                 })
             }
         }

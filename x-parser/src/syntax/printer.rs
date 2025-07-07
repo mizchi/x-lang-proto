@@ -30,7 +30,7 @@ impl PrinterUtils {
         
         if total_length > config.max_line_length {
             // Multi-line format
-            formatted_items.join(&format!("{}\n", separator))
+            formatted_items.join(&format!("{separator}\n"))
         } else {
             // Single-line format
             formatted_items.join(separator)
@@ -44,7 +44,7 @@ impl PrinterUtils {
                 if line.trim().is_empty() {
                     line.to_string()
                 } else {
-                    format!("{}{}", indent, line)
+                    format!("{indent}{line}")
                 }
             })
             .collect::<Vec<_>>()

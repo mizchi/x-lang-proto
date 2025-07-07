@@ -107,7 +107,7 @@ impl ModuleResolver {
         let _file_path = self.resolve_local_module(module_path)
             .or_else(|| self.resolve_dependency_module(module_path))
             .or_else(|| self.resolve_standard_module(module_path))
-            .ok_or_else(|| format!("Module not found: {}", module_path.to_string()))?;
+            .ok_or_else(|| format!("Module not found: {module_path}"))?;
         
         // Register file with database
         let file_id = FileId::new(self.module_cache.len() as u32);
@@ -158,7 +158,7 @@ impl ModuleResolver {
     pub fn check_circular_dependencies(&self, graph: &DependencyGraph) -> StdResult<(), String> {
         for (&module, deps) in &graph.direct_deps {
             if self.has_circular_dependency(graph, module, deps, &mut HashSet::new()) {
-                return Err(format!("Circular dependency detected involving module {:?}", module));
+                return Err(format!("Circular dependency detected involving module {module:?}"));
             }
         }
         Ok(())
@@ -268,7 +268,7 @@ impl ModuleResolver {
         
         // Try mod.eff in directory
         for ext in &extensions {
-            let mod_path = base_path.join(format!("mod.{}", ext));
+            let mod_path = base_path.join(format!("mod.{ext}"));
             if mod_path.exists() {
                 return Some(mod_path);
             }
@@ -317,6 +317,12 @@ impl ModuleResolver {
         
         visited.remove(&current);
         false
+    }
+}
+
+impl Default for DependencyGraph {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

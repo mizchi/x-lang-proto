@@ -82,6 +82,12 @@ pub struct TypeEnvironment {
     pub constructors: HashMap<Symbol, TypeScheme>,
 }
 
+impl Default for TypeEnvironment {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeEnvironment {
     pub fn new() -> Self {
         Self {
@@ -102,6 +108,12 @@ impl TypeEnvironment {
 /// Annotator that adds type information to AST
 pub struct TypeAnnotator {
     type_env: TypeEnvironment,
+}
+
+impl Default for TypeAnnotator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TypeAnnotator {
@@ -293,7 +305,7 @@ impl AnnotatedCompilationUnit {
         for (name, scheme) in &self.type_environment.globals {
             map.insert(
                 name.as_str().to_string(),
-                format!("{:?}", scheme), // Would use proper pretty-printing
+                format!("{scheme:?}"), // Would use proper pretty-printing
             );
         }
         
@@ -303,7 +315,7 @@ impl AnnotatedCompilationUnit {
                 if let Some(ref inferred) = def.inferred_type {
                     map.insert(
                         def.name.as_str().to_string(),
-                        format!("{:?}", inferred),
+                        format!("{inferred:?}"),
                     );
                 }
             }

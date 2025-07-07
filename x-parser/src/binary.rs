@@ -159,6 +159,12 @@ bitflags::bitflags! {
     }
 }
 
+impl Default for BinaryHeader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BinaryHeader {
     pub const MAGIC: [u8; 4] = *b"EFFL";
     pub const VERSION: u16 = 3;  // Enhanced version with type checking
@@ -469,7 +475,7 @@ impl BinarySerializer {
             // Add other type constructors as needed...
             _ => {
                 return Err(Error::Parse {
-                    message: format!("Unsupported type for serialization: {:?}", typ),
+                    message: format!("Unsupported type for serialization: {typ:?}"),
                 });
             }
         }
@@ -729,7 +735,7 @@ impl BinaryDeserializer {
         
         if version != FORMAT_VERSION {
             return Err(Error::Parse {
-                message: format!("Unsupported format version: {}. Expected: {}", version, FORMAT_VERSION),
+                message: format!("Unsupported format version: {version}. Expected: {FORMAT_VERSION}"),
             });
         }
         
@@ -840,7 +846,7 @@ impl BinaryDeserializer {
                 Ok(EffectSet::Row { effects, tail })
             }
             _ => Err(Error::Parse {
-                message: format!("Unknown effect set code: {}", effect_code),
+                message: format!("Unknown effect set code: {effect_code}"),
             }),
         }
     }
@@ -850,7 +856,7 @@ impl BinaryDeserializer {
         let type_code = self.read_u8()?;
         if type_code != TypeCode::CompilationUnit as u8 {
             return Err(Error::Parse {
-                message: format!("Expected compilation unit, got type code {}", type_code),
+                message: format!("Expected compilation unit, got type code {type_code}"),
             });
         }
         
@@ -864,7 +870,7 @@ impl BinaryDeserializer {
         let type_code = self.read_u8()?;
         if type_code != TypeCode::Module as u8 {
             return Err(Error::Parse {
-                message: format!("Expected module, got type code {}", type_code),
+                message: format!("Expected module, got type code {type_code}"),
             });
         }
         
@@ -930,6 +936,7 @@ impl BinaryDeserializer {
             ),
             kind: ImportKind::Qualified,
             alias: None,
+            version_spec: None,
             span: Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0)),
         })
     }
@@ -1006,7 +1013,7 @@ impl BinaryDeserializer {
                 }))
             }
             _ => Err(Error::Parse {
-                message: format!("Unknown item type code: {}", type_code),
+                message: format!("Unknown item type code: {type_code}"),
             }),
         }
     }
@@ -1118,7 +1125,7 @@ impl BinaryDeserializer {
                 Ok(Expr::Literal(Literal::Unit, span))
             }
             _ => Err(Error::Parse {
-                message: format!("Unknown expression type code: {}", type_code),
+                message: format!("Unknown expression type code: {type_code}"),
             }),
         }
     }
@@ -1162,7 +1169,7 @@ impl BinaryDeserializer {
                     }
                     code if code == TypeCode::LiteralUnit as u8 => Literal::Unit,
                     _ => return Err(Error::Parse {
-                        message: format!("Unknown literal type in pattern: {}", literal_type),
+                        message: format!("Unknown literal type in pattern: {literal_type}"),
                     }),
                 };
                 
@@ -1170,7 +1177,7 @@ impl BinaryDeserializer {
                 Ok(Pattern::Literal(literal, span))
             }
             _ => Err(Error::Parse {
-                message: format!("Unknown pattern type code: {}", type_code),
+                message: format!("Unknown pattern type code: {type_code}"),
             }),
         }
     }
@@ -1215,7 +1222,7 @@ impl BinaryDeserializer {
                 Ok(Type::Hole(span))
             }
             _ => Err(Error::Parse {
-                message: format!("Unknown type code: {}", type_code),
+                message: format!("Unknown type code: {type_code}"),
             }),
         }
     }
@@ -1254,7 +1261,7 @@ impl BinaryDeserializer {
         let type_code = self.read_u8()?;
         if type_code != TypeCode::Span as u8 {
             return Err(Error::Parse {
-                message: format!("Expected span, got type code {}", type_code),
+                message: format!("Expected span, got type code {type_code}"),
             });
         }
         
@@ -1365,6 +1372,7 @@ mod tests {
                 vec![Symbol::intern("Test")],
                 Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(4))
             ),
+            documentation: None,
             exports: None,
             imports: Vec::new(),
             items: Vec::new(),

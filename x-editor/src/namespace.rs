@@ -31,7 +31,7 @@ impl NamespacePath {
             Self::root()
         } else {
             let segments = path.split('.')
-                .map(|s| Symbol::intern(s))
+                .map(Symbol::intern)
                 .collect();
             Self { segments }
         }
@@ -481,7 +481,7 @@ impl NamespaceResolver {
                 // Import all public names
                 let source_ns = self.navigate_to_namespace(&import.source)?;
                 if let Some(binding) = source_ns.bindings.get(&name) {
-                    if self.is_importable(binding, &source_ns) {
+                    if self.is_importable(binding, source_ns) {
                         return Ok(Some(ResolvedName {
                             fully_qualified: FullyQualifiedName::new(
                                 import.source.clone(),

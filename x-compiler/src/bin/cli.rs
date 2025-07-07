@@ -326,11 +326,9 @@ async fn handle_validate_config(path: PathBuf) -> Result<(), Box<dyn std::error:
 
 fn parse_syntax_style(style: &str) -> Result<SyntaxStyle, Box<dyn std::error::Error>> {
     match style.to_lowercase().as_str() {
-        "ocaml" => Ok(SyntaxStyle::OCaml),
-        "sexp" | "s-expression" => Ok(SyntaxStyle::SExpression),
         "haskell" => Ok(SyntaxStyle::Haskell),
-        "rust" => Ok(SyntaxStyle::RustLike),
-        _ => Err(format!("Unknown syntax style: {}", style).into()),
+        "sexp" | "s-expression" => Ok(SyntaxStyle::SExpression),
+        _ => Err(format!("Unknown syntax style: {}. Supported styles: haskell, sexp", style).into()),
     }
 }
 

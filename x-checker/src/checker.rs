@@ -183,7 +183,7 @@ impl TypeChecker {
                     Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0))
                 );
                 
-                if let Err(_) = self.check_type_annotation(&inference_result.typ, &bool_parser_type) {
+                if self.check_type_annotation(&inference_result.typ, &bool_parser_type).is_err() {
                     self.error_reporter.report_error(TypeError::TestTypeMismatch {
                         test_name: test_def.name,
                         expected: bool_type.clone(),

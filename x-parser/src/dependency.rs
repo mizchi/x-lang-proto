@@ -79,8 +79,6 @@ pub struct DependencyManager {
     pub definitions: HashMap<Symbol, DefinitionDependencies>,
     /// Reverse dependency map (who depends on this definition)
     reverse_deps: HashMap<Symbol, HashSet<Symbol>>,
-    /// Type definitions and their constructors
-    type_constructors: HashMap<Symbol, Vec<Symbol>>,
 }
 
 impl DependencyManager {
@@ -103,7 +101,7 @@ impl DependencyManager {
                 }
             }
             Pattern::Record { fields, rest, .. } => {
-                for (_, p) in fields {
+                for p in fields.values() {
                     Self::collect_pattern_vars(p, vars);
                 }
                 if let Some(rest_pattern) = rest {
@@ -128,7 +126,6 @@ impl DependencyManager {
         Self {
             definitions: HashMap::new(),
             reverse_deps: HashMap::new(),
-            type_constructors: HashMap::new(),
         }
     }
 
@@ -271,7 +268,7 @@ impl DependencyManager {
         for dep in deps {
             self.reverse_deps
                 .entry(dep)
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(name);
         }
     }

@@ -386,6 +386,8 @@ impl CodeRefiner {
             visibility: Visibility::Private,
             purity: Purity::Inferred,
             span: self.span(),
+            documentation: None,
+            imports: Vec::new(),
         });
         
         module.items.push(stub);
@@ -524,6 +526,7 @@ impl TransformationRules {
                                 kind: ImportKind::Wildcard,
                                 alias: None,
                                 span,
+                                version_spec: None,
                             });
                             
                             return Ok(CompilationUnit {
@@ -542,6 +545,8 @@ impl TransformationRules {
                         visibility: Visibility::Private,
                         purity: Purity::Inferred,
                         span,
+                        documentation: None,
+                        imports: Vec::new(),
                     }));
                     
                     Ok(CompilationUnit {

@@ -128,7 +128,7 @@ impl From<&str> for CompilerError {
 
 impl From<std::fmt::Error> for CompilerError {
     fn from(e: std::fmt::Error) -> Self {
-        CompilerError::Generic(format!("Formatting error: {}", e))
+        CompilerError::Generic(format!("Formatting error: {e}"))
     }
 }
 

@@ -12,6 +12,12 @@ pub struct SyntaxConverter {
     multi_syntax: MultiSyntax,
 }
 
+impl Default for SyntaxConverter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SyntaxConverter {
     pub fn new() -> Self {
         SyntaxConverter {
@@ -172,7 +178,7 @@ mod tests {
             converted_lines: 15,
             original_chars: 200,
             converted_chars: 250,
-            from_style: SyntaxStyle::OCaml,
+            from_style: SyntaxStyle::Haskell,
             to_style: SyntaxStyle::Haskell,
         };
         

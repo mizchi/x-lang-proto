@@ -243,7 +243,7 @@ impl AstEditor {
                 } else {
                     return Err(EditError::InvalidNodeType {
                         expected: "Item".to_string(),
-                        found: format!("{:?}", node_to_move),
+                        found: format!("{node_to_move:?}"),
                     });
                 }
             }
@@ -254,7 +254,7 @@ impl AstEditor {
                 } else {
                     return Err(EditError::InvalidNodeType {
                         expected: "Expr".to_string(),
-                        found: format!("{:?}", node_to_move),
+                        found: format!("{node_to_move:?}"),
                     });
                 }
             }
@@ -419,7 +419,7 @@ impl AstEditor {
                 children.push(AstTarget::Module(&cu.module));
             }
             AstTarget::Module(module) => {
-                for (_i, item) in module.items.iter().enumerate() {
+                for item in module.items.iter() {
                     children.push(AstTarget::Item(item));
                 }
             }

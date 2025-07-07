@@ -182,6 +182,23 @@ impl Parser {
         self.expect(TokenKind::Import)?;
         let module_path = self.parse_module_path()?;
         
+        // Parse optional version specification (e.g., @^1.0.0)
+        let version_spec = if self.match_token(&TokenKind::At) {
+            if let TokenKind::Ident(version) = self.current() {
+                let version_str = version.clone();
+                self.advance();
+                Some(version_str)
+            } else if let TokenKind::String(version) = self.current() {
+                let version_str = version.clone();
+                self.advance();
+                Some(version_str)
+            } else {
+                return self.error("Expected version specification after '@'");
+            }
+        } else {
+            None
+        };
+        
         let kind = if is_lazy {
             ImportKind::Lazy
         } else if self.match_token(&TokenKind::LeftBrace) {
@@ -218,6 +235,7 @@ impl Parser {
             module_path,
             kind,
             alias,
+            version_spec,
             span: start_span.merge(end_span),
         })
     }
@@ -235,6 +253,24 @@ impl Parser {
         };
         
         let name = self.parse_identifier()?;
+        
+        // Parse optional version specification (e.g., @^1.0.0)
+        let version_spec = if self.match_token(&TokenKind::At) {
+            if let TokenKind::Ident(version) = self.current() {
+                let version_str = version.clone();
+                self.advance();
+                Some(version_str)
+            } else if let TokenKind::String(version) = self.current() {
+                let version_str = version.clone();
+                self.advance();
+                Some(version_str)
+            } else {
+                return self.error("Expected version specification after '@'");
+            }
+        } else {
+            None
+        };
+        
         let alias = if self.match_ident("as") {
             Some(self.parse_identifier()?)
         } else {
@@ -247,6 +283,7 @@ impl Parser {
             kind,
             name,
             alias,
+            version_spec,
             span: start_span.merge(end_span),
         })
     }
@@ -255,6 +292,24 @@ impl Parser {
     fn parse_item(&mut self) -> Result<Item> {
         // Parse visibility modifier first
         let visibility = self.parse_visibility()?;
+        
+        // Check for module shorthand syntax (e.g., Math.pi : Float)
+        if visibility == Visibility::Private && self.check(&TokenKind::Ident(String::new())) {
+            // Look ahead to see if this is a module shorthand
+            let saved_pos = self.current;
+            if let Ok(ident) = self.parse_identifier() {
+                if self.match_token(&TokenKind::Dot) {
+                    // This is module shorthand syntax
+                    self.current = saved_pos; // Reset position
+                    return self.parse_module_shorthand_item(visibility).map(Item::ValueDef);
+                } else {
+                    // Not module shorthand, reset and continue
+                    self.current = saved_pos;
+                }
+            } else {
+                self.current = saved_pos;
+            }
+        }
         
         if self.check(&TokenKind::Test) {
             Ok(Item::TestDef(self.parse_test_def_with_visibility(visibility)?))
@@ -268,8 +323,11 @@ impl Parser {
             Ok(Item::EffectDef(self.parse_effect_def_with_visibility(visibility)?))
         } else if self.check(&TokenKind::Handler) {
             Ok(Item::HandlerDef(self.parse_handler_def_with_visibility(visibility)?))
-        } else {
+        } else if self.check(&TokenKind::Let) {
             Ok(Item::ValueDef(self.parse_value_def_with_visibility(visibility)?))
+        } else {
+            // Try to parse as module shorthand if no 'let' keyword
+            self.parse_module_shorthand_item(visibility).map(Item::ValueDef)
         }
     }
     
@@ -1381,17 +1439,15 @@ impl Parser {
                         Ok(Expr::Literal(Literal::Float(f), start_span))
                     } else {
                         Err(Error::Parse {
-                            message: format!("Invalid float literal: {}", s),
+                            message: format!("Invalid float literal: {s}"),
                         })
                     }
+                } else if let Ok(i) = s.parse::<i64>() {
+                    Ok(Expr::Literal(Literal::Integer(i), start_span))
                 } else {
-                    if let Ok(i) = s.parse::<i64>() {
-                        Ok(Expr::Literal(Literal::Integer(i), start_span))
-                    } else {
-                        Err(Error::Parse {
-                            message: format!("Invalid integer literal: {}", s),
-                        })
-                    }
+                    Err(Error::Parse {
+                        message: format!("Invalid integer literal: {s}"),
+                    })
                 }
             }
             TokenKind::Ident(name) => {
@@ -1490,6 +1546,10 @@ impl Parser {
     
     fn current_span(&self) -> Span {
         self.current_token().span
+    }
+    
+    fn current(&self) -> &TokenKind {
+        &self.current_token().kind
     }
     
     fn advance(&mut self) -> &Token {
@@ -1599,7 +1659,7 @@ impl Parser {
         let mut i = 0;
         
         // Check for frontmatter
-        if lines.get(0) == Some(&"---") {
+        if lines.first() == Some(&"---") {
             i = 1;
             while i < lines.len() && lines[i] != "---" {
                 if let Some((key, value)) = lines[i].split_once(':') {
@@ -1699,6 +1759,110 @@ impl Parser {
                 ),
             })
         }
+    }
+    
+    fn error<T>(&self, message: &str) -> Result<T> {
+        Err(Error::Parse {
+            message: message.to_string(),
+        })
+    }
+    
+    /// Parse module shorthand item (e.g., Math.pi : Float)
+    fn parse_module_shorthand_item(&mut self, visibility: Visibility) -> Result<ValueDef> {
+        let documentation = self.collect_doc_comments();
+        let start_span = self.current_span();
+        
+        // Parse module path (e.g., Math.pi or Core.List.map)
+        let mut path_parts = vec![self.parse_identifier()?];
+        
+        while self.match_token(&TokenKind::Dot) {
+            path_parts.push(self.parse_identifier()?);
+        }
+        
+        if path_parts.len() < 2 {
+            return Err(Error::Parse {
+                message: "Module shorthand requires at least Module.member".to_string(),
+            });
+        }
+        
+        // The last part is the member name
+        let name = path_parts.pop().unwrap();
+        // The rest is the module path
+        let _module_path = path_parts; // Will be used for module resolution
+        
+        // Parse optional type annotation
+        let type_annotation = if self.match_token(&TokenKind::Colon) {
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+        
+        // Parse function parameters if any
+        let mut parameters = Vec::new();
+        while !self.check(&TokenKind::Equal) && !self.is_at_end() {
+            // Check if the current token could be a parameter
+            match &self.current_token().kind {
+                TokenKind::Ident(_) => {
+                    parameters.push(self.parse_pattern()?);
+                }
+                _ => break,
+            }
+        }
+        
+        // Now check if we have '=' for the body
+        if !self.check(&TokenKind::Equal) {
+            // This might be just a type declaration (e.g., Math.pi : Float)
+            // In this case, we need a dummy body
+            if type_annotation.is_some() && parameters.is_empty() {
+                // Create a placeholder expression for now
+                let body = Expr::Var(Symbol::intern("undefined"), self.current_span());
+                let end_span = self.current_span();
+                
+                return Ok(ValueDef {
+                    name,
+                    documentation,
+                    type_annotation,
+                    parameters: Vec::new(),
+                    body,
+                    visibility,
+                    purity: Purity::Inferred,
+                    imports: Vec::new(),
+                    span: start_span.merge(end_span),
+                });
+            } else {
+                return Err(Error::Parse {
+                    message: "Expected '=' after module member name or parameters".to_string(),
+                });
+            }
+        }
+        
+        self.expect(TokenKind::Equal)?;
+        let body = self.parse_expression()?;
+        
+        let end_span = self.current_span();
+        
+        // If we have parameters, wrap the body in a lambda
+        let final_body = if !parameters.is_empty() {
+            Expr::Lambda {
+                parameters,
+                body: Box::new(body),
+                span: start_span.merge(end_span),
+            }
+        } else {
+            body
+        };
+        
+        Ok(ValueDef {
+            name,
+            documentation,
+            type_annotation,
+            parameters: Vec::new(), // Not used when we wrap in lambda
+            body: final_body,
+            visibility,
+            purity: Purity::Inferred,
+            imports: Vec::new(),
+            span: start_span.merge(end_span),
+        })
     }
 }
 
@@ -1804,7 +1968,7 @@ let identity = fun x -> x"#;
         let result = parse(input, FileId::new(0));
         match &result {
             Ok(_) => {},
-            Err(e) => panic!("Parse failed: {:?}", e),
+            Err(e) => panic!("Parse failed: {e:?}"),
         }
         
         let cu = result.unwrap();
@@ -1821,7 +1985,7 @@ let add = fun x y -> y"#;
         let result = parse(input, FileId::new(0));
         match &result {
             Ok(_) => {},
-            Err(e) => panic!("Parse failed: {:?}", e),
+            Err(e) => panic!("Parse failed: {e:?}"),
         }
         
         let cu = result.unwrap();
@@ -1838,7 +2002,7 @@ let add = fun x y -> x + y"#;
         let result = parse(input, FileId::new(0));
         match &result {
             Ok(_) => {},
-            Err(e) => panic!("Parse failed: {:?}", e),
+            Err(e) => panic!("Parse failed: {e:?}"),
         }
         
         let cu = result.unwrap();
@@ -1857,7 +2021,7 @@ let mixed2 = fn x -> fun y -> x + y"#;
         let result = parse(input, FileId::new(0));
         match &result {
             Ok(_) => {},
-            Err(e) => panic!("Parse failed: {:?}", e),
+            Err(e) => panic!("Parse failed: {e:?}"),
         }
         
         let cu = result.unwrap();
@@ -1890,7 +2054,7 @@ let mixed2 = fn x -> fun y -> x + y"#;
         let result = parse(input, FileId::new(0));
         match &result {
             Ok(_) => {},
-            Err(e) => panic!("Parse failed: {:?}", e),
+            Err(e) => panic!("Parse failed: {e:?}"),
         }
         
         let cu = result.unwrap();
@@ -1915,7 +2079,7 @@ let mixed2 = fn x -> fun y -> x + y"#;
         let result = parse(input, FileId::new(0));
         match &result {
             Ok(_) => {},
-            Err(e) => panic!("Parse failed: {:?}", e),
+            Err(e) => panic!("Parse failed: {e:?}"),
         }
         
         let cu = result.unwrap();

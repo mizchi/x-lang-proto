@@ -200,6 +200,7 @@ fn save_text_ast(ast: &PersistentAstNode, format: Format) -> Result<Vec<u8>> {
     let text = match syntax_style {
         SyntaxStyle::Haskell => generate_haskell_text(ast),
         SyntaxStyle::SExpression => generate_sexp_text(ast),
+        _ => return Err(anyhow::anyhow!("Unsupported syntax style for text generation")),
     };
     
     Ok(text.into_bytes())

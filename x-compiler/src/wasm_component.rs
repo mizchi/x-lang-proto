@@ -11,6 +11,12 @@ pub struct WasmComponentBackend {
     wit_generator: WitGenerator,
 }
 
+impl Default for WasmComponentBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WasmComponentBackend {
     pub fn new() -> Self {
         Self {
@@ -31,17 +37,7 @@ impl CodegenBackend for WasmComponentBackend {
     }
 
     fn supports_feature(&self, feature: &str) -> bool {
-        match feature {
-            "components" => true,
-            "interfaces" => true,
-            "resources" => true,
-            "imports" => true,
-            "exports" => true,
-            "gc" => true,
-            "effects" => true,
-            "wasm-types" => true,
-            _ => false,
-        }
+        matches!(feature, "components" | "interfaces" | "resources" | "imports" | "exports" | "gc" | "effects" | "wasm-types")
     }
 
     fn generate_code(
@@ -68,7 +64,7 @@ impl CodegenBackend for WasmComponentBackend {
             Err(e) => {
                 diagnostics.push(CodegenDiagnostic {
                     severity: DiagnosticSeverity::Error,
-                    message: format!("Failed to generate WIT: {}", e),
+                    message: format!("Failed to generate WIT: {e}"),
                     location: None,
                 });
             }
@@ -85,7 +81,7 @@ impl CodegenBackend for WasmComponentBackend {
             Err(e) => {
                 diagnostics.push(CodegenDiagnostic {
                     severity: DiagnosticSeverity::Error,
-                    message: format!("Failed to generate Rust component: {}", e),
+                    message: format!("Failed to generate Rust component: {e}"),
                     location: None,
                 });
             }
@@ -128,133 +124,133 @@ impl CodegenBackend for WasmComponentBackend {
     ) -> Result<String> {
         let cu = CompilationUnit {
             module: module.clone(),
-            span: module.span.clone(),
+            span: module.span,
         };
 
         self.generate_rust_component(&cu, type_info)
     }
 
     fn generate_runtime(&self, _options: &CodegenOptions) -> Result<String> {
-        Ok(format!(r#"
+        Ok(r#"
 // WebAssembly Component Model runtime support
-use wit_bindgen::{{generate, Resource}};
+use wit_bindgen::{generate, Resource};
 
 // Effect system runtime
-pub struct EffectRuntime {{
+pub struct EffectRuntime {
     stack: Vec<Effect>,
-}}
+}
 
 #[derive(Debug, Clone)]
-pub enum Effect {{
+pub enum Effect {
     IO(IOEffect),
     State(StateEffect),
     Console(ConsoleEffect),
-}}
+}
 
 #[derive(Debug, Clone)]
-pub enum IOEffect {{
+pub enum IOEffect {
     Read(String),
     Write(String, String),
-}}
+}
 
 #[derive(Debug, Clone)]
-pub enum StateEffect {{
+pub enum StateEffect {
     Get,
     Put(String),
-}}
+}
 
 #[derive(Debug, Clone)]
-pub enum ConsoleEffect {{
+pub enum ConsoleEffect {
     Print(String),
     Log(String),
-}}
+}
 
-impl EffectRuntime {{
-    pub fn new() -> Self {{
-        Self {{
+impl EffectRuntime {
+    pub fn new() -> Self {
+        Self {
             stack: Vec::new(),
-        }}
-    }}
+        }
+    }
 
-    pub fn handle_effect(&mut self, effect: Effect) -> Result<String, String> {{
-        match effect {{
+    pub fn handle_effect(&mut self, effect: Effect) -> Result<String, String> {
+        match effect {
             Effect::IO(io_effect) => self.handle_io(io_effect),
             Effect::State(state_effect) => self.handle_state(state_effect),
             Effect::Console(console_effect) => self.handle_console(console_effect),
-        }}
-    }}
+        }
+    }
 
-    fn handle_io(&mut self, effect: IOEffect) -> Result<String, String> {{
-        match effect {{
-            IOEffect::Read(path) => {{
+    fn handle_io(&mut self, effect: IOEffect) -> Result<String, String> {
+        match effect {
+            IOEffect::Read(path) => {
                 // In a real implementation, this would read from WASI filesystem
-                Ok(format!("Reading from {{}}", path))
-            }}
-            IOEffect::Write(path, content) => {{
+                Ok(format!("Reading from {}", path))
+            }
+            IOEffect::Write(path, content) => {
                 // In a real implementation, this would write to WASI filesystem
-                Ok(format!("Writing to {{}}: {{}}", path, content))
-            }}
-        }}
-    }}
+                Ok(format!("Writing to {}: {}", path, content))
+            }
+        }
+    }
 
-    fn handle_state(&mut self, effect: StateEffect) -> Result<String, String> {{
-        match effect {{
-            StateEffect::Get => {{
+    fn handle_state(&mut self, effect: StateEffect) -> Result<String, String> {
+        match effect {
+            StateEffect::Get => {
                 // Return current state
                 Ok("current_state".to_string())
-            }}
-            StateEffect::Put(new_state) => {{
+            }
+            StateEffect::Put(new_state) => {
                 // Update state
-                Ok(format!("State updated to: {{}}", new_state))
-            }}
-        }}
-    }}
+                Ok(format!("State updated to: {}", new_state))
+            }
+        }
+    }
 
-    fn handle_console(&mut self, effect: ConsoleEffect) -> Result<String, String> {{
-        match effect {{
-            ConsoleEffect::Print(message) => {{
+    fn handle_console(&mut self, effect: ConsoleEffect) -> Result<String, String> {
+        match effect {
+            ConsoleEffect::Print(message) => {
                 // Print to console
-                println!("{{}}", message);
+                println!("{}", message);
                 Ok("()".to_string())
-            }}
-            ConsoleEffect::Log(message) => {{
+            }
+            ConsoleEffect::Log(message) => {
                 // Log message
-                eprintln!("{{}}", message);
+                eprintln!("{}", message);
                 Ok("()".to_string())
-            }}
-        }}
-    }}
-}}
+            }
+        }
+    }
+}
 
 // Memory management for WebAssembly Component Model
-pub struct ComponentMemory {{
+pub struct ComponentMemory {
     heap: Vec<u8>,
     free_list: Vec<usize>,
-}}
+}
 
-impl ComponentMemory {{
-    pub fn new() -> Self {{
-        Self {{
+impl ComponentMemory {
+    pub fn new() -> Self {
+        Self {
             heap: Vec::new(),
             free_list: Vec::new(),
-        }}
-    }}
+        }
+    }
 
-    pub fn allocate(&mut self, size: usize) -> usize {{
-        if let Some(ptr) = self.free_list.pop() {{
+    pub fn allocate(&mut self, size: usize) -> usize {
+        if let Some(ptr) = self.free_list.pop() {
             ptr
-        }} else {{
+        } else {
             let ptr = self.heap.len();
             self.heap.resize(ptr + size, 0);
             ptr
-        }}
-    }}
+        }
+    }
 
-    pub fn deallocate(&mut self, ptr: usize) {{
+    pub fn deallocate(&mut self, ptr: usize) {
         self.free_list.push(ptr);
-    }}
-}}
-"#))
+    }
+}
+"#.to_string())
     }
 }
 
@@ -265,7 +261,7 @@ impl WasmComponentBackend {
         // Generate use statements
         writeln!(code, "use wit_bindgen::generate;").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         writeln!(code, "use std::collections::HashMap;").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
-        writeln!(code, "").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
+        writeln!(code).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
 
         // Generate WIT bindings
         let package_name = cu.module.name.segments.first()
@@ -274,16 +270,16 @@ impl WasmComponentBackend {
         
         writeln!(code, "generate!({{").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         writeln!(code, "    world: \"effect-lang\",").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
-        writeln!(code, "    path: \"{}.wit\",", package_name).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
+        writeln!(code, "    path: \"{package_name}.wit\",").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         writeln!(code, "}});").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
-        writeln!(code, "").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
+        writeln!(code).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
 
         // Generate component struct
         writeln!(code, "struct Component {{").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         writeln!(code, "    runtime: EffectRuntime,").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         writeln!(code, "    memory: ComponentMemory,").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         writeln!(code, "}}").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
-        writeln!(code, "").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
+        writeln!(code).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
 
         // Generate component implementation
         writeln!(code, "impl Component {{").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
@@ -294,7 +290,7 @@ impl WasmComponentBackend {
         writeln!(code, "        }}").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         writeln!(code, "    }}").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         writeln!(code, "}}").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
-        writeln!(code, "").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
+        writeln!(code).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
 
         // Generate module
         self.generate_rust_module(&mut code, &cu.module, type_info)?;
@@ -312,7 +308,7 @@ impl WasmComponentBackend {
         }
 
         writeln!(code, "}}").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
-        writeln!(code, "").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
+        writeln!(code).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
 
         // Generate component export
         writeln!(code, "export!(Component);").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
@@ -321,7 +317,7 @@ impl WasmComponentBackend {
     }
 
     fn generate_rust_module(&self, code: &mut String, module: &Module, _type_info: &HashMap<Symbol, TypeScheme>) -> Result<()> {
-        writeln!(code, "// Module: {}", module.name.to_string()).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
+        writeln!(code, "// Module: {}", module.name).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         writeln!(code, "mod {} {{", sanitize_rust_identifier(&module.name.to_string())).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         
         // Generate type definitions
@@ -338,7 +334,7 @@ impl WasmComponentBackend {
         }
         
         writeln!(code, "}}").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
-        writeln!(code, "").map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
+        writeln!(code).map_err(|e| CompilerError::CodeGen { message: e.to_string() })?;
         
         Ok(())
     }
@@ -405,6 +401,7 @@ impl WasmComponentBackend {
         Ok(())
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn type_to_rust_type(&self, type_expr: &Type) -> String {
         match type_expr {
             Type::Var(name, _) => name.as_str().to_string(),
@@ -453,7 +450,7 @@ impl WasmComponentBackend {
             .unwrap_or("effect-lang-component");
 
         let cargo_toml = format!(r#"[package]
-name = "{}"
+name = "{package_name}"
 version = "0.1.0"
 edition = "2021"
 
@@ -471,11 +468,11 @@ features = [
 ]
 
 [package.metadata.component]
-package = "{}"
-target = {{ path = "{}.wit" }}
+package = "{package_name}"
+target = {{ path = "{package_name}.wit" }}
 
 [package.metadata.component.dependencies]
-"#, package_name, package_name, package_name);
+"#);
 
         Ok(cargo_toml)
     }
@@ -497,7 +494,7 @@ fn sanitize_rust_identifier(name: &str) -> String {
     // Handle Rust reserved keywords and naming conventions
     match name {
         "type" | "impl" | "trait" | "struct" | "enum" | "fn" | "let" | "mut" | "ref" | "match" => {
-            format!("{}_", name)
+            format!("{name}_")
         }
         _ => name.replace("-", "_").replace("?", "_q").replace("!", "_e"),
     }

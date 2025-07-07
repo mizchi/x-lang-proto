@@ -10,6 +10,12 @@ use crate::error::{ParseError as Error, Result};
 /// S-expression parser
 pub struct SExpParser;
 
+impl Default for SExpParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SExpParser {
     pub fn new() -> Self {
         SExpParser
@@ -41,6 +47,12 @@ impl SyntaxParser for SExpParser {
 
 /// S-expression printer
 pub struct SExpPrinter;
+
+impl Default for SExpPrinter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl SExpPrinter {
     pub fn new() -> Self {
@@ -192,14 +204,14 @@ impl SExpLexer {
             }
             Some('"') => {
                 let string = self.read_string()?;
-                Ok(SExpToken::Atom(format!("\"{}\"", string)))
+                Ok(SExpToken::Atom(format!("\"{string}\"")))
             }
             Some(ch) if ch.is_alphanumeric() || "+-*/<>=!_?:".contains(ch) => {
                 let atom = self.read_atom();
                 Ok(SExpToken::Atom(atom))
             }
             Some(ch) => Err(Error::Parse {
-                message: format!("Unexpected character in S-expression: '{}'", ch),
+                message: format!("Unexpected character in S-expression: '{ch}'"),
             }),
             None => Ok(SExpToken::Eof),
         }
@@ -693,7 +705,7 @@ fn expr_to_sexp(expr: &Expr) -> SExp {
         Expr::Lambda { parameters, body, span: _ } => {
             let mut elements = vec![SExp::Atom("lambda".to_string())];
             let params = SExp::List(
-                parameters.iter().map(|p| pattern_to_sexp(p)).collect()
+                parameters.iter().map(pattern_to_sexp).collect()
             );
             elements.push(params);
             elements.push(expr_to_sexp(body));
@@ -963,7 +975,7 @@ fn literal_to_sexp(literal: &Literal) -> SExp {
     match literal {
         Literal::Integer(n) => SExp::Atom(n.to_string()),
         Literal::Float(f) => SExp::Atom(f.to_string()),
-        Literal::String(s) => SExp::Atom(format!("\"{}\"", s)),
+        Literal::String(s) => SExp::Atom(format!("\"{s}\"")),
         Literal::Bool(b) => SExp::Atom(b.to_string()),
         Literal::Unit => SExp::Atom("()".to_string()),
     }

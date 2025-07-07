@@ -7,6 +7,12 @@ pub struct WitGenerator {
     indent_level: usize,
 }
 
+impl Default for WitGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WitGenerator {
     pub fn new() -> Self {
         Self {
@@ -20,12 +26,12 @@ impl WitGenerator {
         
         // Generate package declaration from module name
         let package_name = compilation_unit.module.name.to_string();
-        writeln!(self.output, "package {};\n", package_name)
-            .map_err(|e| format!("Failed to write package declaration: {}", e))?;
+        writeln!(self.output, "package {package_name};\n")
+            .map_err(|e| format!("Failed to write package declaration: {e}"))?;
 
         // Generate world declaration
         writeln!(self.output, "world effect-lang {{")
-            .map_err(|e| format!("Failed to write world declaration: {}", e))?;
+            .map_err(|e| format!("Failed to write world declaration: {e}"))?;
         self.indent_level += 1;
 
         // Process the module
@@ -33,14 +39,14 @@ impl WitGenerator {
 
         self.indent_level -= 1;
         writeln!(self.output, "}}")
-            .map_err(|e| format!("Failed to close world declaration: {}", e))?;
+            .map_err(|e| format!("Failed to close world declaration: {e}"))?;
 
         Ok(self.output.clone())
     }
 
     fn generate_module(&mut self, module: &Module) -> Result<(), String> {
-        writeln!(self.output, "{}// Module: {}", self.indent(), module.name.to_string())
-            .map_err(|e| format!("Failed to write module comment: {}", e))?;
+        writeln!(self.output, "{}// Module: {}", self.indent(), module.name)
+            .map_err(|e| format!("Failed to write module comment: {e}"))?;
 
         for item in &module.items {
             self.generate_item(item)?;
@@ -63,7 +69,7 @@ impl WitGenerator {
 
     fn generate_interface_def(&mut self, interface: &ComponentInterface) -> Result<(), String> {
         writeln!(self.output, "{}interface {} {{", self.indent(), &interface.name)
-            .map_err(|e| format!("Failed to write interface declaration: {}", e))?;
+            .map_err(|e| format!("Failed to write interface declaration: {e}"))?;
         self.indent_level += 1;
 
         // Generate interface items
@@ -73,10 +79,10 @@ impl WitGenerator {
 
         self.indent_level -= 1;
         writeln!(self.output, "{}}}", self.indent())
-            .map_err(|e| format!("Failed to close interface: {}", e))?;
+            .map_err(|e| format!("Failed to close interface: {e}"))?;
 
-        writeln!(self.output, "")
-            .map_err(|e| format!("Failed to write newline: {}", e))?;
+        writeln!(self.output)
+            .map_err(|e| format!("Failed to write newline: {e}"))?;
 
         Ok(())
     }
@@ -87,7 +93,7 @@ impl WitGenerator {
             InterfaceItem::Type { name, definition, .. } => {
                 if let Some(def) = definition {
                     writeln!(self.output, "{}type {} = {};", self.indent(), name.as_str(), self.type_to_wit(def))
-                        .map_err(|e| format!("Failed to write type definition: {}", e))?;
+                        .map_err(|e| format!("Failed to write type definition: {e}"))?;
                 }
                 Ok(())
             },
@@ -97,47 +103,47 @@ impl WitGenerator {
 
     fn generate_function_signature(&mut self, name: &Symbol, func: &FunctionSignature) -> Result<(), String> {
         write!(self.output, "{}{}: func(", self.indent(), name.as_str())
-            .map_err(|e| format!("Failed to write function signature: {}", e))?;
+            .map_err(|e| format!("Failed to write function signature: {e}"))?;
 
         // Parameters
         for (i, param) in func.params.iter().enumerate() {
             if i > 0 {
                 write!(self.output, ", ")
-                    .map_err(|e| format!("Failed to write parameter separator: {}", e))?;
+                    .map_err(|e| format!("Failed to write parameter separator: {e}"))?;
             }
             write!(self.output, "param{}: {}", i, self.wasm_type_to_wit(param))
-                .map_err(|e| format!("Failed to write parameter: {}", e))?;
+                .map_err(|e| format!("Failed to write parameter: {e}"))?;
         }
 
         write!(self.output, ")")
-            .map_err(|e| format!("Failed to close parameter list: {}", e))?;
+            .map_err(|e| format!("Failed to close parameter list: {e}"))?;
 
         // Return type
         if !func.results.is_empty() {
             write!(self.output, " -> ")
-                .map_err(|e| format!("Failed to write return arrow: {}", e))?;
+                .map_err(|e| format!("Failed to write return arrow: {e}"))?;
 
             if func.results.len() == 1 {
                 write!(self.output, "{}", self.wasm_type_to_wit(&func.results[0]))
-                    .map_err(|e| format!("Failed to write return type: {}", e))?;
+                    .map_err(|e| format!("Failed to write return type: {e}"))?;
             } else {
                 write!(self.output, "(")
-                    .map_err(|e| format!("Failed to open return tuple: {}", e))?;
+                    .map_err(|e| format!("Failed to open return tuple: {e}"))?;
                 for (i, result) in func.results.iter().enumerate() {
                     if i > 0 {
                         write!(self.output, ", ")
-                            .map_err(|e| format!("Failed to write result separator: {}", e))?;
+                            .map_err(|e| format!("Failed to write result separator: {e}"))?;
                     }
                     write!(self.output, "{}", self.wasm_type_to_wit(result))
-                        .map_err(|e| format!("Failed to write result type: {}", e))?;
+                        .map_err(|e| format!("Failed to write result type: {e}"))?;
                 }
                 write!(self.output, ")")
-                    .map_err(|e| format!("Failed to close return tuple: {}", e))?;
+                    .map_err(|e| format!("Failed to close return tuple: {e}"))?;
             }
         }
 
-        writeln!(self.output, "")
-            .map_err(|e| format!("Failed to write newline: {}", e))?;
+        writeln!(self.output)
+            .map_err(|e| format!("Failed to write newline: {e}"))?;
 
         Ok(())
     }
@@ -145,13 +151,13 @@ impl WitGenerator {
     #[allow(dead_code)]
     fn generate_wasm_type(&mut self, name: &Symbol, wasm_type: &WasmType) -> Result<(), String> {
         writeln!(self.output, "{}type {} = {};", self.indent(), name.as_str(), self.wasm_type_to_wit(wasm_type))
-            .map_err(|e| format!("Failed to write type definition: {}", e))?;
+            .map_err(|e| format!("Failed to write type definition: {e}"))?;
         Ok(())
     }
 
     fn generate_resource(&mut self, name: &Symbol, methods: &[ResourceMethod]) -> Result<(), String> {
         writeln!(self.output, "{}resource {} {{", self.indent(), name.as_str())
-            .map_err(|e| format!("Failed to write resource declaration: {}", e))?;
+            .map_err(|e| format!("Failed to write resource declaration: {e}"))?;
         self.indent_level += 1;
 
         // Generate methods
@@ -161,7 +167,7 @@ impl WitGenerator {
 
         self.indent_level -= 1;
         writeln!(self.output, "{}}}", self.indent())
-            .map_err(|e| format!("Failed to close resource: {}", e))?;
+            .map_err(|e| format!("Failed to close resource: {e}"))?;
 
         Ok(())
     }
@@ -176,47 +182,47 @@ impl WitGenerator {
         };
 
         write!(self.output, "{}{} {}: func(", self.indent(), method_type, method.name.as_str())
-            .map_err(|e| format!("Failed to write resource method: {}", e))?;
+            .map_err(|e| format!("Failed to write resource method: {e}"))?;
 
         // Parameters
         for (i, param) in method.signature.params.iter().enumerate() {
             if i > 0 {
                 write!(self.output, ", ")
-                    .map_err(|e| format!("Failed to write parameter separator: {}", e))?;
+                    .map_err(|e| format!("Failed to write parameter separator: {e}"))?;
             }
             write!(self.output, "param{}: {}", i, self.wasm_type_to_wit(param))
-                .map_err(|e| format!("Failed to write parameter: {}", e))?;
+                .map_err(|e| format!("Failed to write parameter: {e}"))?;
         }
 
         write!(self.output, ")")
-            .map_err(|e| format!("Failed to close parameter list: {}", e))?;
+            .map_err(|e| format!("Failed to close parameter list: {e}"))?;
 
         // Return type
         if !method.signature.results.is_empty() {
             write!(self.output, " -> ")
-                .map_err(|e| format!("Failed to write return arrow: {}", e))?;
+                .map_err(|e| format!("Failed to write return arrow: {e}"))?;
 
             if method.signature.results.len() == 1 {
                 write!(self.output, "{}", self.wasm_type_to_wit(&method.signature.results[0]))
-                    .map_err(|e| format!("Failed to write return type: {}", e))?;
+                    .map_err(|e| format!("Failed to write return type: {e}"))?;
             } else {
                 write!(self.output, "(")
-                    .map_err(|e| format!("Failed to open return tuple: {}", e))?;
+                    .map_err(|e| format!("Failed to open return tuple: {e}"))?;
                 for (i, result) in method.signature.results.iter().enumerate() {
                     if i > 0 {
                         write!(self.output, ", ")
-                            .map_err(|e| format!("Failed to write result separator: {}", e))?;
+                            .map_err(|e| format!("Failed to write result separator: {e}"))?;
                     }
                     write!(self.output, "{}", self.wasm_type_to_wit(result))
-                        .map_err(|e| format!("Failed to write result type: {}", e))?;
+                        .map_err(|e| format!("Failed to write result type: {e}"))?;
                 }
                 write!(self.output, ")")
-                    .map_err(|e| format!("Failed to close return tuple: {}", e))?;
+                    .map_err(|e| format!("Failed to close return tuple: {e}"))?;
             }
         }
 
-        writeln!(self.output, "")
-            .map_err(|e| format!("Failed to write newline: {}", e))?;
+        writeln!(self.output)
+            .map_err(|e| format!("Failed to write newline: {e}"))?;
 
         Ok(())
     }
@@ -224,23 +230,23 @@ impl WitGenerator {
     fn generate_type_def(&mut self, type_def: &TypeDef) -> Result<(), String> {
         // Generate WIT type definition for complex types
         writeln!(self.output, "{}// Type: {}", self.indent(), type_def.name.as_str())
-            .map_err(|e| format!("Failed to write type comment: {}", e))?;
+            .map_err(|e| format!("Failed to write type comment: {e}"))?;
         
         // Convert x-lang type to WIT type
         match &type_def.kind {
             TypeDefKind::Data(constructors) => {
                 // Generate variant for sum types
                 writeln!(self.output, "{}variant {} {{", self.indent(), type_def.name.as_str())
-                    .map_err(|e| format!("Failed to write variant declaration: {}", e))?;
+                    .map_err(|e| format!("Failed to write variant declaration: {e}"))?;
                 self.indent_level += 1;
 
                 for constructor in constructors {
                     if constructor.fields.is_empty() {
                         writeln!(self.output, "{}{},", self.indent(), constructor.name.as_str())
-                            .map_err(|e| format!("Failed to write variant constructor: {}", e))?;
+                            .map_err(|e| format!("Failed to write variant constructor: {e}"))?;
                     } else if constructor.fields.len() == 1 {
                         writeln!(self.output, "{}{}({}),", self.indent(), constructor.name.as_str(), self.type_to_wit(&constructor.fields[0]))
-                            .map_err(|e| format!("Failed to write variant constructor: {}", e))?;
+                            .map_err(|e| format!("Failed to write variant constructor: {e}"))?;
                     } else {
                         // Multiple fields become a tuple
                         let fields_str = constructor.fields.iter()
@@ -248,27 +254,27 @@ impl WitGenerator {
                             .collect::<Vec<_>>()
                             .join(", ");
                         writeln!(self.output, "{}{}(tuple<{}>),", self.indent(), constructor.name.as_str(), fields_str)
-                            .map_err(|e| format!("Failed to write variant constructor: {}", e))?;
+                            .map_err(|e| format!("Failed to write variant constructor: {e}"))?;
                     }
                 }
 
                 self.indent_level -= 1;
                 writeln!(self.output, "{}}}", self.indent())
-                    .map_err(|e| format!("Failed to close variant: {}", e))?;
+                    .map_err(|e| format!("Failed to close variant: {e}"))?;
             }
             TypeDefKind::Alias(aliased_type) => {
                 writeln!(self.output, "{}type {} = {};", self.indent(), type_def.name.as_str(), self.type_to_wit(aliased_type))
-                    .map_err(|e| format!("Failed to write type alias: {}", e))?;
+                    .map_err(|e| format!("Failed to write type alias: {e}"))?;
             }
             TypeDefKind::Abstract => {
                 // Abstract types can't be directly represented in WIT
                 writeln!(self.output, "{}// Abstract type: {}", self.indent(), type_def.name.as_str())
-                    .map_err(|e| format!("Failed to write abstract type comment: {}", e))?;
+                    .map_err(|e| format!("Failed to write abstract type comment: {e}"))?;
             }
         }
 
-        writeln!(self.output, "")
-            .map_err(|e| format!("Failed to write newline: {}", e))?;
+        writeln!(self.output)
+            .map_err(|e| format!("Failed to write newline: {e}"))?;
 
         Ok(())
     }
@@ -279,8 +285,8 @@ impl WitGenerator {
             writeln!(self.output, "{}export {}: func() -> {};", 
                 self.indent(), 
                 value_def.name.as_str(), 
-                self.type_to_wit(&value_def.type_annotation.as_ref().unwrap_or(&Type::Con(Symbol::from("any"), Span::new(FileId::INVALID, ByteOffset::INVALID, ByteOffset::INVALID)))))
-                .map_err(|e| format!("Failed to write value export: {}", e))?;
+                self.type_to_wit(value_def.type_annotation.as_ref().unwrap_or(&Type::Con(Symbol::from("any"), Span::new(FileId::INVALID, ByteOffset::INVALID, ByteOffset::INVALID)))))
+                .map_err(|e| format!("Failed to write value export: {e}"))?;
         }
 
         Ok(())

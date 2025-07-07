@@ -207,7 +207,7 @@ impl EditOperationBuilder {
         for (i, op1) in self.operations.iter().enumerate() {
             for (j, op2) in self.operations.iter().enumerate() {
                 if i != j && op1.conflicts_with(op2) {
-                    return Err(format!("Operation {} conflicts with operation {}", i, j));
+                    return Err(format!("Operation {i} conflicts with operation {j}"));
                 }
             }
         }
@@ -218,11 +218,12 @@ impl EditOperationBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use x_parser::{Literal, Expression};
+    use x_parser::{Literal, Expr};
+    use x_parser::span::{Span, FileId, ByteOffset};
 
     #[test]
     fn test_edit_operation_creation() {
-        let node = AstNode::Expression(Expression::Literal(Literal::Int(42)));
+        let node = EditableNode::Expr(Expr::Literal(Literal::Integer(42), Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(2))));
         let op = EditOperation::insert(vec![0, 1], node);
         
         match op {
@@ -235,8 +236,8 @@ mod tests {
 
     #[test]
     fn test_operation_conflicts() {
-        let node1 = AstNode::Expression(Expression::Literal(Literal::Int(42)));
-        let node2 = AstNode::Expression(Expression::Literal(Literal::Bool(true)));
+        let node1 = EditableNode::Expr(Expr::Literal(Literal::Integer(42), Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(2))));
+        let node2 = EditableNode::Expr(Expr::Literal(Literal::Bool(true), Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(4))));
         
         let op1 = EditOperation::insert(vec![0, 1], node1);
         let op2 = EditOperation::delete(vec![0, 1, 2]);
@@ -246,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_operation_builder() {
-        let node = AstNode::Expression(Expression::Literal(Literal::Int(42)));
+        let node = EditableNode::Expr(Expr::Literal(Literal::Integer(42), Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(2))));
         
         let operations = EditOperationBuilder::new()
             .insert(vec![0], node)

@@ -78,7 +78,7 @@ impl XLanguageEditor {
         operation: EditOperation,
     ) -> Result<EditResult, EditError> {
         let session = self.sessions.get_mut(&session_id)
-            .ok_or_else(|| EditError::SessionNotFound { session_id })?;
+            .ok_or(EditError::SessionNotFound { session_id })?;
         
         self.ast_editor.apply_operation(&mut session.ast, operation)
     }
@@ -90,7 +90,7 @@ impl XLanguageEditor {
         query: AstQuery,
     ) -> Result<QueryResult, EditError> {
         let session = self.get_session(session_id)
-            .ok_or_else(|| EditError::SessionNotFound { session_id })?;
+            .ok_or(EditError::SessionNotFound { session_id })?;
         
         self.ast_editor.query(&session.ast, query)
     }
@@ -101,7 +101,7 @@ impl XLanguageEditor {
         session_id: SessionId,
     ) -> Result<CheckResult, EditError> {
         let session = self.get_session(session_id)
-            .ok_or_else(|| EditError::SessionNotFound { session_id })?;
+            .ok_or(EditError::SessionNotFound { session_id })?;
         
         self.language_service.type_check(&session.ast)
     }
@@ -112,7 +112,7 @@ impl XLanguageEditor {
         session_id: SessionId,
     ) -> Result<ValidationResult, EditError> {
         let session = self.get_session(session_id)
-            .ok_or_else(|| EditError::SessionNotFound { session_id })?;
+            .ok_or(EditError::SessionNotFound { session_id })?;
         
         self.language_service.validate(&session.ast)
     }
@@ -124,7 +124,7 @@ impl XLanguageEditor {
         node_path: &[usize],
     ) -> Result<Vec<EditOperation>, EditError> {
         let session = self.get_session(session_id)
-            .ok_or_else(|| EditError::SessionNotFound { session_id })?;
+            .ok_or(EditError::SessionNotFound { session_id })?;
         
         self.ast_editor.get_available_operations(&session.ast, node_path)
     }
@@ -132,7 +132,7 @@ impl XLanguageEditor {
     /// Close a session
     pub fn close_session(&mut self, session_id: SessionId) -> Result<(), EditError> {
         self.sessions.remove(&session_id)
-            .ok_or_else(|| EditError::SessionNotFound { session_id })?;
+            .ok_or(EditError::SessionNotFound { session_id })?;
         Ok(())
     }
 
@@ -144,7 +144,7 @@ impl XLanguageEditor {
     /// Get session statistics
     pub fn session_stats(&self, session_id: SessionId) -> Result<SessionStats, EditError> {
         let session = self.get_session(session_id)
-            .ok_or_else(|| EditError::SessionNotFound { session_id })?;
+            .ok_or(EditError::SessionNotFound { session_id })?;
         
         Ok(SessionStats {
             session_id,

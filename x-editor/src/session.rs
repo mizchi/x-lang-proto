@@ -10,6 +10,12 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SessionId(Uuid);
 
+impl Default for SessionId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SessionId {
     /// Create a new session ID
     pub fn new() -> Self {
@@ -187,7 +193,7 @@ mod tests {
     use super::*;
     use x_parser::{parse_source, FileId, SyntaxStyle};
     use crate::operations::{EditOperation, InsertOperation};
-    use x_parser::{AstNode, Expression, Literal};
+    use x_parser::{Expr, Literal};
 
     #[test]
     fn test_session_id_creation() {

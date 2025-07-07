@@ -10,6 +10,12 @@ use crate::error::{ParseError as Error, Result};
 /// Haskell-style parser
 pub struct HaskellParser;
 
+impl Default for HaskellParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HaskellParser {
     pub fn new() -> Self {
         HaskellParser
@@ -40,6 +46,12 @@ impl SyntaxParser for HaskellParser {
 
 /// Haskell-style printer
 pub struct HaskellPrinter;
+
+impl Default for HaskellPrinter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl HaskellPrinter {
     pub fn new() -> Self {
@@ -80,7 +92,7 @@ impl HaskellPrinter {
         let mut output = String::new();
         
         // Module declaration
-        output.push_str(&format!("module {}", module.name.to_string()));
+        output.push_str(&format!("module {}", module.name));
         
         // Exports
         if let Some(exports) = &module.exports {
@@ -89,9 +101,9 @@ impl HaskellPrinter {
                 if i > 0 {
                     output.push_str(", ");
                 }
-                output.push_str(&export.name.as_str());
+                output.push_str(export.name.as_str());
             }
-            output.push_str(")");
+            output.push(')');
         }
         
         output.push_str(" where\n\n");
@@ -121,7 +133,7 @@ impl HaskellPrinter {
     fn print_import(&self, import: &Import, _config: &SyntaxConfig) -> Result<String> {
         let mut output = String::new();
         
-        output.push_str(&format!("import {}", import.module_path.to_string()));
+        output.push_str(&format!("import {}", import.module_path));
         
         match &import.kind {
             ImportKind::Qualified => {
@@ -133,9 +145,9 @@ impl HaskellPrinter {
                     if i > 0 {
                         output.push_str(", ");
                     }
-                    output.push_str(&item.name.as_str());
+                    output.push_str(item.name.as_str());
                 }
-                output.push_str(")");
+                output.push(')');
             }
             ImportKind::Wildcard => {
                 // In Haskell, this would be no parentheses
@@ -180,7 +192,7 @@ impl HaskellPrinter {
         }
         
         // Function definition
-        output.push_str(&def.name.as_str());
+        output.push_str(def.name.as_str());
         
         // Parameters
         for param in &def.parameters {
@@ -206,12 +218,12 @@ impl HaskellPrinter {
         let mut output = String::new();
         
         output.push_str("data ");
-        output.push_str(&def.name.as_str());
+        output.push_str(def.name.as_str());
         
         // Type parameters
         for param in &def.type_params {
             output.push(' ');
-            output.push_str(&param.name.as_str());
+            output.push_str(param.name.as_str());
         }
         
         match &def.kind {
@@ -224,18 +236,18 @@ impl HaskellPrinter {
                     output.push_str(" =");
                     for (i, constructor) in constructors.iter().enumerate() {
                         if i == 0 {
-                            output.push_str(" ");
+                            output.push(' ');
                         } else {
                             output.push('\n');
                             output.push_str(&self.indent(level + 1, config));
                             output.push_str("| ");
                         }
-                        output.push_str(&constructor.name.as_str());
+                        output.push_str(constructor.name.as_str());
                         for field in &constructor.fields {
                             output.push(' ');
                             let field_str = self.print_type_impl(field, config)?;
                             if self.type_needs_parens(field) {
-                                output.push_str(&format!("({})", field_str));
+                                output.push_str(&format!("({field_str})"));
                             } else {
                                 output.push_str(&field_str);
                             }
@@ -316,7 +328,7 @@ impl HaskellPrinter {
                         let right_needs_parens = self.needs_parens_in_infix(&args[1], false);
                         
                         if left_needs_parens {
-                            output.push_str(&format!("({})", left_str));
+                            output.push_str(&format!("({left_str})"));
                         } else {
                             output.push_str(&left_str);
                         }
@@ -324,7 +336,7 @@ impl HaskellPrinter {
                         output.push_str(&format!(" {} ", self.haskell_operator(op_str)));
                         
                         if right_needs_parens {
-                            output.push_str(&format!("({})", right_str));
+                            output.push_str(&format!("({right_str})"));
                         } else {
                             output.push_str(&right_str);
                         }
@@ -336,7 +348,7 @@ impl HaskellPrinter {
                 // Print as regular application
                 let func_str = self.print_expr(func, config, level)?;
                 if self.needs_parens_as_function(func) {
-                    output.push_str(&format!("({})", func_str));
+                    output.push_str(&format!("({func_str})"));
                 } else {
                     output.push_str(&func_str);
                 }
@@ -345,7 +357,7 @@ impl HaskellPrinter {
                     output.push(' ');
                     let arg_str = self.print_expr(arg, config, level)?;
                     if self.needs_parens_as_arg(arg) {
-                        output.push_str(&format!("({})", arg_str));
+                        output.push_str(&format!("({arg_str})"));
                     } else {
                         output.push_str(&arg_str);
                     }
@@ -354,7 +366,7 @@ impl HaskellPrinter {
             }
             Expr::Lambda { parameters, body, span: _ } => {
                 let mut output = String::new();
-                output.push_str("\\");
+                output.push('\\');
                 for (i, param) in parameters.iter().enumerate() {
                     if i > 0 {
                         output.push(' ');
@@ -380,7 +392,7 @@ impl HaskellPrinter {
                 
                 output.push_str(" = ");
                 output.push_str(&self.print_expr(value, config, level + 1)?);
-                output.push_str("\n");
+                output.push('\n');
                 output.push_str(&self.indent(level, config));
                 output.push_str("in ");
                 output.push_str(&self.print_expr(body, config, level)?);
@@ -390,11 +402,11 @@ impl HaskellPrinter {
                 let mut output = String::new();
                 output.push_str("if ");
                 output.push_str(&self.print_expr(condition, config, level)?);
-                output.push_str("\n");
+                output.push('\n');
                 output.push_str(&self.indent(level + 1, config));
                 output.push_str("then ");
                 output.push_str(&self.print_expr(then_branch, config, level + 1)?);
-                output.push_str("\n");
+                output.push('\n');
                 output.push_str(&self.indent(level + 1, config));
                 output.push_str("else ");
                 output.push_str(&self.print_expr(else_branch, config, level + 1)?);
@@ -467,12 +479,12 @@ impl HaskellPrinter {
                 Ok(format!("resume {}", self.print_expr(value, config, level)?))
             }
             Expr::Perform { effect: _, operation, args, span: _ } => {
-                let mut output = format!("{}", operation.as_str()); // Simplified
+                let mut output = operation.as_str().to_string(); // Simplified
                 for arg in args {
                     output.push(' ');
                     let arg_str = self.print_expr(arg, config, level)?;
                     if self.needs_parens_as_arg(arg) {
-                        output.push_str(&format!("({})", arg_str));
+                        output.push_str(&format!("({arg_str})"));
                     } else {
                         output.push_str(&arg_str);
                     }
@@ -499,7 +511,7 @@ impl HaskellPrinter {
                     output.push(' ');
                     let arg_str = self.print_pattern(arg, config)?;
                     if self.pattern_needs_parens(arg) {
-                        output.push_str(&format!("({})", arg_str));
+                        output.push_str(&format!("({arg_str})"));
                     } else {
                         output.push_str(&arg_str);
                     }
@@ -519,7 +531,7 @@ impl HaskellPrinter {
                     output.push_str(&format!("{} = {}", name.as_str(), self.print_pattern(pattern, config)?));
                 }
                 
-                if let Some(_) = rest {
+                if rest.is_some() {
                     if !first {
                         output.push_str(", ");
                     }
@@ -563,6 +575,7 @@ impl HaskellPrinter {
         }
     }
     
+    #[allow(clippy::only_used_in_recursion)]
     fn print_type_impl(&self, typ: &Type, config: &SyntaxConfig) -> Result<String> {
         match typ {
             Type::Var(name, _) => Ok(name.as_str().to_string()),
@@ -592,7 +605,7 @@ impl HaskellPrinter {
                 // Regular type application
                 let base_str = self.print_type_impl(typ, config)?;
                 if self.type_needs_parens(typ) {
-                    output.push_str(&format!("({})", base_str));
+                    output.push_str(&format!("({base_str})"));
                 } else {
                     output.push_str(&base_str);
                 }
@@ -601,7 +614,7 @@ impl HaskellPrinter {
                     output.push(' ');
                     let arg_str = self.print_type_impl(arg, config)?;
                     if self.type_needs_parens(arg) {
-                        output.push_str(&format!("({})", arg_str));
+                        output.push_str(&format!("({arg_str})"));
                     } else {
                         output.push_str(&arg_str);
                     }
@@ -617,7 +630,7 @@ impl HaskellPrinter {
                     }
                     let param_str = self.print_type_impl(param, config)?;
                     if self.type_needs_parens_in_function(param) {
-                        output.push_str(&format!("({})", param_str));
+                        output.push_str(&format!("({param_str})"));
                     } else {
                         output.push_str(&param_str);
                     }
@@ -639,7 +652,7 @@ impl HaskellPrinter {
                     if i > 0 {
                         output.push(' ');
                     }
-                    output.push_str(&param.name.as_str());
+                    output.push_str(param.name.as_str());
                 }
                 output.push_str(". ");
                 output.push_str(&self.print_type_impl(body, config)?);
@@ -657,7 +670,7 @@ impl HaskellPrinter {
                     if i > 0 {
                         output.push(' ');
                     }
-                    output.push_str(&param.name.as_str());
+                    output.push_str(param.name.as_str());
                 }
                 output.push_str(". ");
                 output.push_str(&self.print_type_impl(body, config)?);
@@ -707,7 +720,7 @@ impl HaskellPrinter {
         match literal {
             Literal::Integer(n) => n.to_string(),
             Literal::Float(f) => f.to_string(),
-            Literal::String(s) => format!("\"{}\"", s),
+            Literal::String(s) => format!("\"{s}\""),
             Literal::Bool(b) => if *b { "True".to_string() } else { "False".to_string() },
             Literal::Unit => "()".to_string(),
         }
@@ -799,7 +812,7 @@ impl HaskellPrinter {
                 if line.trim().is_empty() {
                     line.to_string()
                 } else {
-                    format!("{}{}", indent, line)
+                    format!("{indent}{line}")
                 }
             })
             .collect::<Vec<_>>()

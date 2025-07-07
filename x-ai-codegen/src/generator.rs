@@ -114,6 +114,8 @@ impl CodeGenerator {
                 visibility: Visibility::Public,
                 purity: Purity::Inferred,
                 span: self.span(),
+                documentation: None,
+                imports: Vec::new(),
             }
         } else {
             // Create lambda for function with parameters
@@ -133,6 +135,8 @@ impl CodeGenerator {
                 visibility: Visibility::Public,
                 purity: Purity::Inferred,
                 span: self.span(),
+                documentation: None,
+                imports: Vec::new(),
             }
         };
         
@@ -143,6 +147,7 @@ impl CodeGenerator {
             imports: Vec::new(),
             items: vec![Item::ValueDef(value_def)],
             span: self.span(),
+            documentation: None,
         };
         
         Ok(CompilationUnit {
@@ -297,6 +302,7 @@ impl CodeGenerator {
                     kind: TypeDefKind::Data(constructors),
                     visibility: Visibility::Public,
                     span: self.span(),
+                    documentation: None,
                 }
             }
             DataTypeKind::Record => {
@@ -321,6 +327,7 @@ impl CodeGenerator {
                     }),
                     visibility: Visibility::Public,
                     span: self.span(),
+                    documentation: None,
                 }
             }
             DataTypeKind::Alias => {
@@ -335,6 +342,7 @@ impl CodeGenerator {
                     kind: TypeDefKind::Alias(target),
                     visibility: Visibility::Public,
                     span: self.span(),
+                    documentation: None,
                 }
             }
         };
@@ -345,6 +353,7 @@ impl CodeGenerator {
             imports: Vec::new(),
             items: vec![Item::TypeDef(type_def)],
             span: self.span(),
+            documentation: None,
         };
         
         Ok(CompilationUnit {
@@ -379,6 +388,7 @@ impl CodeGenerator {
             imports: Vec::new(),
             items: Vec::new(),
             span: self.span(),
+            documentation: None,
         };
         
         Ok(CompilationUnit {
@@ -403,6 +413,7 @@ impl CodeGenerator {
                 imports: Vec::new(),
                 items,
                 span: self.span(),
+                documentation: None,
             };
             
             return Ok(CompilationUnit {
@@ -425,6 +436,8 @@ impl CodeGenerator {
                     visibility: Visibility::Public,
                     purity: Purity::Inferred,
                     span: self.span(),
+                    documentation: None,
+                    imports: Vec::new(),
                 })
             }
         };
@@ -435,6 +448,7 @@ impl CodeGenerator {
             imports: Vec::new(),
             items: vec![item],
             span: self.span(),
+            documentation: None,
         };
         
         Ok(CompilationUnit {
@@ -583,6 +597,8 @@ impl CodeGenerator {
             visibility: Visibility::Public,
             purity: Purity::Inferred,
             span,
+            documentation: None,
+            imports: Vec::new(),
         })
     }
     
@@ -719,6 +735,8 @@ impl CodeGenerator {
             visibility: Visibility::Public,
             purity: Purity::Inferred,
             span,
+            documentation: None,
+            imports: Vec::new(),
         })
     }
     
@@ -739,6 +757,8 @@ impl CodeGenerator {
             visibility: Visibility::Public,
             purity: Purity::Inferred,
             span: self.span(),
+            documentation: None,
+            imports: Vec::new(),
         };
         
         let module = Module {
@@ -747,6 +767,7 @@ impl CodeGenerator {
             imports: Vec::new(),
             items: vec![Item::ValueDef(value_def)],
             span: self.span(),
+            documentation: None,
         };
         
         Ok(CompilationUnit {
@@ -782,6 +803,7 @@ impl CodeGenerator {
             operations: ops,
             visibility: Visibility::Public,
             span: self.span(),
+            documentation: None,
         };
         
         let module = Module {
@@ -790,6 +812,7 @@ impl CodeGenerator {
             imports: Vec::new(),
             items: vec![Item::EffectDef(effect_def)],
             span: self.span(),
+            documentation: None,
         };
         
         Ok(CompilationUnit {

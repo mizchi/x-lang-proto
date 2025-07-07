@@ -110,6 +110,7 @@ pub enum TokenKind {
     Dot,           // .
     Underscore,    // _
     Question,      // ?
+    At,            // @
     
     // Special
     Newline,
@@ -203,12 +204,12 @@ impl TokenKind {
 impl fmt::Display for TokenKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TokenKind::Integer(n) => write!(f, "{}", n),
-            TokenKind::Float(n) => write!(f, "{}", n),
-            TokenKind::String(s) => write!(f, "\"{}\"", s),
-            TokenKind::Bool(b) => write!(f, "{}", b),
-            TokenKind::Number(s) => write!(f, "{}", s),
-            TokenKind::Ident(name) => write!(f, "{}", name),
+            TokenKind::Integer(n) => write!(f, "{n}"),
+            TokenKind::Float(n) => write!(f, "{n}"),
+            TokenKind::String(s) => write!(f, "\"{s}\""),
+            TokenKind::Bool(b) => write!(f, "{b}"),
+            TokenKind::Number(s) => write!(f, "{s}"),
+            TokenKind::Ident(name) => write!(f, "{name}"),
             
             // Keywords
             TokenKind::Let => write!(f, "let"),
@@ -295,13 +296,14 @@ impl fmt::Display for TokenKind {
             TokenKind::Dot => write!(f, "."),
             TokenKind::Underscore => write!(f, "_"),
             TokenKind::Question => write!(f, "?"),
+            TokenKind::At => write!(f, "@"),
             
             // Special
             TokenKind::Newline => write!(f, "\\n"),
             TokenKind::Whitespace => write!(f, " "),
-            TokenKind::Comment(text) => write!(f, "--{}", text),
-            TokenKind::DocComment(text) => write!(f, "```{}```", text),
-            TokenKind::Error(msg) => write!(f, "ERROR({})", msg),
+            TokenKind::Comment(text) => write!(f, "--{text}"),
+            TokenKind::DocComment(text) => write!(f, "```{text}```"),
+            TokenKind::Error(msg) => write!(f, "ERROR({msg})"),
             TokenKind::Eof => write!(f, "EOF"),
         }
     }

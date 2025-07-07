@@ -522,7 +522,7 @@ impl EffectSet {
             EffectSet::Var(_) => false, // Can't determine
             EffectSet::Row { effects, tail } => {
                 effects.iter().any(|e| e.name == effect_name) ||
-                tail.as_ref().map_or(false, |t| t.contains_effect(effect_name))
+                tail.as_ref().is_some_and(|t| t.contains_effect(effect_name))
             }
         }
     }
@@ -707,15 +707,15 @@ fn apply_kind(kind: Kind, arity: usize) -> Kind {
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Type::Var(TypeVar(n)) => write!(f, "a{}", n),
-            Type::Con(name) => write!(f, "{}", name),
+            Type::Var(TypeVar(n)) => write!(f, "a{n}"),
+            Type::Con(name) => write!(f, "{name}"),
             Type::App(con, args) => {
-                write!(f, "{}", con)?;
+                write!(f, "{con}")?;
                 if !args.is_empty() {
                     write!(f, " ")?;
                     for (i, arg) in args.iter().enumerate() {
                         if i > 0 { write!(f, " ")?; }
-                        write!(f, "{}", arg)?;
+                        write!(f, "{arg}")?;
                     }
                 }
                 Ok(())
@@ -727,12 +727,12 @@ impl fmt::Display for Type {
                     write!(f, "(")?;
                     for (i, param) in params.iter().enumerate() {
                         if i > 0 { write!(f, ", ")?; }
-                        write!(f, "{}", param)?;
+                        write!(f, "{param}")?;
                     }
-                    write!(f, ") -> {}", return_type)?;
+                    write!(f, ") -> {return_type}")?;
                 }
                 if !matches!(effects, EffectSet::Empty) {
-                    write!(f, " / {}", effects)?;
+                    write!(f, " / {effects}")?;
                 }
                 Ok(())
             }
@@ -741,13 +741,13 @@ impl fmt::Display for Type {
                 for var in type_vars {
                     write!(f, " {}", Type::Var(*var))?;
                 }
-                write!(f, ". {}", body)
+                write!(f, ". {body}")
             }
             Type::Record(fields) => {
                 write!(f, "{{")?;
                 for (i, (name, typ)) in fields.iter().enumerate() {
                     if i > 0 { write!(f, ", ")?; }
-                    write!(f, "{}: {}", name, typ)?;
+                    write!(f, "{name}: {typ}")?;
                 }
                 write!(f, "}}")
             }
@@ -755,9 +755,9 @@ impl fmt::Display for Type {
                 write!(f, "|")?;
                 for (i, (name, types)) in variants.iter().enumerate() {
                     if i > 0 { write!(f, " | ")?; }
-                    write!(f, " {}", name)?;
+                    write!(f, " {name}")?;
                     for typ in types {
-                        write!(f, " {}", typ)?;
+                        write!(f, " {typ}")?;
                     }
                 }
                 write!(f, " |")
@@ -766,7 +766,7 @@ impl fmt::Display for Type {
                 write!(f, "(")?;
                 for (i, typ) in types.iter().enumerate() {
                     if i > 0 { write!(f, ", ")?; }
-                    write!(f, "{}", typ)?;
+                    write!(f, "{typ}")?;
                 }
                 write!(f, ")")
             }
@@ -783,7 +783,7 @@ impl fmt::Display for EffectSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             EffectSet::Empty => write!(f, "{{}}"),
-            EffectSet::Var(EffectVar(n)) => write!(f, "e{}", n),
+            EffectSet::Var(EffectVar(n)) => write!(f, "e{n}"),
             EffectSet::Row { effects, tail } => {
                 write!(f, "{{")?;
                 for (i, effect) in effects.iter().enumerate() {
@@ -792,7 +792,7 @@ impl fmt::Display for EffectSet {
                 }
                 if let Some(tail) = tail {
                     if !effects.is_empty() { write!(f, " | ")?; }
-                    write!(f, "{}", tail)?;
+                    write!(f, "{tail}")?;
                 }
                 write!(f, "}}")
             }

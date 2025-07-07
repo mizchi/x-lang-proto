@@ -155,10 +155,10 @@ impl EffectContext {
         args: &[Type],
     ) -> StdResult<(Type, EffectSet), String> {
         let effect_def = self.lookup_effect(effect)
-            .ok_or_else(|| format!("Unknown effect: {}", effect))?;
+            .ok_or_else(|| format!("Unknown effect: {effect}"))?;
         
         let op_sig = effect_def.operations.get(&operation)
-            .ok_or_else(|| format!("Unknown operation {} in effect {}", operation, effect))?;
+            .ok_or_else(|| format!("Unknown operation {operation} in effect {effect}"))?;
         
         // Check argument count
         if args.len() != op_sig.params.len() {
@@ -199,7 +199,7 @@ impl EffectContext {
             .ok_or_else(|| format!("Unknown effect: {}", handler.effect))?;
         
         // Check that all operations are handled
-        for (op_name, _op_sig) in &effect_def.operations {
+        for op_name in effect_def.operations.keys() {
             if !handler.clauses.iter().any(|clause| clause.operation == *op_name) {
                 return Err(format!(
                     "Missing handler for operation {} in effect {}",
@@ -214,7 +214,7 @@ impl EffectContext {
         for clause in &handler.clauses {
             let clause_result = self.check_handler_clause(
                 clause,
-                &effect_def,
+                effect_def,
                 &result_type,
             )?;
             
@@ -264,6 +264,7 @@ impl EffectContext {
     }
     
     /// Remove an effect from an effect set
+    #[allow(clippy::only_used_in_recursion)]
     fn remove_effect_from_set(&self, effects: &EffectSet, effect_to_remove: Symbol) -> EffectSet {
         match effects {
             EffectSet::Empty => EffectSet::Empty,

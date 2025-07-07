@@ -10,6 +10,12 @@ pub struct WitBackend {
     generator: WitGenerator,
 }
 
+impl Default for WitBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WitBackend {
     pub fn new() -> Self {
         Self {
@@ -58,14 +64,14 @@ impl CodegenBackend for WitBackend {
             Ok(wit_content) => {
                 let mut output_path = options.output_dir.clone();
                 output_path.push(format!("{}.wit", 
-                    cu.module.name.to_string()));
+                    cu.module.name));
                 
                 files.insert(output_path, wit_content);
             }
             Err(e) => {
                 diagnostics.push(CodegenDiagnostic {
                     severity: DiagnosticSeverity::Error,
-                    message: format!("Failed to generate WIT: {}", e),
+                    message: format!("Failed to generate WIT: {e}"),
                     location: None,
                 });
             }
@@ -103,7 +109,7 @@ impl CodegenBackend for WitBackend {
         // Create a minimal compilation unit for this module
         let cu = CompilationUnit {
             module: module.clone(),
-            span: module.span.clone(),
+            span: module.span,
         };
 
         self.generator.generate(&cu)
@@ -158,7 +164,7 @@ impl WitBackend {
         };
 
         let cargo_toml = format!(r#"[package]
-name = "{}"
+name = "{package_name}"
 version = "0.1.0"
 edition = "2021"
 
@@ -176,10 +182,10 @@ features = [
 ]
 
 [package.metadata.component]
-package = "{}"
+package = "{package_name}"
 
 [package.metadata.component.dependencies]
-"#, package_name, package_name);
+"#);
 
         Ok(cargo_toml)
     }

@@ -132,18 +132,18 @@ impl CodegenBackend for TypeScriptBackend {
         let mut code = String::new();
         
         writeln!(code, "// x Language Runtime for TypeScript")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Effect system runtime
         writeln!(code, "// Effect System Runtime")?;
         writeln!(code, "export class EffectContext {{")?;
         writeln!(code, "  private handlers = new Map<string, Function>();")?;
         writeln!(code, "  private stack: any[] = [];")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         writeln!(code, "  addHandler(effect: string, handler: Function): void {{")?;
         writeln!(code, "    this.handlers.set(effect, handler);")?;
         writeln!(code, "  }}")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         writeln!(code, "  perform<T>(effect: string, operation: string, ...args: any[]): T {{")?;
         writeln!(code, "    const handler = this.handlers.get(effect);")?;
         writeln!(code, "    if (!handler) {{")?;
@@ -152,7 +152,7 @@ impl CodegenBackend for TypeScriptBackend {
         writeln!(code, "    return handler(operation, ...args);")?;
         writeln!(code, "  }}")?;
         writeln!(code, "}}")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Helper functions
         writeln!(code, "// Utility Functions")?;
@@ -167,7 +167,7 @@ impl CodegenBackend for TypeScriptBackend {
         writeln!(code, "    }}")?;
         writeln!(code, "  }};")?;
         writeln!(code, "}}")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Pattern matching support
         writeln!(code, "export class MatchError extends Error {{")?;
@@ -195,21 +195,21 @@ impl TypeScriptBackend {
             writeln!(code, "\"use strict\";")?;
         }
         writeln!(code, "// Generated from x Language module: {}", module.name)?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Imports
         for import in &module.imports {
             writeln!(code, "{}", self.generate_import(import)?)?;
         }
         if !module.imports.is_empty() {
-            writeln!(code, "")?;
+            writeln!(code)?;
         }
         
         // Type definitions
         if self.emit_types {
             for type_def in &module.types {
                 writeln!(code, "{}", self.generate_type_definition(type_def)?)?;
-                writeln!(code, "")?;
+                writeln!(code)?;
             }
         }
         
@@ -218,13 +218,13 @@ impl TypeScriptBackend {
             writeln!(code, "{}", self.generate_constant(constant)?)?;
         }
         if !module.constants.is_empty() {
-            writeln!(code, "")?;
+            writeln!(code)?;
         }
         
         // Functions
         for function in &module.functions {
             writeln!(code, "{}", self.generate_function(function)?)?;
-            writeln!(code, "")?;
+            writeln!(code)?;
         }
         
         // Exports
@@ -257,8 +257,7 @@ impl TypeScriptBackend {
                 Ok(format!("const {{ {} }} = require(\"{}\");", items.join(", "), import.module))
             }
             _ => {
-                Ok(format!("// TODO: Implement {} imports", 
-                    format!("{:?}", self.module_system)))
+                Ok(format!("// TODO: Implement {:?} imports", self.module_system))
             }
         }
     }
@@ -291,9 +290,9 @@ impl TypeScriptBackend {
                params, return_type)?;
         
         // Function body
-        writeln!(code, "")?;
+        writeln!(code)?;
         let body = self.generate_ir_expression(&function.body, 1)?;
-        writeln!(code, "  return {};", body)?;
+        writeln!(code, "  return {body};")?;
         write!(code, "}}")?;
         
         Ok(code)
@@ -314,7 +313,7 @@ impl TypeScriptBackend {
                     .map(|arg| self.generate_ir_expression(arg, 0))
                     .collect::<Result<Vec<_>>>()?
                     .join(", ");
-                Ok(format!("{}({})", func_code, args_code))
+                Ok(format!("{func_code}({args_code})"))
             }
             IRExpression::Lambda { parameters, body, .. } => {
                 let params = parameters.iter()
@@ -324,7 +323,7 @@ impl TypeScriptBackend {
                     .collect::<Vec<_>>()
                     .join(", ");
                 let body_code = self.generate_ir_expression(body, 0)?;
-                Ok(format!("({}) => {}", params, body_code))
+                Ok(format!("({params}) => {body_code}"))
             }
             IRExpression::Let { bindings, body } => {
                 let mut code = String::new();
@@ -336,7 +335,7 @@ impl TypeScriptBackend {
                              self.generate_ir_expression(&binding.value, 0)?)?;
                 }
                 let body_code = self.generate_ir_expression(body, indent)?;
-                writeln!(code, "{}return {};", indent_str, body_code)?;
+                writeln!(code, "{indent_str}return {body_code};")?;
                 write!(code, "{}}}", "  ".repeat(indent.saturating_sub(1)))?;
                 Ok(code)
             }
@@ -344,7 +343,7 @@ impl TypeScriptBackend {
                 let cond_code = self.generate_ir_expression(condition, 0)?;
                 let then_code = self.generate_ir_expression(then_branch, 0)?;
                 let else_code = self.generate_ir_expression(else_branch, 0)?;
-                Ok(format!("({} ? {} : {})", cond_code, then_code, else_code))
+                Ok(format!("({cond_code} ? {then_code} : {else_code})"))
             }
             IRExpression::Block(expressions) => {
                 if expressions.is_empty() {
@@ -389,7 +388,7 @@ impl TypeScriptBackend {
                     })
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("[{}]", elements_code)
+                format!("[{elements_code}]")
             }
             IRLiteral::Record(fields) => {
                 let fields_code = fields.iter()
@@ -398,11 +397,11 @@ impl TypeScriptBackend {
                             Ok(code) => code,
                             Err(_) => "/* error */".to_string(),
                         };
-                        format!("{}: {}", name, expr_code)
+                        format!("{name}: {expr_code}")
                     })
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("{{ {} }}", fields_code)
+                format!("{{ {fields_code} }}")
             }
         }
     }
@@ -418,14 +417,14 @@ impl TypeScriptBackend {
                     .collect::<Vec<_>>()
                     .join(", ");
                 let ret = self.generate_ir_type(return_type);
-                format!("({}) => {}", params, ret)
+                format!("({params}) => {ret}")
             }
             IRType::Tuple(types) => {
                 let types_str = types.iter()
                     .map(|t| self.generate_ir_type(t))
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("[{}]", types_str)
+                format!("[{types_str}]")
             }
             IRType::Array(element_type) => {
                 format!("{}[]", self.generate_ir_type(element_type))
@@ -472,7 +471,7 @@ impl TypeScriptBackend {
     fn generate_type_definitions(&self, _ir: &IR) -> Result<String> {
         let mut code = String::new();
         writeln!(code, "// x Language Type Definitions")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         writeln!(code, "declare global {{")?;
         writeln!(code, "  namespace x Language {{")?;
         writeln!(code, "    // Type definitions will be generated here")?;

@@ -8,6 +8,7 @@ pub mod query;
 pub mod edit;
 // pub mod rename;
 pub mod extract;
+pub mod hash;
 pub mod check;
 pub mod compile;
 pub mod repl;
@@ -16,6 +17,13 @@ pub mod stats;
 pub mod test;
 pub mod test_helpers;
 pub mod doc;
+pub mod version;
+pub mod resolve;
+pub mod imports;
+pub mod outdated;
+pub mod namespace;
+pub mod namespace_cli;
+pub mod shell;
 
 // Re-export command functions
 pub use new::new_command;
@@ -32,3 +40,4 @@ pub use lsp::lsp_command;
 pub use stats::stats_command;
 pub use test::test_command;
 pub use doc::DocCommand;
+pub use namespace_cli::{NamespaceCommand, namespace_command};

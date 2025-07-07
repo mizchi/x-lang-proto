@@ -50,25 +50,25 @@ impl fmt::Display for ValidationError {
                 write!(f, "Compilation unit is empty")
             }
             ValidationError::EmptyModule { module_index } => {
-                write!(f, "Module {} is empty", module_index)
+                write!(f, "Module {module_index} is empty")
             }
             ValidationError::EmptyModuleName { module_index } => {
-                write!(f, "Module {} has empty name", module_index)
+                write!(f, "Module {module_index} has empty name")
             }
             ValidationError::DuplicateModuleName { module_index, name } => {
-                write!(f, "Module {} has duplicate name: {}", module_index, name)
+                write!(f, "Module {module_index} has duplicate name: {name}")
             }
             ValidationError::InvalidIdentifier { name } => {
-                write!(f, "Invalid identifier: {}", name)
+                write!(f, "Invalid identifier: {name}")
             }
             ValidationError::UndefinedReference { name } => {
-                write!(f, "Undefined reference: {}", name)
+                write!(f, "Undefined reference: {name}")
             }
             ValidationError::TypeMismatch { expected, found } => {
-                write!(f, "Type mismatch: expected {}, found {}", expected, found)
+                write!(f, "Type mismatch: expected {expected}, found {found}")
             }
             ValidationError::MissingImport { module } => {
-                write!(f, "Missing import: {}", module)
+                write!(f, "Missing import: {module}")
             }
             ValidationError::CircularDependency { modules } => {
                 write!(f, "Circular dependency: {}", modules.join(" -> "))
@@ -77,7 +77,7 @@ impl fmt::Display for ValidationError {
                 write!(f, "Unreachable code detected")
             }
             ValidationError::UnusedVariable { name } => {
-                write!(f, "Unused variable: {}", name)
+                write!(f, "Unused variable: {name}")
             }
             ValidationError::MissingReturn => {
                 write!(f, "Missing return statement")

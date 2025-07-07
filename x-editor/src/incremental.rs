@@ -72,7 +72,7 @@ impl IncrementalAnalyzer {
         
         // Calculate hash of the AST
         let hash = self.calculate_hash(ast);
-        let cache_key = format!("ast_{}", hash);
+        let cache_key = format!("ast_{hash}");
         
         // Check cache first
         if let Some(cached) = self.get_from_cache(&cache_key) {

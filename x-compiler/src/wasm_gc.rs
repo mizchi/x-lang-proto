@@ -141,7 +141,7 @@ impl CodegenBackend for WasmGCBackend {
         let mut code = String::new();
         
         writeln!(code, ";; x Language Runtime for WebAssembly GC")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Basic runtime types
         writeln!(code, ";; Runtime Types")?;
@@ -149,16 +149,16 @@ impl CodegenBackend for WasmGCBackend {
         writeln!(code, "  (field $tag i32)     ;; Type tag")?;
         writeln!(code, "  (field $data anyref) ;; Actual data")?;
         writeln!(code, "))")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         writeln!(code, "(type $closure (struct")?;
         writeln!(code, "  (field $func (ref $func_type))")?;
         writeln!(code, "  (field $env (ref $value))")?;
         writeln!(code, "))")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         writeln!(code, "(type $func_type (func (param anyref) (result anyref)))")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Memory management
         writeln!(code, ";; Memory Management")?;
@@ -168,7 +168,7 @@ impl CodegenBackend for WasmGCBackend {
         writeln!(code, "    (local.get $data)")?;
         writeln!(code, "  )")?;
         writeln!(code, ")")?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Type tags
         writeln!(code, ";; Type Tags")?;
@@ -198,14 +198,14 @@ impl WasmGCBackend {
         // Module header
         writeln!(code, "(module")?;
         writeln!(code, "  ;; Generated from x Language module: {}", module.name)?;
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Imports (including runtime)
         writeln!(code, "  ;; Imports")?;
         for import in &module.imports {
             writeln!(code, "  {}", self.generate_wasm_import(import)?)?;
         }
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Type definitions
         writeln!(code, "  ;; Types")?;
@@ -217,22 +217,22 @@ impl WasmGCBackend {
         for type_def in &module.types {
             writeln!(code, "  {}", self.generate_wasm_type_definition(type_def)?)?;
         }
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Global constants
         writeln!(code, "  ;; Constants")?;
         for constant in &module.constants {
             writeln!(code, "  {}", self.generate_wasm_constant(constant)?)?;
         }
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Functions
         writeln!(code, "  ;; Functions")?;
         for function in &module.functions {
             let func_wat = self.generate_wasm_function(function)?;
-            writeln!(code, "{}", func_wat)?;
+            writeln!(code, "{func_wat}")?;
         }
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Exports
         writeln!(code, "  ;; Exports")?;
@@ -278,29 +278,29 @@ impl WasmGCBackend {
         let func_name = utils::sanitize_identifier(function.name, "wasm-gc");
         
         // Function signature
-        write!(code, "  (func ${}", func_name)?;
+        write!(code, "  (func ${func_name}")?;
         
         // Parameters
         for param in &function.parameters {
             let param_name = utils::sanitize_identifier(param.name, "wasm-gc");
             let param_type = self.generate_wasm_type(&param.type_hint);
-            write!(code, " (param ${} {})", param_name, param_type)?;
+            write!(code, " (param ${param_name} {param_type})")?;
         }
         
         // Return type
         let return_type = self.generate_wasm_type(&function.return_type);
         if return_type != "void" {
-            write!(code, " (result {})", return_type)?;
+            write!(code, " (result {return_type})")?;
         }
         
-        writeln!(code, "")?;
+        writeln!(code)?;
         
         // Local variables (if needed)
         writeln!(code, "    ;; Locals would be declared here")?;
         
         // Function body
         let body_code = self.generate_wasm_expression(&function.body, 2)?;
-        writeln!(code, "{}", body_code)?;
+        writeln!(code, "{body_code}")?;
         
         writeln!(code, "  )")?;
         
@@ -321,7 +321,7 @@ impl WasmGCBackend {
             }
             IRExpression::Variable(symbol) => {
                 let var_name = utils::sanitize_identifier(*symbol, "wasm-gc");
-                Ok(format!("{}(local.get ${})", indent_str, var_name))
+                Ok(format!("{indent_str}(local.get ${var_name})"))
             }
             IRExpression::Call { function, arguments } => {
                 let mut code = String::new();
@@ -329,20 +329,20 @@ impl WasmGCBackend {
                 // Generate arguments first (stack-based)
                 for arg in arguments {
                     let arg_code = self.generate_wasm_expression(arg, indent)?;
-                    writeln!(code, "{}", arg_code)?;
+                    writeln!(code, "{arg_code}")?;
                 }
                 
                 // Generate function call
                 match function.as_ref() {
                     IRExpression::Variable(func_symbol) => {
                         let func_name = utils::sanitize_identifier(*func_symbol, "wasm-gc");
-                        write!(code, "{}(call ${})", indent_str, func_name)?;
+                        write!(code, "{indent_str}(call ${func_name})")?;
                     }
                     _ => {
                         // Indirect call or more complex function expression
                         let func_code = self.generate_wasm_expression(function, indent)?;
-                        writeln!(code, "{}", func_code)?;
-                        write!(code, "{}(call_indirect)", indent_str)?;
+                        writeln!(code, "{func_code}")?;
+                        write!(code, "{indent_str}(call_indirect)")?;
                     }
                 }
                 
@@ -351,17 +351,17 @@ impl WasmGCBackend {
             IRExpression::Let { bindings, body } => {
                 let mut code = String::new();
                 
-                writeln!(code, "{}(block", indent_str)?;
+                writeln!(code, "{indent_str}(block")?;
                 for binding in bindings {
                     let var_name = utils::sanitize_identifier(binding.name, "wasm-gc");
                     let value_code = self.generate_wasm_expression(&binding.value, indent + 1)?;
-                    writeln!(code, "{}", value_code)?;
-                    writeln!(code, "{}  (local.set ${})", indent_str, var_name)?;
+                    writeln!(code, "{value_code}")?;
+                    writeln!(code, "{indent_str}  (local.set ${var_name})")?;
                 }
                 
                 let body_code = self.generate_wasm_expression(body, indent + 1)?;
-                writeln!(code, "{}", body_code)?;
-                write!(code, "{})", indent_str)?;
+                writeln!(code, "{body_code}")?;
+                write!(code, "{indent_str})")?;
                 
                 Ok(code)
             }
@@ -369,18 +369,18 @@ impl WasmGCBackend {
                 let mut code = String::new();
                 
                 let cond_code = self.generate_wasm_expression(condition, indent)?;
-                writeln!(code, "{}", cond_code)?;
+                writeln!(code, "{cond_code}")?;
                 
-                writeln!(code, "{}(if", indent_str)?;
-                writeln!(code, "{}  (then", indent_str)?;
+                writeln!(code, "{indent_str}(if")?;
+                writeln!(code, "{indent_str}  (then")?;
                 let then_code = self.generate_wasm_expression(then_branch, indent + 2)?;
-                writeln!(code, "{}", then_code)?;
-                writeln!(code, "{}  )", indent_str)?;
-                writeln!(code, "{}  (else", indent_str)?;
+                writeln!(code, "{then_code}")?;
+                writeln!(code, "{indent_str}  )")?;
+                writeln!(code, "{indent_str}  (else")?;
                 let else_code = self.generate_wasm_expression(else_branch, indent + 2)?;
-                writeln!(code, "{}", else_code)?;
-                writeln!(code, "{}  )", indent_str)?;
-                write!(code, "{})", indent_str)?;
+                writeln!(code, "{else_code}")?;
+                writeln!(code, "{indent_str}  )")?;
+                write!(code, "{indent_str})")?;
                 
                 Ok(code)
             }
@@ -389,20 +389,20 @@ impl WasmGCBackend {
                 let mut code = String::new();
                 
                 // For now, create a simple closure structure
-                writeln!(code, "{};; Lambda expression", indent_str)?;
-                writeln!(code, "{}(struct.new $closure", indent_str)?;
+                writeln!(code, "{indent_str};; Lambda expression")?;
+                writeln!(code, "{indent_str}(struct.new $closure")?;
                 
                 // Function reference (would need to be pre-generated)
                 writeln!(code, "{}  (ref.func $lambda_{})", indent_str, self.func_index)?;
                 
                 // Environment (simplified)
-                writeln!(code, "{}  (ref.null $value)", indent_str)?;
-                write!(code, "{})", indent_str)?;
+                writeln!(code, "{indent_str}  (ref.null $value)")?;
+                write!(code, "{indent_str})")?;
                 
                 Ok(code)
             }
             _ => {
-                Ok(format!("{};; TODO: Implement expression", indent_str))
+                Ok(format!("{indent_str};; TODO: Implement expression"))
             }
         }
     }
@@ -410,13 +410,13 @@ impl WasmGCBackend {
     /// Generate WebAssembly literal
     fn generate_wasm_literal(&self, lit: &IRLiteral) -> String {
         match lit {
-            IRLiteral::Integer(n) => format!("(i64.const {})", n),
-            IRLiteral::Float(f) => format!("(f64.const {})", f),
+            IRLiteral::Integer(n) => format!("(i64.const {n})"),
+            IRLiteral::Float(f) => format!("(f64.const {f})"),
             IRLiteral::Boolean(true) => "(i32.const 1)".to_string(),
             IRLiteral::Boolean(false) => "(i32.const 0)".to_string(),
             IRLiteral::String(s) => {
                 // Strings need special handling in WebAssembly
-                format!(";; String literal: \"{}\" (needs implementation)", s)
+                format!(";; String literal: \"{s}\" (needs implementation)")
             }
             IRLiteral::Unit => "(ref.null $value)".to_string(),
             _ => ";; Complex literal (needs implementation)".to_string(),
@@ -431,7 +431,7 @@ impl WasmGCBackend {
             IRType::Array(_) => "(ref $array)".to_string(),
             IRType::Named(name) => {
                 if let Some(&type_idx) = self.generated_types.get(name.as_str()) {
-                    format!("(ref $type_{})", type_idx)
+                    format!("(ref $type_{type_idx})")
                 } else {
                     "(ref $value)".to_string()
                 }

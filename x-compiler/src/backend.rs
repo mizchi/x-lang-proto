@@ -149,7 +149,7 @@ pub mod utils {
         // Handle TypeScript reserved keywords and naming conventions
         match name {
             "class" | "interface" | "type" | "namespace" | "module" => {
-                format!("{}_", name)
+                format!("{name}_")
             }
             _ => name.replace("-", "_").replace("?", "_q").replace("!", "_e"),
         }
@@ -169,7 +169,7 @@ pub mod utils {
         }
         
         for i in 1.. {
-            let candidate = format!("{}_{}", base, i);
+            let candidate = format!("{base}_{i}");
             if !taken.contains(&candidate) {
                 return candidate;
             }

@@ -29,10 +29,10 @@ impl TreeNode {
         match expr {
             Expr::Literal(lit, _) => {
                 let label = match lit {
-                    Literal::Integer(n) => format!("Int:{}", n),
-                    Literal::Float(f) => format!("Float:{}", f),
-                    Literal::String(s) => format!("String:{}", s),
-                    Literal::Bool(b) => format!("Bool:{}", b),
+                    Literal::Integer(n) => format!("Int:{n}"),
+                    Literal::Float(f) => format!("Float:{f}"),
+                    Literal::String(s) => format!("String:{s}"),
+                    Literal::Bool(b) => format!("Bool:{b}"),
                     Literal::Unit => "Unit".to_string(),
                 };
                 TreeNode::new(label)
@@ -50,7 +50,7 @@ impl TreeNode {
             
             Expr::Lambda { parameters, body, .. } => {
                 let param_nodes: Vec<_> = parameters.iter()
-                    .map(|p| TreeNode::from_pattern(p))
+                    .map(TreeNode::from_pattern)
                     .collect();
                 let body_node = TreeNode::from_expr(body);
                 
@@ -104,10 +104,10 @@ impl TreeNode {
             }
             Pattern::Literal(lit, _) => {
                 let label = match lit {
-                    Literal::Integer(n) => format!("PatInt:{}", n),
-                    Literal::Float(f) => format!("PatFloat:{}", f),
-                    Literal::String(s) => format!("PatString:{}", s),
-                    Literal::Bool(b) => format!("PatBool:{}", b),
+                    Literal::Integer(n) => format!("PatInt:{n}"),
+                    Literal::Float(f) => format!("PatFloat:{f}"),
+                    Literal::String(s) => format!("PatString:{s}"),
+                    Literal::Bool(b) => format!("PatBool:{b}"),
                     Literal::Unit => "PatUnit".to_string(),
                 };
                 TreeNode::new(label)
@@ -399,7 +399,7 @@ pub struct SimilarityReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use x_parser::{FileId, Span, span::ByteOffset};
+    use x_parser::{FileId, Span, span::ByteOffset, Symbol};
     
     fn make_span() -> Span {
         Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(1))

@@ -9,6 +9,8 @@
 use x_parser::{
     Span,
     Symbol,
+    FileId,
+    span::ByteOffset,
 };
 use crate::types::*;
 use std::fmt;
@@ -46,6 +48,32 @@ pub enum TypeError {
         found: Type,
         span: Span,
     },
+    UnknownEffect {
+        effect_name: String,
+        span: Span,
+    },
+    UnknownOperation {
+        effect_name: String,
+        operation_name: String,
+        span: Span,
+    },
+    UnhandledEffects {
+        required: crate::effect_checker::EffectRow,
+        available: crate::effect_checker::EffectRow,
+        span: Span,
+    },
+    EffectRowMismatch {
+        message: String,
+        span: Span,
+    },
+    NotAFunction {
+        typ: Type,
+        span: Span,
+    },
+    InternalError {
+        message: String,
+        span: Span,
+    },
 }
 
 
@@ -56,22 +84,40 @@ impl TypeError {
     fn format_error(&self) -> String {
         match self {
             TypeError::TypeMismatch { expected, found, span: _ } => {
-                format!("Type mismatch: expected {}, found {}", expected, found)
+                format!("Type mismatch: expected {expected}, found {found}")
             }
             TypeError::UnboundVariable { name, span: _ } => {
-                format!("Unbound variable: {}", name)
+                format!("Unbound variable: {name}")
             }
             TypeError::InfiniteType { var, typ, span: _ } => {
                 format!("Infinite type: {} = {}", Type::Var(*var), typ)
             }
             TypeError::ArityMismatch { expected, found, span: _ } => {
-                format!("Arity mismatch: expected {} arguments, found {}", expected, found)
+                format!("Arity mismatch: expected {expected} arguments, found {found}")
             }
             TypeError::InferenceError { message, symbol: _, span: _ } => {
-                format!("Inference error: {}", message)
+                format!("Inference error: {message}")
             }
             TypeError::TestTypeMismatch { test_name, expected, found, span: _ } => {
-                format!("Test '{}' type mismatch: expected {}, found {}", test_name, expected, found)
+                format!("Test '{test_name}' type mismatch: expected {expected}, found {found}")
+            }
+            TypeError::UnknownEffect { effect_name, span: _ } => {
+                format!("Unknown effect: {effect_name}")
+            }
+            TypeError::UnknownOperation { effect_name, operation_name, span: _ } => {
+                format!("Unknown operation '{operation_name}' for effect '{effect_name}'")
+            }
+            TypeError::UnhandledEffects { required, available, span: _ } => {
+                format!("Unhandled effects: required {:?}, available {:?}", required, available)
+            }
+            TypeError::EffectRowMismatch { message, span: _ } => {
+                format!("Effect row mismatch: {message}")
+            }
+            TypeError::NotAFunction { typ, span: _ } => {
+                format!("Expected function type, found {typ}")
+            }
+            TypeError::InternalError { message, span: _ } => {
+                format!("Internal error: {message}")
             }
         }
     }
@@ -90,6 +136,12 @@ impl fmt::Display for TypeError {
 pub struct TypeErrorReporter {
     errors: Vec<TypeError>,
     warnings: Vec<TypeError>,
+}
+
+impl Default for TypeErrorReporter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TypeErrorReporter {

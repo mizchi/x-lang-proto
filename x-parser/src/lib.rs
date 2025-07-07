@@ -16,9 +16,21 @@ pub mod binary;
 pub mod error;
 pub mod dependency;
 pub mod metadata;
+pub mod content_hash;
+pub mod versioning;
+pub mod signature;
+pub mod minimal_ast;
+pub mod semantic_ast;
+pub mod unison_style_parser;
 
 #[cfg(test)]
 mod binary_tests;
+#[cfg(test)]
+mod optional_parentheses_test;
+#[cfg(test)]
+mod module_shorthand_test;
+#[cfg(test)]
+mod module_shorthand_function_test;
 
 // Re-export core types
 pub use ast::*;
@@ -38,16 +50,14 @@ pub fn parse_source(source: &str, file_id: FileId, _syntax_style: SyntaxStyle) -
 
 /// Syntax styles supported by the parser
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Default)]
 pub enum SyntaxStyle {
+    #[default]
     Haskell,
     SExpression,
+    UnisonStyle,
 }
 
-impl Default for SyntaxStyle {
-    fn default() -> Self {
-        SyntaxStyle::Haskell
-    }
-}
 
 /// Parse result containing AST and metadata
 #[derive(Debug)]
@@ -89,10 +99,10 @@ mod tests {
     fn test_basic_parsing() {
         let source = "module Main\n\nlet x = 42";
         let file_id = FileId::new(0);
-        let result = parse_source(source, file_id, SyntaxStyle::OCaml);
+        let result = parse_source(source, file_id, SyntaxStyle::Haskell);
         match result {
             Ok(_) => {},
-            Err(e) => panic!("Parse failed: {:?}", e),
+            Err(e) => panic!("Parse failed: {e:?}"),
         }
     }
 
@@ -101,11 +111,11 @@ mod tests {
         let ocaml_source = "module Main\n\nlet x = 42";
         let file_id = FileId::new(0);
         
-        // Test OCaml style (currently the only implemented style)
-        let ocaml_result = parse_source(ocaml_source, file_id, SyntaxStyle::OCaml);
-        match ocaml_result {
+        // Test Haskell style (currently the only implemented style)
+        let haskell_result = parse_source(ocaml_source, file_id, SyntaxStyle::Haskell);
+        match haskell_result {
             Ok(_) => {},
-            Err(e) => panic!("OCaml parse failed: {:?}", e),
+            Err(e) => panic!("Haskell parse failed: {e:?}"),
         }
         
         // TODO: Enable when S-expression parser is implemented
@@ -121,15 +131,15 @@ mod tests {
     fn test_parse_with_metadata() {
         let source = "module Main\n\nlet x = 42";
         let file_id = FileId::new(0);
-        let result = parse_with_metadata(source, file_id, SyntaxStyle::OCaml);
+        let result = parse_with_metadata(source, file_id, SyntaxStyle::Haskell);
         
         match result {
             Ok(parse_result) => {
-                assert_eq!(parse_result.syntax_style, SyntaxStyle::OCaml);
+                assert_eq!(parse_result.syntax_style, SyntaxStyle::Haskell);
                 assert_eq!(parse_result.file_id, file_id);
                 assert!(parse_result.parse_time.as_nanos() > 0);
             },
-            Err(e) => panic!("Parse with metadata failed: {:?}", e),
+            Err(e) => panic!("Parse with metadata failed: {e:?}"),
         }
     }
 }

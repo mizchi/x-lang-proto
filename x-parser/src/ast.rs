@@ -6,6 +6,7 @@
 use crate::{span::{Span, HasSpan}, symbol::Symbol};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
 
 /// Top-level compilation unit (usually a file)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -48,12 +49,19 @@ impl ModulePath {
         self.segments.push(segment);
     }
     
-    pub fn to_string(&self) -> String {
-        self.segments
+    pub fn as_string(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl fmt::Display for ModulePath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.segments
             .iter()
             .map(|s| s.as_str())
             .collect::<Vec<_>>()
             .join(".")
+        )
     }
 }
 
@@ -103,6 +111,8 @@ pub struct Import {
     pub module_path: ModulePath,
     pub kind: ImportKind,
     pub alias: Option<Symbol>,
+    /// Version specification for imported module
+    pub version_spec: Option<String>,
     pub span: Span,
 }
 
@@ -151,6 +161,8 @@ pub struct FunctionImport {
     pub name: Symbol,
     /// Optional alias for the import
     pub alias: Option<Symbol>,
+    /// Version specification for the imported function
+    pub version_spec: Option<String>,
     /// Whether this is explicitly declared or inferred
     pub is_explicit: bool,
     pub span: Span,
@@ -161,6 +173,8 @@ pub struct ImportItem {
     pub kind: ExportKind,
     pub name: Symbol,
     pub alias: Option<Symbol>,
+    /// Version specification for individual import item
+    pub version_spec: Option<String>,
     pub span: Span,
 }
 

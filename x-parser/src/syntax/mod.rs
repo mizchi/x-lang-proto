@@ -39,7 +39,7 @@ impl std::str::FromStr for SyntaxStyle {
             "haskell" | "hs" => Ok(SyntaxStyle::Haskell),
             "sexp" | "sexpr" | "lisp" => Ok(SyntaxStyle::SExp),
             _ => Err(Error::Parse {
-                message: format!("Unknown syntax style: {}", s),
+                message: format!("Unknown syntax style: {s}"),
             }),
         }
     }
@@ -125,7 +125,7 @@ impl MultiSyntax {
         match self.parsers.get_mut(&style) {
             Some(parser) => parser.parse(input, file_id),
             None => Err(Error::Parse {
-                message: format!("No parser registered for syntax style: {}", style),
+                message: format!("No parser registered for syntax style: {style}"),
             }),
         }
     }
@@ -135,7 +135,7 @@ impl MultiSyntax {
         match self.parsers.get_mut(&style) {
             Some(parser) => parser.parse_expression(input, file_id),
             None => Err(Error::Parse {
-                message: format!("No parser registered for syntax style: {}", style),
+                message: format!("No parser registered for syntax style: {style}"),
             }),
         }
     }

@@ -13,6 +13,12 @@ pub struct BuiltinTypes {
     types: HashMap<Symbol, Type>,
 }
 
+impl Default for BuiltinTypes {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BuiltinTypes {
     pub fn new() -> Self {
         let mut types = HashMap::new();
@@ -45,6 +51,12 @@ impl BuiltinTypes {
 #[derive(Debug)]
 pub struct BuiltinOperators {
     operators: HashMap<Symbol, TypeScheme>,
+}
+
+impl Default for BuiltinOperators {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BuiltinOperators {
@@ -193,6 +205,12 @@ impl BuiltinOperators {
 #[derive(Debug)]
 pub struct BuiltinFunctions {
     functions: HashMap<Symbol, TypeScheme>,
+}
+
+impl Default for BuiltinFunctions {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BuiltinFunctions {

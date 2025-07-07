@@ -174,7 +174,7 @@ impl ConstraintSolver {
             t1: t1.clone(),
             t2: t2.clone(),
             span,
-            message: format!("{:?}", e),
+            message: format!("{e:?}"),
         })?;
 
         // Apply unifier substitutions
@@ -406,25 +406,25 @@ impl std::fmt::Display for ConstraintError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ConstraintError::UnificationFailed { t1, t2, message, .. } => {
-                write!(f, "Cannot unify types {:?} and {:?}: {}", t1, t2, message)
+                write!(f, "Cannot unify types {t1:?} and {t2:?}: {message}")
             }
             ConstraintError::EffectMismatch { required, found } => {
-                write!(f, "Effect mismatch: required {:?}, found {:?}", required, found)
+                write!(f, "Effect mismatch: required {required:?}, found {found:?}")
             }
             ConstraintError::InvalidFieldAccess { record_type, field, .. } => {
                 write!(f, "Invalid field access: type {:?} has no field {}", record_type, field.as_str())
             }
             ConstraintError::ArityMismatch { expected, found, .. } => {
-                write!(f, "Arity mismatch: expected {} arguments, found {}", expected, found)
+                write!(f, "Arity mismatch: expected {expected} arguments, found {found}")
             }
             ConstraintError::NotCallable { typ, .. } => {
-                write!(f, "Type {:?} is not callable", typ)
+                write!(f, "Type {typ:?} is not callable")
             }
             ConstraintError::HandlerMismatch { handler, effect } => {
                 write!(f, "Handler {} cannot handle effect {:?}", handler.as_str(), effect)
             }
             ConstraintError::EffectNotAvailable { effect, .. } => {
-                write!(f, "Effect {:?} is not available in current context", effect)
+                write!(f, "Effect {effect:?} is not available in current context")
             }
         }
     }

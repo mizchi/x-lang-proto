@@ -87,6 +87,12 @@ pub struct MetadataRepository {
     hash_to_names: HashMap<ContentHash, HashSet<Symbol>>,
 }
 
+impl Default for MetadataRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MetadataRepository {
     pub fn new() -> Self {
         Self {
@@ -108,7 +114,7 @@ impl MetadataRepository {
         self.name_index.insert(name, hash.clone());
         self.hash_to_names
             .entry(hash)
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(name);
     }
 
@@ -188,5 +194,10 @@ impl MetadataRepository {
         }
         
         imports.into_values().collect()
+    }
+    
+    /// Get all content hashes stored in the repository
+    pub fn all_hashes(&self) -> Vec<ContentHash> {
+        self.definitions.keys().cloned().collect()
     }
 }

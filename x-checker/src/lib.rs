@@ -6,6 +6,7 @@
 pub mod types;
 pub mod inference;
 pub mod effects;
+pub mod effect_checker;
 pub mod unification;
 pub mod resolver;
 pub mod error_reporting;

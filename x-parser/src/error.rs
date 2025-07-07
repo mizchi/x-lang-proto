@@ -164,14 +164,14 @@ impl ErrorReporter {
         let mut output = String::new();
 
         for error in &self.errors {
-            output.push_str(&format!("Error: {}\n", error));
+            output.push_str(&format!("Error: {error}\n"));
             if let Some(span) = error.span() {
                 output.push_str(&self.format_span_context(source, span));
             }
         }
 
         for warning in &self.warnings {
-            output.push_str(&format!("Warning: {}\n", warning));
+            output.push_str(&format!("Warning: {warning}\n"));
             if let Some(span) = warning.span() {
                 output.push_str(&self.format_span_context(source, span));
             }
@@ -198,7 +198,7 @@ impl ErrorReporter {
             // Add pointer to error location
             let pointer_offset = 0; // TODO: Calculate column from byte offset
             let pointer = " ".repeat(pointer_offset + 4) + "^";
-            output.push_str(&format!("  {}\n", pointer));
+            output.push_str(&format!("  {pointer}\n"));
         }
 
         output
@@ -256,7 +256,7 @@ mod tests {
         reporter.report_error(ParseError::syntax("invalid syntax", span));
         
         let formatted = reporter.format_diagnostics(source);
-        println!("Formatted diagnostics:\n{}", formatted);
+        println!("Formatted diagnostics:\n{formatted}");
         assert!(formatted.contains("Error:"));
         assert!(formatted.contains("invalid syntax"));
     }

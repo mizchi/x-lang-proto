@@ -3,14 +3,14 @@
 //! This module provides a fluent API for programmatically constructing
 //! x Language AST nodes without writing source code.
 
-use x_parser::ast::*;
-use x_parser::{Symbol, Span, FileId, span::ByteOffset};
+use x_parser::{Span, FileId, span::ByteOffset};
 
 pub mod builder;
 pub mod dsl;
 
 pub use builder::*;
-pub use dsl::*;
+// Re-export DSL macros when implemented
+// pub use dsl::*;
 
 /// Main AST builder context
 pub struct AstBuilder {

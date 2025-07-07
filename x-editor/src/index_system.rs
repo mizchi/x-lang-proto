@@ -31,6 +31,12 @@ pub struct IndexCollection {
     pub hierarchy_index: HierarchyIndex,
 }
 
+impl Default for IndexCollection {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IndexCollection {
     pub fn new() -> Self {
         Self {
@@ -137,6 +143,12 @@ pub struct TypeIndex {
     node_to_type: HashMap<NodeId, String>,
 }
 
+impl Default for TypeIndex {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeIndex {
     pub fn new() -> Self {
         Self {
@@ -157,7 +169,7 @@ impl TypeIndex {
         self.node_to_type.insert(node_id, type_name.clone());
         let _ = self.type_to_nodes
             .entry(type_name)
-            .or_insert_with(OrdSet::new)
+            .or_default()
             .update(node_id);
     }
     
@@ -222,6 +234,12 @@ pub struct SymbolIndex {
     node_references: HashMap<NodeId, OrdSet<Symbol>>,
 }
 
+impl Default for SymbolIndex {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SymbolIndex {
     pub fn new() -> Self {
         Self {
@@ -250,7 +268,7 @@ impl SymbolIndex {
             self.definitions.insert(*symbol, node_id);
             let _ = self.node_definitions
                 .entry(node_id)
-                .or_insert_with(OrdSet::new)
+                .or_default()
                 .update(*symbol);
         }
         
@@ -258,11 +276,11 @@ impl SymbolIndex {
         for symbol in &referenced_symbols {
             let _ = self.references
                 .entry(*symbol)
-                .or_insert_with(OrdSet::new)
+                .or_default()
                 .update(node_id);
             let _ = self.node_references
                 .entry(node_id)
-                .or_insert_with(OrdSet::new)
+                .or_default()
                 .update(*symbol);
         }
     }
@@ -347,6 +365,12 @@ pub struct PositionIndex {
     node_spans: HashMap<NodeId, Span>,
 }
 
+impl Default for PositionIndex {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PositionIndex {
     pub fn new() -> Self {
         Self {
@@ -371,9 +395,9 @@ impl PositionIndex {
         
         let _ = self.intervals
             .entry(start)
-            .or_insert_with(BTreeMap::new)
+            .or_default()
             .entry(end)
-            .or_insert_with(OrdSet::new)
+            .or_default()
             .update(node_id);
     }
     
@@ -451,6 +475,12 @@ pub struct DependencyIndex {
     dependents: HashMap<NodeId, OrdSet<NodeId>>,
 }
 
+impl Default for DependencyIndex {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependencyIndex {
     pub fn new() -> Self {
         Self {
@@ -507,12 +537,12 @@ impl DependencyIndex {
     pub fn add_dependency(&mut self, dependent: NodeId, dependency: NodeId) {
         let _ = self.dependencies
             .entry(dependent)
-            .or_insert_with(OrdSet::new)
+            .or_default()
             .update(dependency);
         
         let _ = self.dependents
             .entry(dependency)
-            .or_insert_with(OrdSet::new)
+            .or_default()
             .update(dependent);
     }
     
@@ -545,6 +575,12 @@ pub struct HierarchyIndex {
     children_map: HashMap<NodeId, OrdSet<NodeId>>,
 }
 
+impl Default for HierarchyIndex {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HierarchyIndex {
     pub fn new() -> Self {
         Self {
@@ -565,7 +601,7 @@ impl HierarchyIndex {
             self.parent_map.insert(node_id, parent_id);
             let _ = self.children_map
                 .entry(parent_id)
-                .or_insert_with(OrdSet::new)
+                .or_default()
                 .update(node_id);
         }
     }
