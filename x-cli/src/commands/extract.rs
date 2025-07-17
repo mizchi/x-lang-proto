@@ -218,7 +218,7 @@ fn generate_extracted_code(
     explicit_imports: bool,
     minimal: bool
 ) -> Result<String> {
-    use x_parser::syntax::{haskell::HaskellPrinter, SyntaxPrinter};
+    use x_parser::syntax::{sexp::SExpPrinter, SyntaxPrinter};
     
     let mut output = String::new();
     
@@ -265,9 +265,9 @@ fn generate_extracted_code(
     }
     
     // Generate definitions in dependency order
-    let printer = HaskellPrinter::new();
+    let printer = SExpPrinter::new();
     let config = SyntaxConfig {
-        style: SyntaxStyle::Haskell,
+        style: SyntaxStyle::SExp,
         indent_size: 2,
         use_tabs: false,
         max_line_length: 80,

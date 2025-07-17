@@ -48,7 +48,7 @@ impl Format {
     /// Get syntax style for text formats
     pub fn syntax_style(&self) -> Option<SyntaxStyle> {
         match self {
-            Format::Haskell => Some(SyntaxStyle::Haskell),
+            Format::Haskell => Some(SyntaxStyle::SExpression), // Now maps to S-expression
             Format::SExpression => Some(SyntaxStyle::SExpression),
             Format::Binary | Format::Json => None,
         }
@@ -198,7 +198,7 @@ fn save_text_ast(ast: &PersistentAstNode, format: Format) -> Result<Vec<u8>> {
     // TODO: Implement actual AST to text conversion
     // For now, generate a simple placeholder
     let text = match syntax_style {
-        SyntaxStyle::Haskell => generate_haskell_text(ast),
+        SyntaxStyle::SExpression => generate_sexp_text(ast),
         SyntaxStyle::SExpression => generate_sexp_text(ast),
         _ => return Err(anyhow::anyhow!("Unsupported syntax style for text generation")),
     };
@@ -212,10 +212,7 @@ fn generate_sexp_text(ast: &PersistentAstNode) -> String {
     format!(";; Generated from AST node: {:?}\n;; TODO: Implement text generation\n(def main () (print-line \"Hello from x Language!\"))\n", ast.id())
 }
 
-/// Generate Haskell syntax text (placeholder)
-fn generate_haskell_text(ast: &PersistentAstNode) -> String {
-    format!("-- Generated from AST node: {:?}\n-- TODO: Implement text generation\nmain :: IO ()\nmain = putStrLn \"Hello from x Language!\"\n", ast.id())
-}
+// Haskell text generation function removed - now using S-expression style
 
 /// Convert AST to PersistentAstNode
 fn convert_ast_to_persistent(cu: &x_parser::ast::CompilationUnit) -> Result<PersistentAstNode> {

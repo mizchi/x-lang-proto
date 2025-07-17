@@ -22,7 +22,7 @@ pub struct CompilerConfig {
 impl Default for CompilerConfig {
     fn default() -> Self {
         Self {
-            syntax_style: SyntaxStyle::Haskell,
+            syntax_style: SyntaxStyle::SExpression,
             optimization_level: 0,
             debug_info: false,
             source_maps: false,
@@ -330,7 +330,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = CompilerConfig::default();
-        assert_eq!(config.syntax_style, SyntaxStyle::Haskell);
+        assert_eq!(config.syntax_style, SyntaxStyle::SExpression);
         assert_eq!(config.optimization_level, 0);
         assert!(!config.debug_info);
     }

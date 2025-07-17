@@ -25,7 +25,7 @@ cargo install --path x-compiler
 
 ### Core Crates
 
-- `x-parser` - Text to AST conversion with multi-syntax support
+- `x-parser` - Text to AST conversion with S-expression syntax
 - `x-checker` - Type checking and semantic analysis with effect system
 - `x-compiler` - Code generation for multiple targets
 - `x-editor` - Language service with direct AST manipulation for AI
@@ -85,7 +85,6 @@ Create `x-lang.toml` for project settings:
 
 ```toml
 [default]
-syntax_style = "OCaml"
 optimization_level = 2
 debug_info = true
 source_maps = true

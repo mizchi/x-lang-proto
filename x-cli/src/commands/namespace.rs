@@ -440,7 +440,7 @@ fn analyze_dependencies(content: &str) -> HashSet<Hash> {
     use x_parser::{parse_source, SyntaxStyle, FileId, dependency::DependencyManager};
     
     // Parse the content
-    match parse_source(content, FileId::new(0), SyntaxStyle::Haskell) {
+    match parse_source(content, FileId::new(0), SyntaxStyle::SExpression) {
         Ok(cu) => {
             let mut deps = HashSet::new();
             

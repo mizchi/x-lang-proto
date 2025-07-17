@@ -326,9 +326,8 @@ async fn handle_validate_config(path: PathBuf) -> Result<(), Box<dyn std::error:
 
 fn parse_syntax_style(style: &str) -> Result<SyntaxStyle, Box<dyn std::error::Error>> {
     match style.to_lowercase().as_str() {
-        "haskell" => Ok(SyntaxStyle::Haskell),
         "sexp" | "s-expression" => Ok(SyntaxStyle::SExpression),
-        _ => Err(format!("Unknown syntax style: {}. Supported styles: haskell, sexp", style).into()),
+        _ => Err(format!("Unknown syntax style: {}. Supported styles: sexp", style).into()),
     }
 }
 
@@ -348,11 +347,10 @@ mod tests {
     
     #[test]
     fn test_parse_syntax_style() {
-        assert_eq!(parse_syntax_style("haskell").unwrap(), SyntaxStyle::Haskell);
         assert_eq!(parse_syntax_style("sexp").unwrap(), SyntaxStyle::SExpression);
-        assert_eq!(parse_syntax_style("haskell").unwrap(), SyntaxStyle::Haskell);
-        // Rust style no longer supported
+        assert_eq!(parse_syntax_style("s-expression").unwrap(), SyntaxStyle::SExpression);
         
+        assert!(parse_syntax_style("haskell").is_err());
         assert!(parse_syntax_style("invalid").is_err());
     }
     

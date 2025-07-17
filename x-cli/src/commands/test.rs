@@ -108,7 +108,7 @@ async fn discover_file_tests(
     
     // Parse the file
     let file_id = FileId(0);
-    let compilation_unit = parse_source(&content, file_id, SyntaxStyle::Haskell)
+    let compilation_unit = parse_source(&content, file_id, SyntaxStyle::SExpression)
         .context("Failed to parse test file")?;
     
     // Type check
@@ -174,7 +174,7 @@ async fn load_namespace_from_file(
         .context("Failed to read file")?;
     
     let file_id = FileId(0);
-    let compilation_unit = parse_source(&content, file_id, SyntaxStyle::Haskell)
+    let compilation_unit = parse_source(&content, file_id, SyntaxStyle::SExpression)
         .context("Failed to parse file")?;
     
     let check_result = type_checker.check_compilation_unit(&compilation_unit);

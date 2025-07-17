@@ -178,8 +178,8 @@ mod tests {
             converted_lines: 15,
             original_chars: 200,
             converted_chars: 250,
-            from_style: SyntaxStyle::Haskell,
-            to_style: SyntaxStyle::Haskell,
+            from_style: SyntaxStyle::SExp,
+            to_style: SyntaxStyle::SExp,
         };
         
         assert_eq!(stats.line_change_ratio(), 1.5);

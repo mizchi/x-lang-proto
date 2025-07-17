@@ -5,7 +5,6 @@
 //! the same underlying semantic structure.
 
 pub mod sexp;
-pub mod haskell;
 pub mod printer;
 pub mod converter;
 
@@ -16,8 +15,6 @@ use std::fmt;
 /// Supported syntax styles
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SyntaxStyle {
-    /// Haskell-like syntax (default)
-    Haskell,
     /// S-expression syntax (Lisp-like)
     SExp,
 }
@@ -25,7 +22,6 @@ pub enum SyntaxStyle {
 impl fmt::Display for SyntaxStyle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SyntaxStyle::Haskell => write!(f, "haskell"),
             SyntaxStyle::SExp => write!(f, "sexp"),
         }
     }
@@ -36,7 +32,6 @@ impl std::str::FromStr for SyntaxStyle {
 
     fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
-            "haskell" | "hs" => Ok(SyntaxStyle::Haskell),
             "sexp" | "sexpr" | "lisp" => Ok(SyntaxStyle::SExp),
             _ => Err(Error::Parse {
                 message: format!("Unknown syntax style: {s}"),
@@ -58,7 +53,7 @@ pub struct SyntaxConfig {
 impl Default for SyntaxConfig {
     fn default() -> Self {
         SyntaxConfig {
-            style: SyntaxStyle::Haskell,
+            style: SyntaxStyle::SExp,
             indent_size: 2,
             use_tabs: false,
             max_line_length: 100,
@@ -184,9 +179,6 @@ impl Default for MultiSyntax {
         let mut multi = MultiSyntax::new();
         
         // Register all parsers and printers
-        multi.register_parser(Box::new(haskell::HaskellParser::new()));
-        multi.register_printer(Box::new(haskell::HaskellPrinter::new()));
-        
         multi.register_parser(Box::new(sexp::SExpParser::new()));
         multi.register_printer(Box::new(sexp::SExpPrinter::new()));
         
@@ -201,7 +193,6 @@ mod tests {
 
     #[test]
     fn test_syntax_style_parsing() {
-        assert_eq!("haskell".parse::<SyntaxStyle>().unwrap(), SyntaxStyle::Haskell);
         assert_eq!("sexp".parse::<SyntaxStyle>().unwrap(), SyntaxStyle::SExp);
         
         assert!("unknown".parse::<SyntaxStyle>().is_err());
@@ -210,7 +201,7 @@ mod tests {
     #[test]
     fn test_syntax_config_default() {
         let config = SyntaxConfig::default();
-        assert_eq!(config.style, SyntaxStyle::Haskell);
+        assert_eq!(config.style, SyntaxStyle::SExp);
         assert_eq!(config.indent_size, 2);
         assert!(!config.use_tabs);
     }
@@ -220,8 +211,8 @@ mod tests {
         let mut multi = MultiSyntax::new();
         assert_eq!(multi.supported_styles().len(), 0);
         
-        multi.register_parser(Box::new(haskell::HaskellParser::new()));
+        multi.register_parser(Box::new(sexp::SExpParser::new()));
         assert_eq!(multi.supported_styles().len(), 1);
-        assert!(multi.supported_styles().contains(&SyntaxStyle::Haskell));
+        assert!(multi.supported_styles().contains(&SyntaxStyle::SExp));
     }
 }

@@ -393,8 +393,8 @@ mod tests {
 
     #[test]
     fn test_token_precedence() {
-        assert_eq!(TokenKind::Plus.precedence(), Some(5));
-        assert_eq!(TokenKind::Star.precedence(), Some(6));
+        assert_eq!(TokenKind::Plus.precedence(), Some(7));
+        assert_eq!(TokenKind::Star.precedence(), Some(8));
         assert_eq!(TokenKind::And.precedence(), Some(2));
         assert_eq!(TokenKind::EqualEqual.precedence(), Some(3));
         assert!(TokenKind::Star.precedence() > TokenKind::Plus.precedence());

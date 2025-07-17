@@ -12,7 +12,7 @@ let main = fun () -> add 5 3
 
     c.bench_function("type_check_simple", |b| {
         let file_id = FileId::new(0);
-        let cu = parse_source(source, file_id, SyntaxStyle::Haskell).unwrap();
+        let cu = parse_source(source, file_id, SyntaxStyle::SExpression).unwrap();
         
         b.iter(|| {
             type_check(black_box(&cu))
@@ -38,7 +38,7 @@ let main = fun () ->
 
     c.bench_function("type_check_recursive", |b| {
         let file_id = FileId::new(0);
-        let cu = parse_source(source, file_id, SyntaxStyle::Haskell).unwrap();
+        let cu = parse_source(source, file_id, SyntaxStyle::SExpression).unwrap();
         
         b.iter(|| {
             type_check(black_box(&cu))
@@ -68,7 +68,7 @@ let main = fun () ->
 
     c.bench_function("type_check_polymorphic", |b| {
         let file_id = FileId::new(0);
-        let cu = parse_source(source, file_id, SyntaxStyle::Haskell).unwrap();
+        let cu = parse_source(source, file_id, SyntaxStyle::SExpression).unwrap();
         
         b.iter(|| {
             type_check(black_box(&cu))

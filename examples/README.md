@@ -6,15 +6,12 @@ This directory contains example programs demonstrating various features and synt
 
 ### Basic Examples
 
-- `hello.x` - Simple hello world program (OCaml-style syntax)
-- `math.x` - Basic arithmetic and recursion (OCaml-style syntax)
+- `hello.x` - Simple hello world program (S-expression syntax)
+- `math.x` - Basic arithmetic and recursion (S-expression syntax)
 
-### Syntax Styles
+### Syntax Style
 
-- `ocaml/` - OCaml-like syntax examples
-- `rust/` - Rust-like syntax examples
 - `sexp/` - S-expression syntax examples
-- `haskell/` - Haskell-like syntax examples
 
 ### Feature Examples
 

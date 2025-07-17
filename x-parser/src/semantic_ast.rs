@@ -321,8 +321,9 @@ impl Expr {
 impl Span {
     /// Dummy span for examples
     pub fn dummy() -> Self {
-        // This would be implemented based on your span type
-        unimplemented!("Span::dummy")
+        // Use a proper dummy span instead of unimplemented
+        use crate::span::{FileId, ByteOffset};
+        Span::new(FileId::new(0), ByteOffset::new(0), ByteOffset::new(0))
     }
 }
 

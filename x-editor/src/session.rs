@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_session_creation() {
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
         let id = SessionId::new();
         let session = EditSession::new(id, ast);
         
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn test_operation_history() {
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
         let id = SessionId::new();
         let mut session = EditSession::new(id, ast);
         
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn test_undo_redo() {
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
         let id = SessionId::new();
         let mut session = EditSession::new(id, ast);
         
@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn test_session_state() {
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
         let id = SessionId::new();
         let mut session = EditSession::new(id, ast);
         

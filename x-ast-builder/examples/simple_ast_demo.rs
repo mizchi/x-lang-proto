@@ -4,7 +4,7 @@
 
 use x_parser::ast::*;
 use x_parser::{Symbol, Span, FileId, span::ByteOffset, Visibility, Purity};
-use x_parser::syntax::haskell::HaskellPrinter;
+use x_parser::syntax::sexp::SExpPrinter;
 use x_parser::syntax::{SyntaxPrinter, SyntaxConfig, SyntaxStyle};
 
 fn main() {
@@ -287,14 +287,14 @@ fn print_module(module: &Module) {
     };
     
     let config = SyntaxConfig {
-        style: SyntaxStyle::Haskell,
+        style: SyntaxStyle::SExpression,
         indent_size: 2,
         use_tabs: false,
         max_line_length: 80,
         preserve_comments: true,
     };
     
-    let printer = HaskellPrinter::new();
+    let printer = SExpPrinter::new();
     match printer.print(&cu, &config) {
         Ok(code) => println!("{}", code),
         Err(e) => println!("Error printing: {:?}", e),

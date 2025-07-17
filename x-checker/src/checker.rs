@@ -346,7 +346,7 @@ mod tests {
     fn test_simple_type_checking() {
         let source = "module Test\nlet x = 42";
         let file_id = FileId::new(0);
-        let cu = parse_source(source, file_id, SyntaxStyle::Haskell).unwrap();
+        let cu = parse_source(source, file_id, SyntaxStyle::SExpression).unwrap();
         
         let result = cu.type_check();
         // Should not crash, though may have errors due to incomplete implementation
@@ -357,7 +357,7 @@ mod tests {
     fn test_type_check_trait() {
         let source = "module Test\nlet x = true";
         let file_id = FileId::new(0);
-        let cu = parse_source(source, file_id, SyntaxStyle::Haskell).unwrap();
+        let cu = parse_source(source, file_id, SyntaxStyle::SExpression).unwrap();
         
         let result = cu.type_check();
         // The result should have type environment

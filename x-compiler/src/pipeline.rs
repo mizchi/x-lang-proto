@@ -460,7 +460,7 @@ mod tests {
         use x_parser::{parse_source, FileId, SyntaxStyle};
         let source = "let x = 42\nlet y = true";
         let file_id = FileId::new(0);
-        let ast = parse_source(source, file_id, SyntaxStyle::Haskell).unwrap();
+        let ast = parse_source(source, file_id, SyntaxStyle::SExpression).unwrap();
         
         let count = pipeline.count_ast_nodes(&ast);
         assert!(count > 0);

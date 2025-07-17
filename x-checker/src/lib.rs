@@ -131,7 +131,7 @@ mod tests {
     fn test_basic_type_checking() {
         let source = "module Test\nlet x = 42";
         let file_id = FileId::new(0);
-        let cu = parse_source(source, file_id, SyntaxStyle::Haskell).unwrap();
+        let cu = parse_source(source, file_id, SyntaxStyle::SExpression).unwrap();
         
         let result = type_check(&cu);
         assert!(result.errors.is_empty());

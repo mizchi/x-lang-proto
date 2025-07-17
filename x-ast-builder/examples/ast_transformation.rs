@@ -3,7 +3,7 @@
 use x_ast_builder::*;
 use x_parser::ast::*;
 use x_parser::{Symbol, parse_source, FileId, SyntaxStyle};
-use x_parser::syntax::haskell::HaskellPrinter;
+use x_parser::syntax::sexp::SExpPrinter;
 use x_parser::syntax::{SyntaxPrinter, SyntaxConfig};
 use std::collections::{HashMap, HashSet};
 
@@ -36,7 +36,7 @@ let main = fun () ->
   x + y
 "#;
     
-    let cu = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+    let cu = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
     
     println!("Original:");
     print_compilation_unit(&cu);
@@ -67,7 +67,7 @@ let main = fun () ->
   double 5 + double 3
 "#;
     
-    let cu = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+    let cu = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
     
     println!("Original:");
     print_compilation_unit(&cu);
@@ -108,7 +108,7 @@ let main = fun () ->
   c
 "#;
     
-    let cu = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+    let cu = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
     
     println!("Original:");
     print_compilation_unit(&cu);
@@ -137,7 +137,7 @@ let main = fun () ->
   used * 2
 "#;
     
-    let cu = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+    let cu = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
     
     println!("Original:");
     print_compilation_unit(&cu);
@@ -360,14 +360,14 @@ fn collect_used_variables_impl(expr: &Expr, used: &mut HashSet<Symbol>) {
 
 fn print_compilation_unit(cu: &CompilationUnit) {
     let config = SyntaxConfig {
-        style: SyntaxStyle::Haskell,
+        style: SyntaxStyle::SExpression,
         indent_size: 2,
         use_tabs: false,
         max_line_length: 80,
         preserve_comments: true,
     };
     
-    let printer = HaskellPrinter::new();
+    let printer = SExpPrinter::new();
     match printer.print(cu, &config) {
         Ok(code) => print!("{}", code),
         Err(e) => println!("Error printing: {:?}", e),

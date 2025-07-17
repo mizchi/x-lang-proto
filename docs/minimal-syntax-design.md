@@ -22,25 +22,14 @@ enum Expr {
 ### 基本規則
 
 1. **アトム**: 数値、文字列、識別子
-2. **リスト**: 括弧で囲むか、インデントで表現
+2. **リスト**: 括弧で囲む
 3. **適用**: 最初の要素が関数、残りが引数
 
-### 括弧省略規則
+### S式構文
 
 ```x
 ; 完全なS式
 (add (mul 2 3) 4)
-
-; 括弧省略（インデントベース）
-add
-  mul 2 3
-  4
-
-; 1行で書く場合
-add (mul 2 3) 4
-
-; さらに省略（右結合）
-add mul 2 3 4  ; => (add (mul 2 3) 4)
 ```
 
 ### 関数定義
@@ -52,24 +41,18 @@ add mul 2 3 4  ; => (add (mul 2 3) 4)
     1
     (mul n (factorial (sub n 1)))))
 
-; インデント構文
-def factorial n
-  if eq n 0
-    1
-    mul n
-      factorial sub n 1
 ```
 
 ### 型注釈（AI/推論後に自動付与）
 
 ```x
 ; 推論前
-def add x y
-  + x y
+(def add x y
+  (+ x y))
 
 ; 推論後（型がインライン化される）
-def add x y : (Int Int -> Int)
-  + x y : Int
+(def add x y : (Int Int -> Int)
+  (+ x y : Int))
 ```
 
 ## 特殊フォーム（最小限）

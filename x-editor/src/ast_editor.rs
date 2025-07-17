@@ -557,7 +557,7 @@ mod tests {
     fn test_insert_operation() {
         let mut editor = AstEditor::new();
         let source = "let x = 42";
-        let mut ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+        let mut ast = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
 
         let operation = EditOperation::Insert(InsertOperation {
             path: vec![0],
@@ -582,7 +582,7 @@ mod tests {
     fn test_query_operations() {
         let editor = AstEditor::new();
         let source = "let x = 42\nlet y = true";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::SExpression).unwrap();
 
         let query = AstQuery::FindByType { node_type: "Item".to_string() };
         let result = editor.query(&ast, query);

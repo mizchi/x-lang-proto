@@ -287,12 +287,12 @@ mod tests {
     #[test]
     fn test_compiler_builder() {
         let compiler = CompilerBuilder::new()
-            .syntax_style(SyntaxStyle::Haskell)
+            .syntax_style(SyntaxStyle::SExpression)
             .optimization_level(2)
             .debug_info(true)
             .build();
 
-        assert_eq!(compiler.config.syntax_style, SyntaxStyle::Haskell);
+        assert_eq!(compiler.config.syntax_style, SyntaxStyle::SExpression);
         assert_eq!(compiler.config.optimization_level, 2);
         assert!(compiler.config.debug_info);
     }
@@ -312,7 +312,7 @@ mod tests {
         let source = "let x = 42";
         
         // Test parsing
-        let result = convenience::parse_source_only(source, SyntaxStyle::Haskell);
+        let result = convenience::parse_source_only(source, SyntaxStyle::SExpression);
         assert!(result.is_ok());
 
         // Test type checking

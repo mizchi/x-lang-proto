@@ -6,7 +6,7 @@ use colored::*;
 use serde_json;
 use x_parser::persistent_ast::{PersistentAstNode, AstNodeKind, Purity};
 use x_parser::syntax::{SyntaxConfig, SyntaxStyle};
-use x_parser::syntax::haskell::HaskellPrinter;
+// use x_parser::syntax::haskell::HaskellPrinter; // Removed
 use x_parser::syntax::sexp::SExpPrinter;
 use x_parser::syntax::SyntaxPrinter;
 use crate::format::{detect_format, load_ast};
@@ -40,7 +40,7 @@ pub async fn show_command(
         "summary" => show_summary(&ast)?,
         "compact" => show_compact(&ast, depth)?,
         // OCaml syntax no longer supported
-        "haskell" => show_haskell(&ast, depth)?,
+        "haskell" => show_sexp_style(&ast, depth)?, // Now uses S-expression style
         "sexp" => show_sexp(&ast, depth)?,
         _ => {
             eprintln!("{} Unknown display format: {}", "Error:".red().bold(), format);
@@ -325,22 +325,22 @@ fn collect_stats_recursive(node: &PersistentAstNode, depth: usize, stats: &mut A
 
 // OCaml syntax support has been removed
 
-/// Display AST in Haskell-style syntax
-fn show_haskell(ast: &PersistentAstNode, _max_depth: Option<usize>) -> Result<()> {
-    println!("{}", "Haskell-style representation:".bold().underline());
+/// Display AST in S-expression style syntax
+fn show_sexp_style(ast: &PersistentAstNode, _max_depth: Option<usize>) -> Result<()> {
+    println!("{}", "S-expression representation:".bold().underline());
     
     // Convert PersistentAstNode to regular AST for printing
     let compilation_unit = convert_persistent_to_ast(ast)?;
     
     let config = SyntaxConfig {
-        style: SyntaxStyle::Haskell,
+        style: SyntaxStyle::SExp,
         indent_size: 2,
         use_tabs: false,
         max_line_length: 80,
         preserve_comments: true,
     };
     
-    let printer = HaskellPrinter::new();
+    let printer = SExpPrinter::new();
     let output = printer.print(&compilation_unit, &config)?;
     
     println!("{}", output);

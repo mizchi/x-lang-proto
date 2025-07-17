@@ -1,13 +1,10 @@
 # EffectLang Code Examples
 
-This directory contains examples demonstrating EffectLang's multi-syntax support. The same semantic program is written in four different syntax styles:
+This directory contains examples demonstrating EffectLang's S-expression syntax.
 
-## Syntax Styles
+## Syntax Style
 
-1. **OCaml Style** (`*.ocaml.eff`) - Default syntax with ML-family features
-2. **S-Expression Style** (`*.sexp.eff`) - Lisp-like syntax with parentheses
-3. **Haskell Style** (`*.haskell.eff`) - Haskell-inspired functional syntax
-4. **Rust Style** (`*.rust.eff`) - Rust-like syntax with explicit types
+**S-Expression Style** (`*.sexp.eff`) - Lisp-like syntax with parentheses
 
 ## Example Programs
 
@@ -35,20 +32,13 @@ This directory contains examples demonstrating EffectLang's multi-syntax support
 
 ## Usage
 
-These examples can be parsed and converted between syntax styles using EffectLang's multi-syntax support:
+These examples can be parsed using EffectLang's S-expression parser:
 
 ```rust
-use effect_lang::{MultiSyntax, SyntaxStyle, SyntaxConfig};
+use effect_lang::{parse_sexp};
 
-let mut multi = MultiSyntax::default();
 let file_id = FileId::new(0);
 
-// Parse OCaml-style code
-let ast = multi.parse(ocaml_code, SyntaxStyle::OCaml, file_id)?;
-
-// Print in Rust style
-let config = SyntaxConfig { style: SyntaxStyle::RustLike, ..Default::default() };
-let rust_code = multi.print(&ast, &config)?;
+// Parse S-expression code
+let ast = parse_sexp(sexp_code, file_id)?;
 ```
-
-All examples demonstrate the same semantic content while showcasing the syntactic flexibility of EffectLang.

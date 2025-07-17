@@ -22,7 +22,7 @@ pub struct LanguageServiceConfig {
 impl Default for LanguageServiceConfig {
     fn default() -> Self {
         Self {
-            default_syntax: SyntaxStyle::Haskell,
+            default_syntax: SyntaxStyle::SExpression,
             enable_caching: true,
             cache_dir: None,
             max_cache_size: 1000,
@@ -101,7 +101,7 @@ mod tests {
     fn test_language_service_creation() {
         let config = LanguageServiceConfig::default();
         let service = LanguageService::new(config);
-        assert_eq!(service.config.default_syntax, SyntaxStyle::Haskell);
+        assert_eq!(service.config.default_syntax, SyntaxStyle::SExpression);
     }
 
     #[test]
