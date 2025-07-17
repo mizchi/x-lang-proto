@@ -23,16 +23,15 @@ data Tree[a] =
 
 Inserts an element into a binary search tree.
 ```
-let insert = fn x tree ->
-    match tree with
-    | Empty -> Node { value = x, left = Empty, right = Empty }
-    | Node { value, left, right } ->
-        if x < value then
-            Node { value = value, left = insert x left, right = right }
-        else if x > value then
-            Node { value = value, left = left, right = insert x right }
-        else
-            tree  # Element already exists
+let insert = (fn (x tree)
+    (match tree
+        (Empty (Node { value = x, left = Empty, right = Empty }))
+        ((Node { value, left, right })
+            (if (< x value)
+                (Node { value = value, left = (insert x left), right = right })
+                (if (> x value)
+                    (Node { value = value, left = left, right = (insert x right) })
+                    tree)))))
 
 ```
 #
@@ -45,16 +44,15 @@ let insert = fn x tree ->
 
 Checks if an element exists in the tree.
 ```
-let contains = fn x tree ->
-    match tree with
-    | Empty -> false
-    | Node { value, left, right } ->
-        if x == value then
-            true
-        else if x < value then
-            contains x left
-        else
-            contains x right
+let contains = (fn (x tree)
+    (match tree
+        (Empty false)
+        ((Node { value, left, right })
+            (if (== x value)
+                true
+                (if (< x value)
+                    (contains x left)
+                    (contains x right))))))
 
 ```
 #
@@ -66,11 +64,11 @@ let contains = fn x tree ->
 
 Finds the minimum value in a tree.
 ```
-let min_value = fn tree ->
-    match tree with
-    | Empty -> error "min_value: empty tree"
-    | Node { value, left = Empty, right = _ } -> value
-    | Node { value = _, left, right = _ } -> min_value left
+let min_value = (fn (tree)
+    (match tree
+        (Empty (error "min_value: empty tree"))
+        ((Node { value, left = Empty, right = _ }) value)
+        ((Node { value = _, left, right = _ }) (min_value left))))
 
 ```
 #
@@ -83,23 +81,21 @@ let min_value = fn tree ->
 
 Deletes an element from the tree.
 ```
-let delete = fn x tree ->
-    match tree with
-    | Empty -> Empty
-    | Node { value, left, right } ->
-        if x < value then
-            Node { value = value, left = delete x left, right = right }
-        else if x > value then
-            Node { value = value, left = left, right = delete x right }
-        else
-            # Found the node to delete
-            match (left, right) with
-            | (Empty, Empty) -> Empty
-            | (Empty, r) -> r
-            | (l, Empty) -> l
-            | (l, r) ->
-                let successor = min_value r in
-                Node { value = successor, left = l, right = delete successor r }
+let delete = (fn (x tree)
+    (match tree
+        (Empty Empty)
+        ((Node { value, left, right })
+            (if (< x value)
+                (Node { value = value, left = (delete x left), right = right })
+                (if (> x value)
+                    (Node { value = value, left = left, right = (delete x right) })
+                    (match (left, right)
+                        ((Empty, Empty) Empty)
+                        ((Empty, r) r)
+                        ((l, Empty) l)
+                        ((l, r)
+                            (let ((successor (min_value r)))
+                                (Node { value = successor, left = l, right = (delete successor r) })))))))))
 
 ```
 #
@@ -111,11 +107,11 @@ let delete = fn x tree ->
 
 Performs inorder traversal returning a sorted list.
 ```
-let inorder = fn tree ->
-    match tree with
-    | Empty -> []
-    | Node { value, left, right } ->
-        append (inorder left) (value :: inorder right))
+let inorder = (fn (tree)
+    (match tree
+        (Empty [])
+        ((Node { value, left, right })
+            (append (inorder left) (:: value (inorder right))))))
 
 ```
 #
@@ -127,11 +123,11 @@ let inorder = fn tree ->
 
 Calculates the height of a tree.
 ```
-let height = fn tree ->
-    match tree with
-    | Empty -> 0
-    | Node { value = _, left, right } ->
-        1 + max (height left) (height right)
+let height = (fn (tree)
+    (match tree
+        (Empty 0)
+        ((Node { value = _, left, right })
+            (+ 1 (max (height left) (height right))))))
 
 ```
 #
@@ -143,19 +139,19 @@ let height = fn tree ->
 
 Checks if a tree is balanced (height difference <= 1).
 ```
-let is_balanced = fn tree ->
-    let rec check = fn t ->
-        match t with
-        | Empty -> (true, 0)
-        | Node { value = _, left, right } ->
-            let (left_balanced, left_height) = check left in
-            let (right_balanced, right_height) = check right in
-            let balanced = left_balanced && right_balanced && 
-                          abs (left_height - right_height) <= 1 in
-            (balanced, 1 + max left_height right_height)
+let is_balanced = (fn (tree)
+    (let rec check = (fn (t)
+        (match t
+            (Empty (true, 0))
+            ((Node { value = _, left, right })
+                (let (((left_balanced, left_height) (check left)))
+                    (let (((right_balanced, right_height) (check right)))
+                        (let ((balanced (&& (&& left_balanced right_balanced)
+                                          (<= (abs (- left_height right_height)) 1))))
+                            (balanced, (+ 1 (max left_height right_height)))))))))
     in
-    let (balanced, _) = check tree in
-    balanced
+    (let (((balanced, _) (check tree)))
+        balanced))
 
 ```
 #
@@ -167,38 +163,38 @@ Tests binary search tree operations.
 ```
 test "binary tree operations" {
     let empty = Empty
-    let tree1 = insert 5 empty
-    let tree2 = insert 3 tree1
-    let tree3 = insert 7 tree2
-    let tree4 = insert 1 tree3
-    let tree5 = insert 9 tree4
+    let tree1 = (insert 5 empty)
+    let tree2 = (insert 3 tree1)
+    let tree3 = (insert 7 tree2)
+    let tree4 = (insert 1 tree3)
+    let tree5 = (insert 9 tree4)
     
     # Test contains
-    contains 5 tree5 &&
-    contains 3 tree5 &&
-    contains 7 tree5 &&
-    not (contains 4 tree5) &&
-    not (contains 0 empty) &&
+    (&& (contains 5 tree5)
+    (&& (contains 3 tree5)
+    (&& (contains 7 tree5)
+    (&& (not (contains 4 tree5))
+    (&& (not (contains 0 empty))
     
     # Test min_value
-    min_value tree5 == 1 &&
+    (&& (== (min_value tree5) 1)
     
     # Test inorder traversal
-    inorder tree5 == [1, 3, 5, 7, 9] &&
-    inorder empty == [] &&
+    (&& (== (inorder tree5) [1, 3, 5, 7, 9])
+    (&& (== (inorder empty) [])
     
     # Test delete
-    let tree_del = delete 3 tree5 in
-    not (contains 3 tree_del) &&
-    contains 5 tree_del &&
-    contains 1 tree_del &&
-    inorder tree_del == [1, 5, 7, 9] &&
+    (let ((tree_del (delete 3 tree5)))
+        (&& (not (contains 3 tree_del))
+        (&& (contains 5 tree_del)
+        (&& (contains 1 tree_del)
+        (&& (== (inorder tree_del) [1, 5, 7, 9])
     
     # Test height
-    height empty == 0 &&
-    height tree5 >= 3 &&
+    (&& (== (height empty) 0)
+    (&& (>= (height tree5) 3)
     
     # Test balanced tree
-    let balanced = insert 4 (insert 2 (insert 6 tree3)) in
-    is_balanced balanced
+    (let ((balanced (insert 4 (insert 2 (insert 6 tree3)))))
+        (is_balanced balanced)))))))))))))))))
 }

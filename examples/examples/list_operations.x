@@ -10,10 +10,10 @@ module ListOperations
 
 Calculates the length of a list recursively.
 ```
-let length = fn list ->
-    match list with
-    | [] -> 0
-    | _ :: xs -> 1 + length xs
+let length = (fn (list)
+    (match list
+      ([] 0)
+      ((:: _ xs) (+ 1 (length xs)))))
 
 ```
 #
@@ -26,10 +26,10 @@ let length = fn list ->
 
 Maps a fnction over a list.
 ```
-let map = fn f list ->
-    match list with
-    | [] -> []
-    | x::xs -> (f x) :: (map f xs)
+let map = (fn (f list)
+    (match list
+      ([] [])
+      ((:: x xs) (:: (f x) (map f xs)))))
 
 ```
 #
@@ -42,14 +42,13 @@ let map = fn f list ->
 
 Filters a list based on a predicate.
 ```
-let filter = fn pred list ->
-    match list with
-    | [] -> []
-    | x::xs -> 
-        if pred x then
-            x :: (filter pred xs)
-        else
-            filter pred xs
+let filter = (fn (pred list)
+    (match list
+      ([] [])
+      ((:: x xs) 
+        (if (pred x)
+            (:: x (filter pred xs))
+            (filter pred xs)))))
 
 ```
 #
@@ -63,10 +62,10 @@ let filter = fn pred list ->
 
 Left fold (reduce) over a list.
 ```
-let fold_left = fn f init list ->
-    match list with
-    | [] -> init
-    | x::xs -> fold_left f (f init x) xs
+let fold_left = (fn (f init list)
+    (match list
+      ([] init)
+      ((:: x xs) (fold_left f (f init x) xs))))
 
 ```
 #
@@ -78,13 +77,12 @@ let fold_left = fn f init list ->
 
 Reverses a list efficiently using an accumulator.
 ```
-let reverse = fn list ->
-    let rev_helper = fn acc xs ->
-        match xs with
-        | [] -> acc
-        | y :: ys -> rev_helper (y :: acc) ys
-    in
-    rev_helper [] list
+let reverse = (fn (list)
+    (let ((rev_helper (fn (acc xs)
+                       (match xs
+                         ([] acc)
+                         ((:: y ys) (rev_helper (:: y acc) ys))))))
+      (rev_helper [] list)))
 
 ```
 #
@@ -97,10 +95,10 @@ let reverse = fn list ->
 
 Appends two lists.
 ```
-let append = fn list1 list2 ->
-    match list1 with
-    | [] -> list2
-    | x::xs -> x :: (append xs list2)
+let append = (fn (list1 list2)
+    (match list1
+      ([] list2)
+      ((:: x xs) (:: x (append xs list2)))))
 
 ```
 #
@@ -112,8 +110,8 @@ let append = fn list1 list2 ->
 
 Flattens a list of lists into a single list.
 ```
-let flatten = fn lists ->
-    fold_left append [] lists
+let flatten = (fn (lists)
+    (fold_left append [] lists))
 
 ```
 #
@@ -124,46 +122,46 @@ let flatten = fn lists ->
 Tests various list operations.
 ```
 test "list operations" {
-    let nums = [1; 2; 3; 4; 5]
-    let empty = []
-    
-    # Test length
-    length nums == 5 &&
-    length empty == 0 &&
-    
-    # Test map
-    let doubled = map (fn x -> x * 2) nums in
-    let expected_doubled = [2; 4; 6; 8; 10] in
-    doubled == expected_doubled &&
-    map (fn x -> x + 1) empty == [] &&
-    
-    # Test filter
-    let filtered = filter (fn x -> x > 3) nums in
-    let expected_filtered = [4; 5] in
-    filtered == expected_filtered &&
-    filter (fn x -> x < 0) nums == [] &&
-    
-    # Test fold_left
-    fold_left (fn acc x -> acc + x) 0 nums == 15 &&
-    let reversed_via_fold = fold_left (fn acc x -> x :: acc) [] nums in
-    let expected_reversed = [5; 4; 3; 2; 1] in
-    reversed_via_fold == expected_reversed &&
-    
-    # Test reverse
-    reverse nums == expected_reversed &&
-    reverse empty == [] &&
-    
-    # Test append
-    let list1 = [1; 2] in
-    let list2 = [3; 4] in
-    let appended = append list1 list2 in
-    let expected_appended = [1; 2; 3; 4] in
-    appended == expected_appended &&
-    append [] nums == nums &&
-    
-    # Test flatten
-    let list_of_lists = [[1; 2]; [3; 4]; [5]] in
-    let flattened = flatten list_of_lists in
-    flattened == nums &&
-    flatten [[]] == []
+    (let ((nums [1; 2; 3; 4; 5])
+          (empty []))
+      
+      # Test length
+      (and (== (length nums) 5)
+           (== (length empty) 0)
+      
+      # Test map
+           (let ((doubled (map (fn (x) (* x 2)) nums))
+                 (expected_doubled [2; 4; 6; 8; 10]))
+             (and (== doubled expected_doubled)
+                  (== (map (fn (x) (+ x 1)) empty) [])
+      
+      # Test filter
+                  (let ((filtered (filter (fn (x) (> x 3)) nums))
+                        (expected_filtered [4; 5]))
+                    (and (== filtered expected_filtered)
+                         (== (filter (fn (x) (< x 0)) nums) [])
+      
+      # Test fold_left
+                         (== (fold_left (fn (acc x) (+ acc x)) 0 nums) 15)
+                         (let ((reversed_via_fold (fold_left (fn (acc x) (:: x acc)) [] nums))
+                               (expected_reversed [5; 4; 3; 2; 1]))
+                           (and (== reversed_via_fold expected_reversed)
+      
+      # Test reverse
+                                (== (reverse nums) expected_reversed)
+                                (== (reverse empty) [])
+      
+      # Test append
+                                (let ((list1 [1; 2])
+                                      (list2 [3; 4])
+                                      (appended (append list1 list2))
+                                      (expected_appended [1; 2; 3; 4]))
+                                  (and (== appended expected_appended)
+                                       (== (append [] nums) nums)
+      
+      # Test flatten
+                                       (let ((list_of_lists [[1; 2]; [3; 4]; [5]])
+                                             (flattened (flatten list_of_lists)))
+                                         (and (== flattened nums)
+                                              (== (flatten [[]]) [])))))))))))))))))
 }

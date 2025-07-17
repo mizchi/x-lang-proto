@@ -1,4 +1,3 @@
 module HelloWorld
 
-let main = fn () ->
-    42
+let main = (fn () 42)

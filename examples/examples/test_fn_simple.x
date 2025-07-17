@@ -1,3 +1,3 @@
 module Test
 
-let main = fn x -> x + 1
+let main = (fn (x) (+ x 1))
