@@ -344,9 +344,9 @@ mod tests {
 
     #[test]
     fn test_simple_type_checking() {
-        let source = "let x = 42";
+        let source = "module Test\nlet x = 42";
         let file_id = FileId::new(0);
-        let cu = parse_source(source, file_id, SyntaxStyle::OCaml).unwrap();
+        let cu = parse_source(source, file_id, SyntaxStyle::Haskell).unwrap();
         
         let result = cu.type_check();
         // Should not crash, though may have errors due to incomplete implementation
@@ -355,9 +355,9 @@ mod tests {
 
     #[test]
     fn test_type_check_trait() {
-        let source = "let x = true";
+        let source = "module Test\nlet x = true";
         let file_id = FileId::new(0);
-        let cu = parse_source(source, file_id, SyntaxStyle::OCaml).unwrap();
+        let cu = parse_source(source, file_id, SyntaxStyle::Haskell).unwrap();
         
         let result = cu.type_check();
         // The result should have type environment

@@ -287,7 +287,7 @@ mod tests {
     fn test_analysis() {
         let analyzer = IncrementalAnalyzer::new(100);
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::OCaml).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
         
         let result = analyzer.analyze(&ast, None);
         assert!(!result.id.is_empty());
@@ -297,7 +297,7 @@ mod tests {
     fn test_cache_functionality() {
         let analyzer = IncrementalAnalyzer::new(100);
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::OCaml).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
         
         // First analysis
         let _result1 = analyzer.analyze(&ast, None);

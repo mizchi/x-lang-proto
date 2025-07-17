@@ -13,6 +13,7 @@ use crate::namespace::{
     Import, ImportKind, Visibility,
 };
 use crate::namespace_storage::NamespaceStorage;
+use crate::content_addressing::{ContentRepository, ContentHash};
 
 /// Enhanced namespace resolver with lazy loading
 pub struct LazyNamespaceResolver {

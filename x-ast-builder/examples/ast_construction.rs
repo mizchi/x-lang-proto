@@ -2,7 +2,8 @@
 
 use x_ast_builder::*;
 use x_parser::ast::*;
-use x_parser::syntax::ocaml::OCamlPrinter;
+use x_parser::{Symbol};
+use x_parser::syntax::haskell::HaskellPrinter;
 use x_parser::syntax::{SyntaxPrinter, SyntaxConfig, SyntaxStyle};
 
 fn main() {
@@ -32,15 +33,15 @@ fn example_arithmetic() {
         .value("result", |b| {
             b.expr()
                 .binop("+", 
-                    |b| b.expr().int(2).build(),
+                    |b| b.expr().int(2),
                     |b| b.expr()
                         .binop("*",
-                            |b| b.expr().int(3).build(),
-                            |b| b.expr().int(4).build()
-                        ).build()
-                ).build()
+                            |b| b.expr().int(3),
+                            |b| b.expr().int(4)
+                        )
+                )
         })
-        .build();
+        ;
     
     print_module(&module);
     println!();
@@ -60,23 +61,22 @@ fn example_function() {
             b.expr()
                 .if_then_else(
                     |b| b.expr().binop("<=",
-                        |b| b.expr().var("n").build(),
-                        |b| b.expr().int(1).build()
-                    ).build(),
-                    |b| b.expr().int(1).build(),
+                        |b| b.expr().var("n"),
+                        |b| b.expr().int(1)
+                    ),
+                    |b| b.expr().int(1),
                     |b| b.expr().binop("*",
-                        |b| b.expr().var("n").build(),
-                        |b| b.expr().app_expr(
-                            |b| b.expr().var("factorial").build(),
+                        |b| b.expr().var("n"),
+                        |b| b.app("factorial",
                             vec![|b| b.expr().binop("-",
-                                |b| b.expr().var("n").build(),
-                                |b| b.expr().int(1).build()
-                            ).build()]
-                        ).build()
-                    ).build()
-                ).build()
+                                |b| b.expr().var("n"),
+                                |b| b.expr().int(1)
+                            )]
+                        )
+                    )
+                )
         })
-        .build();
+        ;
     
     print_module(&module);
     println!();
@@ -112,24 +112,21 @@ fn example_pattern_matching() {
                 span: b.span(),
             };
             
-            b.expr()
-                .match_expr(
-                    |b| b.expr().var("opt").build(),
-                    vec![
-                        (none_pattern, |b| b.expr().var("None").build()),
-                        (some_pattern, |b| {
-                            b.expr().app_expr(
-                                |b| b.expr().var("Some").build(),
-                                vec![|b| b.expr().app_expr(
-                                    |b| b.expr().var("f").build(),
-                                    vec![|b| b.expr().var("x").build()]
-                                ).build()]
-                            ).build()
-                        }),
-                    ]
-                ).build()
+            b.match_expr(
+                |b| b.expr().var("opt"),
+                vec![
+                    (none_pattern, |b| b.expr().var("None")),
+                    (some_pattern, |b| {
+                        b.app("Some",
+                            vec![|b| b.app("f",
+                                vec![|b| b.expr().var("x")]
+                            )]
+                        )
+                    }),
+                ]
+            )
         })
-        .build();
+        ;
     
     print_module(&module);
     println!();
@@ -156,10 +153,10 @@ fn example_complex_program() {
         .function("greet", vec!["person"], |b| {
             b.expr().app("print_endline", vec![
                 |b| b.expr().binop("^",
-                    |b| b.expr().string("Hello, ").build(),
-                    |b| b.expr().var("person").build()
-                ).build()
-            ]).build()
+                    |b| b.expr().string("Hello, "),
+                    |b| b.expr().var("person")
+                )
+            ])
         })
         
         // Main function with let bindings
@@ -167,37 +164,37 @@ fn example_complex_program() {
             b.expr()
                 .let_in("people", 
                     |b| b.expr().list(vec![
-                        |b| b.expr().string("Alice").build(),
-                        |b| b.expr().string("Bob").build(),
-                        |b| b.expr().string("Charlie").build(),
-                    ]).build(),
+                        |b| b.expr().string("Alice"),
+                        |b| b.expr().string("Bob"),
+                        |b| b.expr().string("Charlie"),
+                    ]),
                     |b| b.expr()
                         .let_in("count",
                             |b| b.expr().app("length", vec![
-                                |b| b.expr().var("people").build()
-                            ]).build(),
+                                |b| b.expr().var("people")
+                            ]),
                             |b| b.expr().do_block(vec![
                                 |b| DoStatement::Expr(
                                     b.expr().app("print_endline", vec![
-                                        |b| b.expr().string("Greeting people...").build()
-                                    ]).build()
+                                        |b| b.expr().string("Greeting people...")
+                                    ])
                                 ),
                                 |b| DoStatement::Expr(
                                     b.expr().app("iter", vec![
-                                        |b| b.expr().var("greet").build(),
-                                        |b| b.expr().var("people").build()
-                                    ]).build()
+                                        |b| b.expr().var("greet"),
+                                        |b| b.expr().var("people")
+                                    ])
                                 ),
                                 |b| DoStatement::Expr(
                                     b.expr().app("print_int", vec![
-                                        |b| b.expr().var("count").build()
-                                    ]).build()
+                                        |b| b.expr().var("count")
+                                    ])
                                 ),
-                            ]).build()
-                        ).build()
-                ).build()
+                            ])
+                        )
+                )
         })
-        .build();
+        ;
     
     print_module(&module);
     println!();
@@ -211,14 +208,14 @@ fn print_module(module: &Module) {
     };
     
     let config = SyntaxConfig {
-        style: SyntaxStyle::OCaml,
+        style: SyntaxStyle::Haskell,
         indent_size: 2,
         use_tabs: false,
         max_line_length: 80,
         preserve_comments: true,
     };
     
-    let printer = OCamlPrinter::new();
+    let printer = HaskellPrinter::new();
     match printer.print(&cu, &config) {
         Ok(code) => println!("{}", code),
         Err(e) => println!("Error printing: {:?}", e),

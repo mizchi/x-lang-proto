@@ -251,7 +251,7 @@ impl AstBuilder {
     
     /// Boolean literal
     pub fn bool(&mut self, value: bool) -> Expr {
-        // x Language uses OCaml-style true/false as constructors
+        // x Language uses Haskell-style true/false as constructors
         Expr::Var(Symbol::intern(if value { "true" } else { "false" }), self.span())
     }
     
@@ -507,6 +507,14 @@ impl<'a> ExprBuilder<'a> {
     
     pub fn var(self, name: &str) -> Expr {
         self.builder.var(name)
+    }
+    
+    pub fn string(self, value: &str) -> Expr {
+        self.builder.string(value)
+    }
+    
+    pub fn app(self, func: &str, args: Vec<impl FnOnce(&mut AstBuilder) -> Expr>) -> Expr {
+        self.builder.app(func, args)
     }
     
     pub fn binop<F1, F2>(self, op: &str, left: F1, right: F2) -> Expr

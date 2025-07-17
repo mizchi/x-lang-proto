@@ -84,6 +84,7 @@ impl Default for AstBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use x_parser::Expr;
     
     #[test]
     fn test_simple_module_construction() {
@@ -122,8 +123,7 @@ mod tests {
                 |e| e.binop(">", |e| e.var("x"), |e| e.int(0)),
                 |e| e.binop("*", |e| e.var("x"), |e| e.int(2)),
                 |e| e.int(0)
-            )
-            .build();
+            );
         
         match expr {
             Expr::If { .. } => (),

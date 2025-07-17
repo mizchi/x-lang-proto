@@ -4,7 +4,8 @@
 //! ensuring that all performed effects have corresponding handlers.
 
 use std::collections::{HashSet, HashMap};
-use crate::types::{Type, TypeVar, EffectSet, Effect as TypeEffect};
+use crate::types::{Type, EffectSet, Effect as TypeEffect};
+#[allow(unused_imports)]
 use crate::error_reporting::TypeError;
 use x_parser::Symbol;
 

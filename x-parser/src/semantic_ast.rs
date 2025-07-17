@@ -4,7 +4,6 @@
 //! while still being relatively minimal.
 
 use crate::span::Span;
-use std::fmt;
 
 /// Expression with semantic information
 #[derive(Debug, Clone, PartialEq)]

@@ -3,8 +3,6 @@
 //! This module provides various test reporters for displaying test results.
 
 use std::collections::HashMap;
-use std::io::Write;
-use anyhow::Result;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use x_editor::content_addressing::ContentHash;

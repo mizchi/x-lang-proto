@@ -9,11 +9,10 @@ use std::collections::HashMap;
 use anyhow::{Result, anyhow};
 use x_parser::{Symbol, ast::*};
 use x_editor::content_addressing::{ContentHash, ContentRepository};
-use x_editor::namespace::{NamespacePath, FullyQualifiedName};
+use x_editor::namespace::NamespacePath;
 use x_compiler::{
     pipeline::CompilationPipeline,
     config::CompilerConfig,
-    backend::CompilationTarget,
 };
 use crate::test_cache::{TestCache, CachedTestResult};
 use crate::test_discovery::{TestCase, TestSuite};
@@ -175,7 +174,7 @@ impl TestRunner {
         // Run the test
         let start = std::time::Instant::now();
         let result = self.execute_test(test)?;
-        let duration_ms = start.elapsed().as_millis() as u64;
+        let _duration_ms = start.elapsed().as_millis() as u64;
         
         // Cache the result
         let cached_result = CachedTestResult {
@@ -229,7 +228,7 @@ impl TestRunner {
     fn execute_test(&mut self, test: &TestCase) -> Result<TestResult> {
         // For now, we'll simulate test execution
         // In a real implementation, we'd compile and run the test
-        let compiled = self.simulate_test_execution(test)?;
+        let _compiled = self.simulate_test_execution(test)?;
         
         // Set up test environment
         let _test_env = self.create_test_environment(test)?;

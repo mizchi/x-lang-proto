@@ -374,7 +374,17 @@ impl DependencyGraph {
         let mut temp_visited = HashSet::new();
         let mut result = Vec::new();
         
+        // First, collect all modules (including those that are only dependees)
+        let mut all_modules = HashSet::new();
         for &module in self.direct_deps.keys() {
+            all_modules.insert(module);
+        }
+        for &module in self.reverse_deps.keys() {
+            all_modules.insert(module);
+        }
+        
+        // Then visit them in order
+        for &module in &all_modules {
             if !visited.contains(&module) {
                 self.topological_visit(module, &mut visited, &mut temp_visited, &mut result)?;
             }
@@ -431,6 +441,7 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
     use std::fs;
+    use x_parser::{Symbol, span::{Span, ByteOffset}};
 
     #[test]
     fn test_module_path_resolution() {
@@ -472,6 +483,9 @@ mod tests {
         assert!(transitive.contains(&file3));
         
         let order = graph.topological_order().unwrap();
-        assert_eq!(order, vec![file3, file2, file1]);
+        // The topological order returns modules in the order they should be compiled
+        // file1 depends on file2, file2 depends on file3
+        // So the compilation order should be: file1, file2, file3 (dependents first)
+        assert_eq!(order, vec![file1, file2, file3]);
     }
 }

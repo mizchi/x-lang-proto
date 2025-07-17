@@ -63,12 +63,12 @@ let stateful_computation = fun () ->
 }
 
 fn benchmark_syntax_styles(c: &mut Criterion) {
-    let ocaml_source = "module Test\n\nlet main = fun () -> 42";
+    let haskell_source = "module Test\n\nlet main = fun () -> 42";
     
-    c.bench_function("parse_ocaml_style", |b| {
+    c.bench_function("parse_haskell_style", |b| {
         b.iter(|| {
             let file_id = FileId::new(0);
-            parse_source(black_box(ocaml_source), file_id, SyntaxStyle::Haskell)
+            parse_source(black_box(haskell_source), file_id, SyntaxStyle::Haskell)
         })
     });
 }

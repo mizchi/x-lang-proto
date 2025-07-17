@@ -1,7 +1,7 @@
 //! Edit session management
 
-use crate::operations::EditOperation;
-use x_parser::CompilationUnit;
+use crate::operations::{EditOperation, InsertOperation, EditableNode};
+use x_parser::{CompilationUnit, Expr, Literal, Span, FileId, span::ByteOffset};
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 use uuid::Uuid;
@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_session_creation() {
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::OCaml).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
         let id = SessionId::new();
         let session = EditSession::new(id, ast);
         
@@ -217,13 +217,13 @@ mod tests {
     #[test]
     fn test_operation_history() {
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::OCaml).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
         let id = SessionId::new();
         let mut session = EditSession::new(id, ast);
         
         let operation = EditOperation::Insert(InsertOperation {
             path: vec![0],
-            node: AstNode::Expression(Expression::Literal(Literal::Int(100))),
+            node: EditableNode::Expr(Expr::Literal(Literal::Integer(100), Span::new(FileId::new(0), ByteOffset(0), ByteOffset(3)))),
         });
         
         session.add_operation(operation);
@@ -235,13 +235,13 @@ mod tests {
     #[test]
     fn test_undo_redo() {
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::OCaml).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
         let id = SessionId::new();
         let mut session = EditSession::new(id, ast);
         
         let operation = EditOperation::Insert(InsertOperation {
             path: vec![0],
-            node: AstNode::Expression(Expression::Literal(Literal::Int(100))),
+            node: EditableNode::Expr(Expr::Literal(Literal::Integer(100), Span::new(FileId::new(0), ByteOffset(0), ByteOffset(3)))),
         });
         
         session.add_operation(operation);
@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn test_session_state() {
         let source = "let x = 42";
-        let ast = parse_source(source, FileId::new(0), SyntaxStyle::OCaml).unwrap();
+        let ast = parse_source(source, FileId::new(0), SyntaxStyle::Haskell).unwrap();
         let id = SessionId::new();
         let mut session = EditSession::new(id, ast);
         

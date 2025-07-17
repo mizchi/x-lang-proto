@@ -543,7 +543,7 @@ impl ConstraintSolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::symbol::Symbol;
+    use x_parser::Symbol;
     
     #[test]
     fn test_variable_unification() {

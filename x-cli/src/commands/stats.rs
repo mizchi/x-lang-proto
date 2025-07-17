@@ -49,7 +49,7 @@ fn display_table_stats() {
         .headers(vec!["Format", "Count", "Size"])
         .row(vec!["Binary (.x)", "2", "1.2 KB"])
         .row(vec!["Rust-like (.rustic.x)", "2", "3.4 KB"])
-        .row(vec!["OCaml (.ocaml.x)", "1", "1.1 KB"])
+        .row(vec!["Haskell (.haskell.x)", "1", "1.1 KB"])
         .print();
 }
 
@@ -64,7 +64,7 @@ fn display_json_stats() {
         "file_types": {
             "binary": { "count": 2, "size": 1200 },
             "rustic": { "count": 2, "size": 3400 },
-            "ocaml": { "count": 1, "size": 1100 }
+            "haskell": { "count": 1, "size": 1100 }
         }
     });
     

@@ -436,13 +436,14 @@ impl std::error::Error for ConstraintError {}
 mod tests {
     use super::*;
     use crate::types::TypeVar;
+    use x_parser::{FileId, span::ByteOffset};
 
     #[test]
     fn test_constraint_set_creation() {
         let mut constraints = ConstraintSet::new();
         assert!(constraints.is_empty());
 
-        let span = Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0));
+        let span = Span::new(FileId(u32::MAX), ByteOffset(0), ByteOffset(0));
         constraints.equal(Type::Con(Symbol::intern("Int")), Type::Con(Symbol::intern("Int")), span);
         assert!(!constraints.is_empty());
         assert_eq!(constraints.type_constraints.len(), 1);

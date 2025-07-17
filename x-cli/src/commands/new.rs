@@ -348,7 +348,7 @@ cargo run --bin x -- repl --preload main.x
 ```bash
 # Convert to text formats for viewing
 cargo run --bin x -- convert main.x --to rustic
-cargo run --bin x -- convert main.x --to ocaml
+cargo run --bin x -- convert main.x --to haskell
 
 # Convert to JSON for inspection
 cargo run --bin x -- convert main.x --to json

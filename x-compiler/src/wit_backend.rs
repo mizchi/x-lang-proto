@@ -221,11 +221,18 @@ mod tests {
     #[test]
     fn test_cargo_toml_generation() {
         let backend = WitBackend::new();
+        use x_parser::{Module, ModulePath, Symbol, Span, FileId, span::ByteOffset};
+        let span = Span::new(FileId::new(0), ByteOffset(0), ByteOffset(0));
         let cu = CompilationUnit {
-            package_name: Some(Symbol::new("test-package")),
-            modules: vec![],
-            imports: vec![],
-            exports: vec![],
+            module: Module {
+                documentation: None,
+                name: ModulePath::single(Symbol::intern("test-package"), span),
+                exports: None,
+                imports: vec![],
+                items: vec![],
+                span,
+            },
+            span,
         };
 
         let cargo_toml = backend.generate_cargo_toml(&cu).unwrap();

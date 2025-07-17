@@ -6,7 +6,7 @@
 use x_ast_builder::*;
 use x_parser::ast::*;
 use x_parser::{Symbol, FileId};
-use x_parser::syntax::ocaml::OCamlPrinter;
+use x_parser::syntax::haskell::HaskellPrinter;
 use x_parser::syntax::{SyntaxPrinter, SyntaxConfig, SyntaxStyle};
 use std::collections::HashMap;
 
@@ -139,11 +139,11 @@ fn generate_record_module(record: &RecordDef) -> Module {
             let args: Vec<Box<dyn Fn(&mut AstBuilder) -> Expr>> = record.fields.iter()
                 .map(|f| {
                     let name = f.name.clone();
-                    Box::new(move |b: &mut AstBuilder| b.expr().var(&name).build()) as Box<dyn Fn(&mut AstBuilder) -> Expr>
+                    Box::new(move |b: &mut AstBuilder| b.expr().var(&name)) as Box<dyn Fn(&mut AstBuilder) -> Expr>
                 })
                 .collect();
             
-            b.expr().app(&record.name, args).build()
+            b.app(&record.name, args)
         }
     );
     
@@ -171,14 +171,14 @@ fn generate_record_module(record: &RecordDef) -> Module {
                 };
                 
                 b.expr().match_expr(
-                    |b| b.expr().var("record").build(),
-                    vec![(pattern, |b| b.expr().var(&field_name).build())]
-                ).build()
+                    |b| b.expr().var("record"),
+                    vec![(pattern, |b| b.expr().var(&field_name))]
+                )
             }
         );
     }
     
-    module_builder.build()
+    module_builder
 }
 
 fn generate_api_client(name: &str, endpoints: &[ApiEndpoint]) -> Module {
@@ -192,7 +192,7 @@ fn generate_api_client(name: &str, endpoints: &[ApiEndpoint]) -> Module {
     
     // Generate base URL constant
     module_builder = module_builder.value("baseUrl", |b| {
-        b.expr().string("https://api.example.com").build()
+        b.expr().string("https://api.example.com")
     });
     
     // Generate endpoint functions
@@ -208,43 +208,43 @@ fn generate_api_client(name: &str, endpoints: &[ApiEndpoint]) -> Module {
                 // Build URL
                 let url_expr = if path.contains("{") {
                     // Template substitution needed
-                    b.expr().app("formatUrl", vec![
-                        |b| b.expr().string(&path).build(),
-                        |b| b.expr().var("request").build(),
-                    ]).build()
+                    b.app("formatUrl", vec![
+                        |b| b.expr().string(&path),
+                        |b| b.expr().var("request"),
+                    ])
                 } else {
                     b.expr().binop("^",
-                        |b| b.expr().var("baseUrl").build(),
-                        |b| b.expr().string(&path).build()
-                    ).build()
+                        |b| b.expr().var("baseUrl"),
+                        |b| b.expr().string(&path)
+                    )
                 };
                 
                 // Make HTTP request
                 b.expr().let_in("response",
                     move |b| {
-                        b.expr().app(&format!("Http.{}", method.to_lowercase()), vec![
+                        b.app(&format!("Http.{}", method.to_lowercase()), vec![
                             move |_| url_expr.clone(),
                             |b| if endpoint.request_type == "Unit" {
-                                b.expr().unit().build()
+                                b.expr().unit()
                             } else {
-                                b.expr().app("Json.encode", vec![
-                                    |b| b.expr().var("request").build()
-                                ]).build()
+                                b.app("Json.encode", vec![
+                                    |b| b.expr().var("request")
+                                ])
                             },
-                        ]).build()
+                        ])
                     },
                     |b| {
                         // Decode response
-                        b.expr().app(&format!("Json.decode{}", response_type.replace("List[", "List").replace("]", "")), vec![
-                            |b| b.expr().var("response").build()
-                        ]).build()
+                        b.app(&format!("Json.decode{}", response_type.replace("List[", "List").replace("]", "")), vec![
+                            |b| b.expr().var("response")
+                        ])
                     }
-                ).build()
+                )
             }
         );
     }
     
-    module_builder.build()
+    module_builder
 }
 
 fn generate_serialization_module(types: &[(&str, Vec<(&str, &str)>)]) -> Module {
@@ -279,24 +279,24 @@ fn generate_serialization_module(types: &[(&str, Vec<(&str, &str)>)]) -> Module 
                 };
                 
                 b.expr().match_expr(
-                    |b| b.expr().var("value").build(),
+                    |b| b.expr().var("value"),
                     vec![(pattern, move |b| {
                         // Create JSON object
                         let field_exprs: Vec<Box<dyn Fn(&mut AstBuilder) -> Expr>> = field_names.iter()
                             .map(|name| {
                                 let n = name.clone();
                                 Box::new(move |b: &mut AstBuilder| {
-                                    b.expr().app("Json.field", vec![
-                                        move |b| b.expr().string(&n).build(),
-                                        move |b| b.expr().var(&n).build(),
-                                    ]).build()
+                                    b.app("Json.field", vec![
+                                        move |b| b.expr().string(&n),
+                                        move |b| b.expr().var(&n),
+                                    ])
                                 }) as Box<dyn Fn(&mut AstBuilder) -> Expr>
                             })
                             .collect();
                         
-                        b.expr().app("Json.object", field_exprs).build()
+                        b.app("Json.object", field_exprs)
                     })]
-                ).build()
+                )
             }
         );
         
@@ -323,42 +323,42 @@ fn generate_serialization_module(types: &[(&str, Vec<(&str, &str)>)]) -> Module 
                         // Last field: construct the record
                         expr = expr.let_in(&field_name_owned,
                             move |b| {
-                                b.expr().app(&format!("Json.get{}", capitalize(&field_type_owned)), vec![
-                                    |b| b.expr().string(&field_name_owned).build(),
-                                    |b| b.expr().var("json").build(),
-                                ]).build()
+                                b.app(&format!("Json.get{}", capitalize(&field_type_owned)), vec![
+                                    |b| b.expr().string(&field_name_owned),
+                                    |b| b.expr().var("json"),
+                                ])
                             },
                             move |b| {
                                 // Construct the record
                                 let args: Vec<Box<dyn Fn(&mut AstBuilder) -> Expr>> = fields_owned.iter()
                                     .map(|(name, _)| {
                                         let n = name.clone();
-                                        Box::new(move |b: &mut AstBuilder| b.expr().var(&n).build()) as Box<dyn Fn(&mut AstBuilder) -> Expr>
+                                        Box::new(move |b: &mut AstBuilder| b.expr().var(&n)) as Box<dyn Fn(&mut AstBuilder) -> Expr>
                                     })
                                     .collect();
                                 
-                                b.expr().app(&type_name_owned, args).build()
+                                b.app(&type_name_owned, args)
                             }
                         );
                     } else {
                         expr = expr.let_in(&field_name_owned,
                             move |b| {
-                                b.expr().app(&format!("Json.get{}", capitalize(&field_type_owned)), vec![
-                                    |b| b.expr().string(&field_name_owned).build(),
-                                    |b| b.expr().var("json").build(),
-                                ]).build()
+                                b.app(&format!("Json.get{}", capitalize(&field_type_owned)), vec![
+                                    |b| b.expr().string(&field_name_owned),
+                                    |b| b.expr().var("json"),
+                                ])
                             },
-                            |b| b.expr().unit().build() // Placeholder, will be replaced
+                            |b| b.expr().unit() // Placeholder, will be replaced
                         );
                     }
                 }
                 
-                expr.build()
+                expr
             }
         );
     }
     
-    module_builder.build()
+    module_builder
 }
 
 // Helper functions
@@ -386,14 +386,14 @@ fn print_module(module: &Module) {
     };
     
     let config = SyntaxConfig {
-        style: SyntaxStyle::OCaml,
+        style: SyntaxStyle::Haskell,
         indent_size: 2,
         use_tabs: false,
         max_line_length: 80,
         preserve_comments: true,
     };
     
-    let printer = OCamlPrinter::new();
+    let printer = HaskellPrinter::new();
     match printer.print(&cu, &config) {
         Ok(code) => println!("{}", code),
         Err(e) => println!("Error printing: {:?}", e),

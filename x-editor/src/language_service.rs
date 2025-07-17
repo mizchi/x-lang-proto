@@ -101,7 +101,7 @@ mod tests {
     fn test_language_service_creation() {
         let config = LanguageServiceConfig::default();
         let service = LanguageService::new(config);
-        assert_eq!(service.config.default_syntax, SyntaxStyle::OCaml);
+        assert_eq!(service.config.default_syntax, SyntaxStyle::Haskell);
     }
 
     #[test]

@@ -52,7 +52,7 @@ impl Default for TargetConfig {
 }
 
 /// Configuration value types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ConfigValue {
     Bool(bool),

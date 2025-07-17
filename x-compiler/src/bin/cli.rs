@@ -67,7 +67,7 @@ struct CompileArgs {
     target: String,
     
     /// Syntax style for parsing
-    #[arg(short, long, default_value = "ocaml")]
+    #[arg(short, long, default_value = "haskell")]
     syntax: String,
     
     /// Optimization level (0-3)
@@ -97,7 +97,7 @@ struct CheckArgs {
     input: PathBuf,
     
     /// Syntax style for parsing
-    #[arg(short, long, default_value = "ocaml")]
+    #[arg(short, long, default_value = "haskell")]
     syntax: String,
 }
 
@@ -107,7 +107,7 @@ struct ParseArgs {
     input: PathBuf,
     
     /// Syntax style for parsing
-    #[arg(short, long, default_value = "ocaml")]
+    #[arg(short, long, default_value = "haskell")]
     syntax: String,
     
     /// Output format (json, debug, pretty)
@@ -348,10 +348,10 @@ mod tests {
     
     #[test]
     fn test_parse_syntax_style() {
-        assert_eq!(parse_syntax_style("ocaml").unwrap(), SyntaxStyle::OCaml);
+        assert_eq!(parse_syntax_style("haskell").unwrap(), SyntaxStyle::Haskell);
         assert_eq!(parse_syntax_style("sexp").unwrap(), SyntaxStyle::SExpression);
         assert_eq!(parse_syntax_style("haskell").unwrap(), SyntaxStyle::Haskell);
-        assert_eq!(parse_syntax_style("rust").unwrap(), SyntaxStyle::RustLike);
+        // Rust style no longer supported
         
         assert!(parse_syntax_style("invalid").is_err());
     }

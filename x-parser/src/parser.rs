@@ -297,7 +297,7 @@ impl Parser {
         if visibility == Visibility::Private && self.check(&TokenKind::Ident(String::new())) {
             // Look ahead to see if this is a module shorthand
             let saved_pos = self.current;
-            if let Ok(ident) = self.parse_identifier() {
+            if let Ok(_ident) = self.parse_identifier() {
                 if self.match_token(&TokenKind::Dot) {
                     // This is module shorthand syntax
                     self.current = saved_pos; // Reset position

@@ -503,7 +503,7 @@ fn sanitize_rust_identifier(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::ast::Module;
+    use x_parser::Module;
 
     #[test]
     fn test_wasm_component_backend_creation() {
@@ -528,9 +528,16 @@ mod tests {
     fn test_type_conversion() {
         let backend = WasmComponentBackend::new();
         
-        assert_eq!(backend.type_to_rust_type(&Type::Int), "i32");
-        assert_eq!(backend.type_to_rust_type(&Type::String), "String");
-        assert_eq!(backend.type_to_rust_type(&Type::Bool), "bool");
-        assert_eq!(backend.type_to_rust_type(&Type::List(Box::new(Type::Int))), "Vec<i32>");
+        use x_parser::{Symbol, Span, FileId, span::ByteOffset};
+        let span = Span::new(FileId::new(0), ByteOffset(0), ByteOffset(0));
+        
+        assert_eq!(backend.type_to_rust_type(&Type::Con(Symbol::intern("Int"), span)), "i32");
+        assert_eq!(backend.type_to_rust_type(&Type::Con(Symbol::intern("String"), span)), "String");
+        assert_eq!(backend.type_to_rust_type(&Type::Con(Symbol::intern("Bool"), span)), "bool");
+        assert_eq!(backend.type_to_rust_type(&Type::App(
+            Box::new(Type::Con(Symbol::intern("List"), span)),
+            vec![Type::Con(Symbol::intern("Int"), span)],
+            span
+        )), "Vec<i32>");
     }
 }

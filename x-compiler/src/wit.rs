@@ -1,4 +1,4 @@
-use x_parser::{CompilationUnit, Module, Item, TypeDef, TypeDefKind, ValueDef, Symbol, Type, Visibility, WasmType, ComponentInterface, InterfaceItem, FunctionSignature, ResourceMethod, span::{Span, FileId, ByteOffset}};
+use x_parser::{CompilationUnit, Module, ModulePath, Item, TypeDef, TypeDefKind, ValueDef, Symbol, Type, Visibility, WasmType, ComponentInterface, InterfaceItem, FunctionSignature, ResourceMethod, span::{Span, FileId, ByteOffset}};
 use std::fmt::Write;
 
 /// WebAssembly Interface Types (WIT) generator
@@ -382,15 +382,17 @@ mod tests {
     #[test]
     fn test_basic_wit_generation() {
         let mut generator = WitGenerator::new();
+        let span = Span::new(FileId::new(0), ByteOffset(0), ByteOffset(0));
         let compilation_unit = CompilationUnit {
             module: Module {
-                name: ModulePath::single(Symbol::intern("test:package"), Span::default()),
+                documentation: None,
+                name: ModulePath::single(Symbol::intern("test:package"), span),
                 exports: None,
                 imports: vec![],
                 items: vec![],
-                span: Span::default(),
+                span,
             },
-            span: Span::default(),
+            span,
         };
 
         let result = generator.generate(&compilation_unit).unwrap();

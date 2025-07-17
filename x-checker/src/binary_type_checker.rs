@@ -1,20 +1,19 @@
 //! Binary AST Type Checker
-//! 
+//!
 //! This module provides type checking directly on binary AST format,
 //! enabling faster type analysis by avoiding AST reconstruction.
 
+use crate::{
+    error_reporting::{TypeError, TypeErrorReporter},
+    inference::{InferenceContext, InferenceResult},
+    types::*,
+};
+use std::collections::HashMap;
+use std::result::Result as StdResult;
 use x_parser::{
     binary::{BinaryDeserializer, TypeCode, TypedBinaryNode},
-    Symbol,
-    Span,
+    Span, Symbol,
 };
-use crate::{
-    types::*,
-    inference::{InferenceContext, InferenceResult},
-    error_reporting::{TypeError, TypeErrorReporter},
-};
-use std::result::Result as StdResult;
-use std::collections::HashMap;
 
 /// Binary type checker that operates directly on binary AST
 #[derive(Debug)]
@@ -45,15 +44,19 @@ impl BinaryTypeChecker {
             inference_cache: HashMap::new(),
         }
     }
-    
+
     /// Type check a binary compilation unit
-    pub fn check_binary_compilation_unit(&mut self, binary_data: &[u8]) -> StdResult<TypeCheckResult, String> {
-        let mut deserializer = BinaryDeserializer::new(binary_data.to_vec()).map_err(|e| format!("Binary deserializer error: {e:?}"))?;
-        
+    pub fn check_binary_compilation_unit(
+        &mut self,
+        binary_data: &[u8],
+    ) -> StdResult<TypeCheckResult, String> {
+        let mut deserializer = BinaryDeserializer::new(binary_data.to_vec())
+            .map_err(|e| format!("Binary deserializer error: {e:?}"))?;
+
         // Check if binary contains cached type information
         let has_types = deserializer.has_type_information();
         let has_effects = deserializer.has_cached_effects();
-        
+
         if has_types && has_effects {
             // Use cached type information for fast validation
             self.validate_cached_types(&mut deserializer)
@@ -62,23 +65,26 @@ impl BinaryTypeChecker {
             self.infer_types_from_binary(&mut deserializer)
         }
     }
-    
+
     /// Validate pre-computed type information in binary format
-    fn validate_cached_types(&mut self, deserializer: &mut BinaryDeserializer) -> StdResult<TypeCheckResult, String> {
+    fn validate_cached_types(
+        &mut self,
+        deserializer: &mut BinaryDeserializer,
+    ) -> StdResult<TypeCheckResult, String> {
         let mut results = Vec::new();
         let mut node_count = 0;
-        
+
         // Load type metadata
         self.load_type_cache(deserializer)?;
-        
+
         // Validate each typed node
         while let Ok((expr, typ, effects)) = deserializer.deserialize_typed_expr() {
             node_count += 1;
-            
+
             if let (Some(_cached_type), Some(_cached_effects)) = (typ, effects) {
                 // TODO: Convert x-parser types to x-checker types and validate
                 // For now, skip validation
-                
+
                 results.push(TypedNode {
                     node_id: node_count,
                     inferred_type: Type::Hole, // TODO: Convert from cached_type
@@ -100,7 +106,7 @@ impl BinaryTypeChecker {
                 });
             }
         }
-        
+
         Ok(TypeCheckResult {
             typed_nodes: results,
             errors: self.error_reporter.errors().to_vec(),
@@ -108,18 +114,21 @@ impl BinaryTypeChecker {
             node_count,
         })
     }
-    
+
     /// Perform type inference directly on binary AST
-    fn infer_types_from_binary(&mut self, _deserializer: &mut BinaryDeserializer) -> StdResult<TypeCheckResult, String> {
+    fn infer_types_from_binary(
+        &mut self,
+        _deserializer: &mut BinaryDeserializer,
+    ) -> StdResult<TypeCheckResult, String> {
         let results = Vec::new();
         let node_count = 0;
-        
+
         // Create inference context
         let _inference_ctx = InferenceContext::new();
-        
+
         // TODO: Implement proper binary node processing
         // For now, skip binary node processing since the deserialize_binary_node method is not available
-        
+
         Ok(TypeCheckResult {
             typed_nodes: results,
             errors: self.error_reporter.errors().to_vec(),
@@ -127,43 +136,39 @@ impl BinaryTypeChecker {
             node_count,
         })
     }
-    
+
     /// Infer type for a single binary node
     #[allow(dead_code)]
-    fn infer_binary_node(&mut self, ctx: &mut InferenceContext, node: &TypedBinaryNode) -> StdResult<InferenceResult, String> {
+    fn infer_binary_node(
+        &mut self,
+        ctx: &mut InferenceContext,
+        node: &TypedBinaryNode,
+    ) -> StdResult<InferenceResult, String> {
         match node.node_type {
-            TypeCode::LiteralInteger => {
-                Ok(InferenceResult {
-                    typ: Type::Con(Symbol::intern("Int")),
-                    effects: EffectSet::Empty,
-                    constraints: Vec::new(),
-                })
-            }
-            TypeCode::LiteralString => {
-                Ok(InferenceResult {
-                    typ: Type::Con(Symbol::intern("String")),
-                    effects: EffectSet::Empty,
-                    constraints: Vec::new(),
-                })
-            }
-            TypeCode::LiteralBool => {
-                Ok(InferenceResult {
-                    typ: Type::Con(Symbol::intern("Bool")),
-                    effects: EffectSet::Empty,
-                    constraints: Vec::new(),
-                })
-            }
-            TypeCode::LiteralUnit => {
-                Ok(InferenceResult {
-                    typ: Type::Con(Symbol::intern("Unit")),
-                    effects: EffectSet::Empty,
-                    constraints: Vec::new(),
-                })
-            }
+            TypeCode::LiteralInteger => Ok(InferenceResult {
+                typ: Type::Con(Symbol::intern("Int")),
+                effects: EffectSet::Empty,
+                constraints: Vec::new(),
+            }),
+            TypeCode::LiteralString => Ok(InferenceResult {
+                typ: Type::Con(Symbol::intern("String")),
+                effects: EffectSet::Empty,
+                constraints: Vec::new(),
+            }),
+            TypeCode::LiteralBool => Ok(InferenceResult {
+                typ: Type::Con(Symbol::intern("Bool")),
+                effects: EffectSet::Empty,
+                constraints: Vec::new(),
+            }),
+            TypeCode::LiteralUnit => Ok(InferenceResult {
+                typ: Type::Con(Symbol::intern("Unit")),
+                effects: EffectSet::Empty,
+                constraints: Vec::new(),
+            }),
             TypeCode::ExprVar => {
                 // Decode variable name from payload
                 let symbol = self.decode_symbol_from_payload(&node.payload)?;
-                
+
                 // Look up in type environment
                 if let Some(scheme) = ctx.env.lookup_var(symbol) {
                     let scheme_clone = scheme.clone();
@@ -182,9 +187,7 @@ impl BinaryTypeChecker {
                 // This would require more complex binary payload parsing
                 self.infer_application_from_payload(ctx, &node.payload)
             }
-            TypeCode::ExprLambda => {
-                self.infer_lambda_from_payload(ctx, &node.payload)
-            }
+            TypeCode::ExprLambda => self.infer_lambda_from_payload(ctx, &node.payload),
             _ => {
                 // Fallback to generic inference
                 Ok(InferenceResult {
@@ -195,31 +198,39 @@ impl BinaryTypeChecker {
             }
         }
     }
-    
+
     /// Load type cache from binary metadata
     fn load_type_cache(&mut self, deserializer: &mut BinaryDeserializer) -> StdResult<(), String> {
         // Read type metadata section
-        let type_count = deserializer.read_u32().map_err(|e| format!("Failed to read type count: {e:?}"))?;
-        
+        let type_count = deserializer
+            .read_u32()
+            .map_err(|e| format!("Failed to read type count: {e:?}"))?;
+
         for _i in 0..type_count {
-            let type_id = deserializer.read_u32().map_err(|e| format!("Failed to read type id: {e:?}"))?;
+            let type_id = deserializer
+                .read_u32()
+                .map_err(|e| format!("Failed to read type id: {e:?}"))?;
             // TODO: Implement proper type deserialization once API is available
             // For now, store placeholder types
             self.type_cache.insert(type_id, Type::Hole);
         }
-        
+
         // Read effect cache
-        let effect_count = deserializer.read_u32().map_err(|e| format!("Failed to read effect count: {e:?}"))?;
+        let effect_count = deserializer
+            .read_u32()
+            .map_err(|e| format!("Failed to read effect count: {e:?}"))?;
         for _i in 0..effect_count {
-            let effect_id = deserializer.read_u32().map_err(|e| format!("Failed to read effect id: {e:?}"))?;
+            let effect_id = deserializer
+                .read_u32()
+                .map_err(|e| format!("Failed to read effect id: {e:?}"))?;
             // TODO: Implement proper effect deserialization once API is available
             // For now, store empty effect sets
             self.effect_cache.insert(effect_id, EffectSet::Empty);
         }
-        
+
         Ok(())
     }
-    
+
     /// Validate a cached type against current context
     #[allow(dead_code)]
     fn validate_type_in_context(&self, _typ: &Type, _effects: &EffectSet) -> StdResult<(), String> {
@@ -227,22 +238,26 @@ impl BinaryTypeChecker {
         // TODO: Add proper type variable and effect validation
         Ok(())
     }
-    
+
     /// Decode symbol from binary payload
     #[allow(dead_code)]
     fn decode_symbol_from_payload(&self, payload: &[u8]) -> StdResult<Symbol, String> {
         if payload.len() < 4 {
             return Err("Invalid symbol payload".to_string());
         }
-        
+
         let symbol_id = u32::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]);
         // Look up symbol in table (would need access to deserializer's symbol table)
         Ok(Symbol::intern(&format!("sym_{symbol_id}")))
     }
-    
+
     /// Infer function application from binary payload
     #[allow(dead_code)]
-    fn infer_application_from_payload(&mut self, ctx: &mut InferenceContext, _payload: &[u8]) -> StdResult<InferenceResult, String> {
+    fn infer_application_from_payload(
+        &mut self,
+        ctx: &mut InferenceContext,
+        _payload: &[u8],
+    ) -> StdResult<InferenceResult, String> {
         // Simplified implementation - would need proper payload parsing
         let result_type = ctx.fresh_type_var();
         Ok(InferenceResult {
@@ -251,20 +266,24 @@ impl BinaryTypeChecker {
             constraints: Vec::new(),
         })
     }
-    
+
     /// Infer lambda expression from binary payload  
     #[allow(dead_code)]
-    fn infer_lambda_from_payload(&mut self, ctx: &mut InferenceContext, _payload: &[u8]) -> StdResult<InferenceResult, String> {
+    fn infer_lambda_from_payload(
+        &mut self,
+        ctx: &mut InferenceContext,
+        _payload: &[u8],
+    ) -> StdResult<InferenceResult, String> {
         // Simplified implementation - would need proper payload parsing
         let param_type = ctx.fresh_type_var();
         let return_type = ctx.fresh_type_var();
-        
+
         let lambda_type = Type::Fun {
             params: vec![param_type],
             return_type: Box::new(return_type),
             effects: EffectSet::Empty,
         };
-        
+
         Ok(InferenceResult {
             typ: lambda_type,
             effects: EffectSet::Empty,
@@ -307,17 +326,17 @@ impl TypeCheckResult {
     pub fn is_success(&self) -> bool {
         self.errors.is_empty()
     }
-    
+
     /// Get the total number of type errors
     pub fn error_count(&self) -> usize {
         self.errors.len()
     }
-    
+
     /// Check if result used cached types (faster path)
     pub fn used_cache(&self) -> bool {
         matches!(self.validation_mode, ValidationMode::CachedValidation)
     }
-    
+
     /// Format all errors as a string
     pub fn format_errors(&self) -> String {
         self.errors
@@ -353,7 +372,7 @@ impl BinaryDeserializerExt for BinaryDeserializer {
             0x22 => TypeCode::ExprLambda,
             _ => return Err(format!("Unknown node type: {}", node_type_byte)),
         };
-        
+
         // Read optional type information
         let has_type = self.read_u8().map_err(|e| format!("Failed to read has_type: {:?}", e))? != 0;
         let inferred_type = if has_type {
@@ -361,7 +380,7 @@ impl BinaryDeserializerExt for BinaryDeserializer {
         } else {
             None
         };
-        
+
         // Read optional effect information
         let has_effects = self.read_u8().map_err(|e| format!("Failed to read has_effects: {:?}", e))? != 0;
         let effects = if has_effects {
@@ -369,18 +388,18 @@ impl BinaryDeserializerExt for BinaryDeserializer {
         } else {
             None
         };
-        
+
         // Read span
         let file_id = self.read_u32().map_err(|e| format!("Failed to read file_id: {:?}", e))?;
         let start = self.read_u32().map_err(|e| format!("Failed to read start: {:?}", e))?;
         let end = self.read_u32().map_err(|e| format!("Failed to read end: {:?}", e))?;
         let span = Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0)); // Simplified for now
-        
+
         // Read payload
         let payload_size = self.read_u32().map_err(|e| format!("Failed to read payload size: {:?}", e))? as usize;
         let mut payload = vec![0u8; payload_size];
         self.read_exact(&mut payload).map_err(|e| format!("Failed to read payload: {:?}", e))?;
-        
+
         Ok(TypedBinaryNode {
             node_type,
             inferred_type,
@@ -389,8 +408,8 @@ impl BinaryDeserializerExt for BinaryDeserializer {
             payload,
         })
     }
-    
-    
+
+
     fn deserialize_internal_type(&mut self) -> StdResult<Type, String> {
         let type_code = self.read_u8().map_err(|e| format!("Failed to read type code: {:?}", e))?;
         match type_code {
@@ -424,7 +443,7 @@ impl BinaryDeserializerExt for BinaryDeserializer {
             _ => Err(format!("Unknown internal type code: {}", type_code)),
         }
     }
-    
+
 }
 */
 
@@ -443,7 +462,7 @@ impl ReadExact for BinaryDeserializer {
         }
         Ok(())
     }
-    
+
     fn read_u8(&mut self) -> StdResult<u8, String> {
         BinaryDeserializer::read_u8(self).map_err(|e| format!("Read error: {:?}", e))
     }
@@ -454,13 +473,14 @@ impl ReadExact for BinaryDeserializer {
 mod tests {
     use super::*;
     use x_parser::symbol::Symbol;
-    
+    use x_parser::{FileId, span::ByteOffset};
+
     #[test]
     fn test_binary_type_checker_creation() {
         let checker = BinaryTypeChecker::new();
         assert!(!checker.error_reporter.has_errors());
     }
-    
+
     #[test]
     fn test_type_check_result() {
         let result = TypeCheckResult {
@@ -469,21 +489,21 @@ mod tests {
             validation_mode: ValidationMode::FullInference,
             node_count: 0,
         };
-        
+
         assert!(result.is_success());
         assert_eq!(result.error_count(), 0);
         assert!(!result.used_cache());
     }
-    
+
     #[test]
     fn test_typed_node() {
         let node = TypedNode {
             node_id: 1,
             inferred_type: Type::Con(Symbol::intern("Int")),
             effects: EffectSet::Empty,
-            span: Span::new(FileId::INVALID, ByteOffset(0), ByteOffset(0)),
+            span: Span::new(FileId(u32::MAX), ByteOffset(0), ByteOffset(0)),
         };
-        
+
         assert_eq!(node.node_id, 1);
         assert!(matches!(node.inferred_type, Type::Con(_)));
     }

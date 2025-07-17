@@ -373,7 +373,7 @@ impl Parser {
         }
     }
     
-    fn parse_value_def_body(&mut self, name: &str) -> Result<Expr> {
+    fn parse_value_def_body(&mut self, _name: &str) -> Result<Expr> {
         // Parse parameters (if any)
         let mut params = Vec::new();
         while let Some(Token::Symbol(_)) = self.peek() {

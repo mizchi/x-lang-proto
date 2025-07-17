@@ -39,12 +39,12 @@ pub async fn show_command(
         "json" => show_json(&ast, depth)?,
         "summary" => show_summary(&ast)?,
         "compact" => show_compact(&ast, depth)?,
-        "ocaml" => show_ocaml(&ast, depth)?,
+        // OCaml syntax no longer supported
         "haskell" => show_haskell(&ast, depth)?,
         "sexp" => show_sexp(&ast, depth)?,
         _ => {
             eprintln!("{} Unknown display format: {}", "Error:".red().bold(), format);
-            eprintln!("Available formats: tree, json, summary, compact, ocaml, haskell, sexp");
+            eprintln!("Available formats: tree, json, summary, compact, haskell, sexp");
             std::process::exit(1);
         }
     }
@@ -323,27 +323,7 @@ fn collect_stats_recursive(node: &PersistentAstNode, depth: usize, stats: &mut A
     }
 }
 
-/// Display AST in OCaml-style syntax
-fn show_ocaml(ast: &PersistentAstNode, _max_depth: Option<usize>) -> Result<()> {
-    println!("{}", "OCaml-style representation:".bold().underline());
-    
-    // Convert PersistentAstNode to regular AST for printing
-    let compilation_unit = convert_persistent_to_ast(ast)?;
-    
-    let config = SyntaxConfig {
-        style: SyntaxStyle::Haskell,
-        indent_size: 2,
-        use_tabs: false,
-        max_line_length: 80,
-        preserve_comments: true,
-    };
-    
-    let printer = HaskellPrinter::new();
-    let output = printer.print(&compilation_unit, &config)?;
-    
-    println!("{}", output);
-    Ok(())
-}
+// OCaml syntax support has been removed
 
 /// Display AST in Haskell-style syntax
 fn show_haskell(ast: &PersistentAstNode, _max_depth: Option<usize>) -> Result<()> {

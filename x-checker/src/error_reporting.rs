@@ -9,6 +9,9 @@
 use x_parser::{
     Span,
     Symbol,
+};
+#[allow(unused_imports)]
+use x_parser::{
     FileId,
     span::ByteOffset,
 };

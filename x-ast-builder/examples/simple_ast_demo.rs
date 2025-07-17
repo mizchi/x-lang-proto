@@ -4,7 +4,7 @@
 
 use x_parser::ast::*;
 use x_parser::{Symbol, Span, FileId, span::ByteOffset, Visibility, Purity};
-use x_parser::syntax::ocaml::OCamlPrinter;
+use x_parser::syntax::haskell::HaskellPrinter;
 use x_parser::syntax::{SyntaxPrinter, SyntaxConfig, SyntaxStyle};
 
 fn main() {
@@ -27,12 +27,15 @@ fn example_simple_program() {
     //        let main = fun () -> print_endline (string_of_int y)
     
     let module = Module {
+        documentation: None,
         name: ModulePath::single(Symbol::intern("Main"), span),
         exports: None,
         imports: Vec::new(),
         items: vec![
             // let x = 42
             Item::ValueDef(ValueDef {
+                documentation: None,
+                imports: Vec::new(),
                 name: Symbol::intern("x"),
                 type_annotation: None,
                 parameters: Vec::new(),
@@ -43,6 +46,8 @@ fn example_simple_program() {
             }),
             // let y = x + 10
             Item::ValueDef(ValueDef {
+                documentation: None,
+                imports: Vec::new(),
                 name: Symbol::intern("y"),
                 type_annotation: None,
                 parameters: Vec::new(),
@@ -60,6 +65,8 @@ fn example_simple_program() {
             }),
             // let main = fun () -> print_endline (string_of_int y)
             Item::ValueDef(ValueDef {
+                documentation: None,
+                imports: Vec::new(),
                 name: Symbol::intern("main"),
                 type_annotation: None,
                 parameters: Vec::new(),
@@ -104,12 +111,14 @@ fn example_function_with_pattern_matching() {
     //          | Cons _ tail -> 1 + length tail
     
     let module = Module {
+        documentation: None,
         name: ModulePath::single(Symbol::intern("ListOps"), span),
         exports: None,
         imports: Vec::new(),
         items: vec![
             // data List = Nil | Cons 'a (List 'a)
             Item::TypeDef(TypeDef {
+                documentation: None,
                 name: Symbol::intern("List"),
                 type_params: vec![TypeParam {
                     name: Symbol::intern("'a"),
@@ -141,6 +150,8 @@ fn example_function_with_pattern_matching() {
             }),
             // let length = fun lst -> match lst with ...
             Item::ValueDef(ValueDef {
+                documentation: None,
+                imports: Vec::new(),
                 name: Symbol::intern("length"),
                 type_annotation: None,
                 parameters: Vec::new(),
@@ -216,12 +227,14 @@ fn example_algebraic_effects() {
     //          | return x -> fun s -> (x, s)
     
     let module = Module {
+        documentation: None,
         name: ModulePath::single(Symbol::intern("State"), span),
         exports: None,
         imports: Vec::new(),
         items: vec![
             // effect State = get : unit -> int | put : int -> unit
             Item::EffectDef(EffectDef {
+                documentation: None,
                 name: Symbol::intern("State"),
                 type_params: Vec::new(),
                 operations: vec![
@@ -243,6 +256,8 @@ fn example_algebraic_effects() {
             }),
             // Handler definition (simplified)
             Item::ValueDef(ValueDef {
+                documentation: None,
+                imports: Vec::new(),
                 name: Symbol::intern("run_state"),
                 type_annotation: None,
                 parameters: Vec::new(),
@@ -272,14 +287,14 @@ fn print_module(module: &Module) {
     };
     
     let config = SyntaxConfig {
-        style: SyntaxStyle::OCaml,
+        style: SyntaxStyle::Haskell,
         indent_size: 2,
         use_tabs: false,
         max_line_length: 80,
         preserve_comments: true,
     };
     
-    let printer = OCamlPrinter::new();
+    let printer = HaskellPrinter::new();
     match printer.print(&cu, &config) {
         Ok(code) => println!("{}", code),
         Err(e) => println!("Error printing: {:?}", e),

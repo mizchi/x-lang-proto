@@ -14,6 +14,8 @@ use crate::namespace::{
     NamespaceResolver,
 };
 use crate::content_addressing::{ContentRepository, ContentHash};
+use x_parser::Symbol;
+use crate::namespace::Visibility;
 
 /// Namespace storage backend
 pub struct NamespaceStorage {

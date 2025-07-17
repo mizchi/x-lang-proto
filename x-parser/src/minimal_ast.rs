@@ -5,8 +5,6 @@
 //! - List: applications and compound expressions  
 //! - Ann: type annotations
 
-use crate::span::Span;
-use crate::symbol::Symbol;
 use std::fmt;
 
 /// Minimal expression type with only three variants

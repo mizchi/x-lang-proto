@@ -108,11 +108,11 @@ mod tests {
 
     #[test]
     fn test_syntax_styles() {
-        let ocaml_source = "module Main\n\nlet x = 42";
+        let haskell_source = "module Main\n\nlet x = 42";
         let file_id = FileId::new(0);
         
         // Test Haskell style (currently the only implemented style)
-        let haskell_result = parse_source(ocaml_source, file_id, SyntaxStyle::Haskell);
+        let haskell_result = parse_source(haskell_source, file_id, SyntaxStyle::Haskell);
         match haskell_result {
             Ok(_) => {},
             Err(e) => panic!("Haskell parse failed: {e:?}"),

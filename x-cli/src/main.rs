@@ -56,7 +56,7 @@ pub enum Commands {
     
     /// Convert between different formats
     Convert {
-        /// Input file (.x, .rustic.x, .ocaml.x, etc.)
+        /// Input file (.x, .haskell.x, .sexp.x, etc.)
         input: PathBuf,
         /// Output file (format determined by extension)
         #[arg(short, long)]
@@ -73,7 +73,7 @@ pub enum Commands {
     Show {
         /// Input file
         input: PathBuf,
-        /// Display format (tree, json, summary, compact, ocaml, haskell, sexp)
+        /// Display format (tree, json, summary, compact, haskell, sexp)
         #[arg(short, long, default_value = "tree")]
         format: String,
         /// Maximum depth to display
